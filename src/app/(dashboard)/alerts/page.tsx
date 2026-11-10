@@ -365,13 +365,13 @@ export default function AlertsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-[#0a0d12] border border-[#1e2733]">
-                    <span className="text-[#7a8fa6]">Vibration Acoustic RMS</span>
+                    <span className="text-[#7a8fa6]">Seismic Wave RMS Energy</span>
                     <span className="font-bold tabular-nums text-[#f59e0b]">
                       {selectedAlert.features.vibrationRms?.toFixed(3) ?? "--"} g
                     </span>
                   </div>
                   <div className="flex justify-between p-2 rounded bg-[#0a0d12] border border-[#1e2733]">
-                    <span className="text-[#7a8fa6]">Dominant Acoustic Frequency</span>
+                    <span className="text-[#7a8fa6]">Dominant Seismic Frequency</span>
                     <span className="font-bold tabular-nums text-white">
                       {selectedAlert.features.dominantFreq?.toFixed(0) ?? "--"} Hz
                     </span>

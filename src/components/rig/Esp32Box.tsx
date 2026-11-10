@@ -97,7 +97,7 @@ export function Esp32Box({ showCat6 = true, activeStationId }: Esp32BoxProps) {
             Model: <tspan fill="#e8edf2">Random Forest (On-Device)</tspan>
           </text>
           <text x="0" y="13" fill="#7a8fa6">
-            Flow: <tspan fill="#00b4d8">Pulse GPIO</tspan> · Press: <tspan fill="#818cf8">ADC</tspan> · Vib: <tspan fill="#f59e0b">SPI MPU6050</tspan>
+            Flow: <tspan fill="#00b4d8">Pulse GPIO</tspan> · Press: <tspan fill="#818cf8">ADC</tspan> · Seismic: <tspan fill="#f59e0b">SPI Wave</tspan>
           </text>
           <text x="0" y="26" fill="#7a8fa6">
             Bus: <tspan fill="#38bdf8">CAT6 Multiplex (6× CS pins)</tspan>

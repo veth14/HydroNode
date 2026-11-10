@@ -99,14 +99,14 @@ export default function StationDetailPage() {
   const energyFactor = currentVib > 0.15 ? 2.5 : 1.0;
 
   const frequencySpectrum = [
-    { freq: "60 Hz", energy: Number((0.12 * energyFactor).toFixed(2)) },
-    { freq: "120 Hz", energy: Number((0.28 * energyFactor).toFixed(2)) },
-    { freq: "240 Hz", energy: Number((0.45 * energyFactor).toFixed(2)) },
-    { freq: "360 Hz", energy: Number((0.82 * energyFactor).toFixed(2)) },
-    { freq: "420 Hz", energy: Number((1.64 * energyFactor).toFixed(2)) },
-    { freq: "500 Hz", energy: Number((0.95 * energyFactor).toFixed(2)) },
-    { freq: "600 Hz", energy: Number((0.34 * energyFactor).toFixed(2)) },
-    { freq: "720 Hz", energy: Number((0.18 * energyFactor).toFixed(2)) },
+    { freq: "15 Hz", energy: Number((0.22 * energyFactor).toFixed(2)) },
+    { freq: "30 Hz", energy: Number((0.48 * energyFactor).toFixed(2)) },
+    { freq: "60 Hz", energy: Number((0.95 * energyFactor).toFixed(2)) },
+    { freq: "90 Hz", energy: Number((1.84 * energyFactor).toFixed(2)) },
+    { freq: "120 Hz", energy: Number((1.42 * energyFactor).toFixed(2)) },
+    { freq: "180 Hz", energy: Number((0.75 * energyFactor).toFixed(2)) },
+    { freq: "240 Hz", energy: Number((0.38 * energyFactor).toFixed(2)) },
+    { freq: "360 Hz", energy: Number((0.14 * energyFactor).toFixed(2)) },
   ];
 
   // Format data for Recharts
@@ -162,7 +162,7 @@ export default function StationDetailPage() {
               </Badge>
             </div>
             <p className="text-xs text-[#7a8fa6] mt-0.5">
-              Flow pulse interrupt, analog line pressure & SPI MPU6050 vibration telemetry
+              Flow pulse interrupt, analog line pressure & SPI seismic wave propagation telemetry
             </p>
           </div>
         </div>
@@ -216,19 +216,19 @@ export default function StationDetailPage() {
         />
 
         <Stat
-          label="Vibration (SPI MPU6050)"
+          label="Seismic Wave (g RMS)"
           value={
             currentStation?.latestVibration != null
               ? currentStation.latestVibration.toFixed(3)
               : "0.082"
           }
           unit="g (RMS)"
-          subtext="Turbulence threshold: 0.150 g"
+          subtext="Seismic threshold: 0.150 g"
           icon={<Activity className="w-4 h-4 text-[#f59e0b]" />}
           tone={
             (currentStation?.latestVibration ?? 0) > 0.15 ? "warning" : "default"
           }
-          badge="Dedicated CS Pin"
+          badge="SPI · Seismic"
         />
 
         <Stat
@@ -290,17 +290,17 @@ export default function StationDetailPage() {
               </div>
             </div>
 
-            {/* Vibration */}
+            {/* Seismic */}
             <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
               <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
-                <span className="font-bold text-[#f59e0b]">3. Vibration Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">SPI Bus (MPU6050)</span>
+                <span className="font-bold text-[#f59e0b]">3. Seismic Wave Sensor</span>
+                <span className="text-[10px] text-[#7a8fa6]">SPI · Seismic</span>
               </div>
               <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
-                Clamped MEMS accelerometer capturing high-frequency acoustic pipe wall vibration caused by orifice leak turbulence.
+                Clamped geophone / seismic MEMS accelerometer capturing elastic ground motion & low-frequency P/S wave propagation induced by pipe wall fracture turbulence.
               </p>
               <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
-                <strong>Algorithm Role:</strong> Feeds acoustic RMS & dominant frequency to on-device Random Forest classifier.
+                <strong>Algorithm Role:</strong> Feeds seismic RMS velocity & peak wave frequency to on-device Random Forest classifier.
               </div>
             </div>
           </div>
@@ -436,14 +436,14 @@ export default function StationDetailPage() {
           </div>
         </div>
 
-        {/* Vibration FFT Spectrum */}
+        {/* Seismic Wave FFT Spectrum */}
         <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] space-y-4">
           <div className="pb-2 border-b border-[#1e2733]">
             <h3 className="text-sm font-semibold text-white tracking-tight">
-              Acoustic Vibration FFT Spectrum (MPU6050 via SPI)
+              Seismic Wave FFT Spectrum (P/S Elastic Waves via SPI)
             </h3>
             <p className="text-xs text-[#7a8fa6]">
-              Power density band features extracted on ESP32 edge model
+              Low-frequency ground/pipe seismic energy bands extracted on ESP32 edge model
             </p>
           </div>
           <div className="h-60 w-full">

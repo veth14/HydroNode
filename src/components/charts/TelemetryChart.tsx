@@ -125,7 +125,7 @@ export function TelemetryChart({
               : "text-[#7a8fa6] border-transparent hover:text-[#f59e0b]"
           }`}
         >
-          Vib (SPI/MEMS)
+          Seismic (Wave)
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export function TelemetryChart({
                 <Line
                   type="monotone"
                   dataKey="vibration"
-                  name="Vibration (g)"
+                  name="Seismic Wave (g)"
                   stroke="#f59e0b"
                   strokeWidth={2}
                   dot={false}

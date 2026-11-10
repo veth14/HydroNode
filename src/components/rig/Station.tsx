@@ -4,7 +4,7 @@
 // Houses 3 distinct physical sensors:
 // 1. Flow Sensor: Pulse signal pin -> Q (L/min)
 // 2. Pressure Sensor: Analog ADC signal -> P (bar)
-// 3. Vibration Sensor: MPU6050 MEMS Accelerometer via SPI bus + CS pin -> V (RMS)
+// 3. Seismic Wave Sensor: MEMS / Geophone via SPI bus + CS pin -> S (g RMS)
 
 import type { StationId, StationPos } from "@/config/rig";
 import type { LiveStation } from "@/types";
@@ -49,7 +49,7 @@ export function Station({
       onClick={onClick}
       role="button"
       tabIndex={0}
-      aria-label={`Station ${id}: Flow ${flowVal} L/min (Pulse), Pressure ${pressVal} bar (Analog), Vibration ${vibVal} RMS (SPI/MEMS)`}
+      aria-label={`Station ${id}: Flow ${flowVal} L/min (Pulse), Pressure ${pressVal} bar (Analog), Seismic Wave ${vibVal} g RMS (SPI)`}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -144,12 +144,12 @@ export function Station({
         </text>
       </g>
 
-      {/* 3. VIBRATION SENSOR (SPI MEMS MPU6050) -> Amber */}
+      {/* 3. SEISMIC WAVE SENSOR (SPI MEMS / Geophone) -> Amber */}
       <g transform="translate(-20, 17)">
         <rect x="0" y="0" width="40" height="9" rx="2" fill="#f59e0b18" stroke="#f59e0b50" strokeWidth="0.8" />
         <circle cx="4.5" cy="4.5" r="2" fill="#f59e0b" />
         <text x="9" y="7" fill="#fcd34d" fontSize="6.5" fontWeight="bold" fontFamily="monospace">
-          V {vibVal}
+          S {vibVal}
         </text>
       </g>
 

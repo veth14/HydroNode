@@ -40,7 +40,7 @@ export function LeakEffect({ alert }: LeakEffectProps) {
 
   return (
     <g id={`leak-effect-${alert.id}`}>
-      {/* Vibration Waves: Concentric acoustic arcs from nearest upstream station */}
+      {/* Seismic Wave Propagation: Concentric ground/structure wave fronts radiating from leak orifice & station */}
       <g transform={`translate(${stA.x}, ${stA.y})`}>
         <circle
           cx="0"
@@ -63,6 +63,19 @@ export function LeakEffect({ alert }: LeakEffectProps) {
           strokeDasharray="5 5"
           opacity="0.4"
         />
+        {/* P/S Wave Front text indicator */}
+        <text
+          x="0"
+          y="-42"
+          fill="#f59e0b"
+          fontSize="7"
+          fontWeight="bold"
+          textAnchor="middle"
+          fontFamily="monospace"
+          opacity="0.8"
+        >
+          SEISMIC WAVE
+        </text>
       </g>
 
       {/* Physical Leak Point at (anchor.x, anchor.y) on the pipe */}

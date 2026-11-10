@@ -255,16 +255,16 @@ export default function LeakAnalysisPage() {
               title={
                 <div className="flex items-center gap-2">
                   <Waves className="w-4 h-4 text-[#f59e0b]" />
-                  <span>3. Acoustic Random Forest (Edge)</span>
+                  <span>3. Seismic Wave & Edge Classifier</span>
                 </div>
               }
             />
             <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
               <p>
-                Clamped MPU6050 accelerometers capture high-frequency wall vibrations over SPI. FFT feature extraction computes RMS energy and dominant frequency.
+                Clamped geophones and seismic MEMS transducers measure low-frequency elastic P/S ground motion waves propagating through the pipe casing and soil. FFT feature extraction computes seismic RMS velocity/acceleration and wavefront energy bands.
               </p>
               <p>
-                The on-device model distinguishes true turbulent orifice jet noise (100–600 Hz) from pump transients and user demand spikes.
+                The on-device model distinguishes true pressurized orifice seismic wave dispersion (15–240 Hz) from surface pump transients and vehicular ground traffic.
               </p>
             </CardContent>
           </Card>

@@ -367,16 +367,16 @@ export default function NetworkOverviewPage() {
               </div>
             </div>
 
-            {/* Sensor 3: Vibration Sensor */}
+            {/* Sensor 3: Seismic Wave Sensor */}
             <div className="p-4 rounded-xl bg-[#0a0d12] border border-[#1e2733] hover:border-[#f59e0b40] transition-colors flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-2 border-b border-[#1e2733]">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b] shadow-[0_0_6px_#f59e0b]" />
-                    <span className="text-xs font-bold text-white">Vibration Sensor</span>
+                    <span className="text-xs font-bold text-white">Seismic Wave Sensor</span>
                   </div>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f59e0b15] text-[#f59e0b] border border-[#f59e0b30]">
-                    SPI · MPU6050
+                    SPI · Seismic
                   </span>
                 </div>
 
@@ -386,18 +386,18 @@ export default function NetworkOverviewPage() {
                     <span className="text-xs font-normal text-[#7a8fa6] ml-1.5">RMS (g)</span>
                   </div>
                   <p className="text-[11px] text-[#7a8fa6] mt-1.5 leading-relaxed">
-                    MEMS accelerometer clamped to pipe, connected over SPI bus with dedicated CS pin.
+                    Measures ground motion & elastic pipe-wall seismic waves induced by pressurized fluid escape turbulence.
                   </p>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-[#1e2733] text-[11px] text-[#4a5a6e] space-y-1">
                 <div className="flex justify-between">
-                  <span>Dominant Frequency:</span>
-                  <span className="text-slate-300 font-bold tabular-nums">420 Hz (Turbulence)</span>
+                  <span>Wavefront Band:</span>
+                  <span className="text-slate-300 font-bold tabular-nums">60–240 Hz (P/S Waves)</span>
                 </div>
                 <div className="text-[10px] text-[#7a8fa6]">
-                  Role: Captures acoustic pipe wall turbulence noise created by orifice leaks.
+                  Role: Captures elastic seismic wave propagation through pipe casing and bedding to confirm subsurface breach.
                 </div>
               </div>
             </div>
@@ -510,7 +510,7 @@ export default function NetworkOverviewPage() {
                 <th className="py-2.5 px-4">Sampling Mode</th>
                 <th className="py-2.5 px-4 text-right text-[#00b4d8]">Flow (Pulse)</th>
                 <th className="py-2.5 px-4 text-right text-[#818cf8]">Pressure (ADC)</th>
-                <th className="py-2.5 px-4 text-right text-[#f59e0b]">Vib (SPI/MEMS)</th>
+                <th className="py-2.5 px-4 text-right text-[#f59e0b]">Seismic Wave (g)</th>
                 <th className="py-2.5 px-4">Last Seen</th>
                 <th className="py-2.5 px-4 text-center">Action</th>
               </tr>

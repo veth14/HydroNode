@@ -37,7 +37,8 @@
   /* Sensor colors */
   --sensor-flow:      #38bdf8;   /* sky  — pulse signal */
   --sensor-pressure:  #818cf8;   /* violet — analog */
-  --sensor-vibration: #fb923c;   /* orange — SPI/MEMS */
+  --sensor-vibration: #fb923c;   /* orange — SPI/MEMS seismic */
+  --sensor-seismic:   #f59e0b;   /* amber — elastic P/S seismic wave */
 }
 
 /* Force dark background at root level */

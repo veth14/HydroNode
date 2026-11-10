@@ -63,7 +63,7 @@ export function Legend({
           </span>
           <span className="flex items-center gap-1 text-[#f59e0b]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
-            Vib (SPI/MEMS)
+            Seismic (Wave/SPI)
           </span>
         </div>
       </div>
@@ -106,7 +106,7 @@ export function Legend({
           title="Toggle Acoustic Wave Overlays"
         >
           <Activity className="w-3 h-3" />
-          Vibration
+          Seismic Wave
         </button>
 
         <button
