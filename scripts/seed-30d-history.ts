@@ -94,3 +94,4 @@ main().catch((err) => {
   console.error("Error seeding 30-day history:", err);
   process.exit(1);
 });
+

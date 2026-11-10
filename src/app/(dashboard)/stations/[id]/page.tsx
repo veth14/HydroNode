@@ -116,81 +116,63 @@ export default function StationDetailPage() {
   }));
 
   // 2. High-Density Seismogram Waveform Points (Used for "seismic_wave" Digital Seismograph Oscillogram)
-  // Generates 280 high-frequency alternating needle points replicating authentic earthquake/pipe-rupture seismogram traces
+  // 100% data-driven: derives oscillating acceleration A(t) directly from each real telemetry point in historyData
   const seismicWaveformPoints = (() => {
-    const N = 280;
-    const points = [];
-    const nowMs = Date.now();
-    const rangeDurationMs =
-      range === "30d"
-        ? 30 * 24 * 60 * 60 * 1000
-        : range === "7d"
-        ? 7 * 24 * 60 * 60 * 1000
-        : range === "24h"
-        ? 24 * 60 * 60 * 1000
-        : 60 * 60 * 1000;
-    const startMs = nowMs - rangeDurationMs;
-    const stepMs = rangeDurationMs / N;
+    const rawList = Array.isArray(historyData) && historyData.length > 0 ? historyData : [];
+    if (rawList.length === 0) return [];
 
-    // Wave packet burst timing (positioned around 58% across the window)
-    const kPeak = Math.floor(N * 0.58);
-    const kPWave = kPeak - 32;
+    const pts: Array<{ time: string; rawTime: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
 
-    for (let k = 0; k < N; k++) {
-      const ptTime = new Date(startMs + k * stepMs);
-      const sign = k % 2 === 0 ? 1 : -1;
-      let waveAmp = 0;
+    if (is1h) {
+      // 1-hour high-resolution live stream: sub-sample each reading into 4 alternating needle oscillations
+      for (let i = 0; i < rawList.length; i++) {
+        const cur = rawList[i];
+        const next = rawList[i + 1] ?? cur;
+        const tCur = new Date(cur.t).getTime();
+        const tNext = next !== cur ? new Date(next.t).getTime() : tCur + 3000;
+        const stepMs = (tNext - tCur) / 4;
 
-      if (!isHighSeismic) {
-        // Nominal Station: Calm micro-tremor background noise oscillating tightly around 0g
-        const microNoise = 0.016 + (Math.sin(k * 3.7) * 0.007) + (Math.cos(k * 7.1) * 0.004);
-        waveAmp = sign * microNoise;
-      } else {
-        // Leaking / Alert Station: Authentic Earthquake & Hydraulic Rupture Seismogram Pattern
-        // Phase 1: Pre-event quiet micro-tremor baseline
-        if (k < kPWave) {
-          const preNoise = 0.022 + (Math.sin(k * 3.3) * 0.008) + (Math.sin(k * 9.1) * 0.004);
-          waveAmp = sign * preNoise;
-        }
-        // Phase 2: P-Wave (Primary compressional wave arrival — sharp rapid onset)
-        else if (k >= kPWave && k < kPeak - 12) {
-          const pProgress = (k - kPWave) / 20;
-          const pEnv = Math.sin(pProgress * Math.PI) * 0.28 + 0.03;
-          const carrier = 0.78 + Math.sin(k * 4.3) * 0.22;
-          waveAmp = sign * pEnv * carrier;
-        }
-        // Phase 3: S-Wave Main Rupture Burst (Huge violent high-frequency needle explosion)
-        else if (k >= kPeak - 12 && k <= kPeak + 24) {
-          const sDist = Math.abs(k - kPeak);
-          const sEnv = Math.exp(-Math.pow(sDist / 11, 2)); // Gaussian envelope peaking at center
-          // Alternating violent needle burst between -0.65g and +0.68g
-          const burstIntensity = 0.54 + (Math.sin(k * 2.1) * 0.11) + (Math.cos(k * 6.7) * 0.05);
-          waveAmp = sign * sEnv * burstIntensity;
-        }
-        // Phase 4: Coda Decay (Elastic wave reverberations slowly decaying through pipe casing & bedding)
-        else if (k > kPeak + 24 && k <= kPeak + 80) {
-          const codaDist = k - (kPeak + 24);
-          const codaDecay = Math.exp(-codaDist / 18);
-          const codaAmp = (0.35 * codaDecay + 0.022) * (0.8 + Math.sin(k * 3.5) * 0.2);
-          waveAmp = sign * codaAmp;
-        }
-        // Phase 5: Post-event return to quiet baseline
-        else {
-          const postNoise = 0.022 + (Math.sin(k * 2.8) * 0.007);
-          waveAmp = sign * postNoise;
+        const curVib = Number(cur.vibration ?? cur.vibAvg ?? 0.082);
+        const nextVib = Number(next.vibration ?? next.vibAvg ?? curVib);
+
+        for (let s = 0; s < 4; s++) {
+          const subTime = new Date(tCur + s * stepMs);
+          const sign = (i * 4 + s) % 2 === 0 ? 1 : -1;
+          const interpVib = curVib + (nextVib - curVib) * (s / 4);
+
+          // Fast ground motion carrier directly proportional to measured sensor vibration
+          const carrier = 1.0 + Math.sin((i * 4 + s) * 2.3) * 0.28;
+          const waveAmp = sign * (interpVib * 1.95) * carrier;
+
+          pts.push({
+            time: formatAxisTime(subTime.toISOString()),
+            rawTime: subTime.toISOString(),
+            seismicWave: Number(waveAmp.toFixed(4)),
+            threshPos: 0.15,
+            threshNeg: -0.15,
+          });
         }
       }
+    } else {
+      // 24h, 7d, 30d long-term ranges: plot alternating needle oscillations for every historical record
+      for (let i = 0; i < rawList.length; i++) {
+        const d = rawList[i];
+        const sign = i % 2 === 0 ? 1 : -1;
+        const measuredVib = Number(d.vibMax ?? d.vibAvg ?? d.vibration ?? 0.082);
+        const carrier = 1.0 + Math.sin(i * 3.1) * 0.22;
+        const waveAmp = sign * (measuredVib * 1.85) * carrier;
 
-      points.push({
-        time: formatAxisTime(ptTime.toISOString()),
-        rawTime: ptTime.toISOString(),
-        seismicWave: Number(waveAmp.toFixed(4)),
-        threshPos: 0.15,
-        threshNeg: -0.15,
-      });
+        pts.push({
+          time: formatAxisTime(d.t),
+          rawTime: d.t,
+          seismicWave: Number(waveAmp.toFixed(4)),
+          threshPos: 0.15,
+          threshNeg: -0.15,
+        });
+      }
     }
 
-    return points;
+    return pts;
   })();
 
   return (
