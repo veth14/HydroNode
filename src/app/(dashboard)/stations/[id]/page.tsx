@@ -116,55 +116,46 @@ export default function StationDetailPage() {
   }));
 
   // 2. High-Density Seismogram Waveform Points (Used for "seismic_wave" Digital Seismograph Oscillogram)
-  // 100% data-driven: derives oscillating acceleration A(t) directly from each real telemetry point in historyData
+  // Data-driven: amplitude envelope derived from real vibration readings; high-frequency carrier makes dense spiky needles.
   const seismicWaveformPoints = (() => {
     const rawList = Array.isArray(historyData) && historyData.length > 0 ? historyData : [];
     if (rawList.length === 0) return [];
 
     const pts: Array<{ time: string; rawTime: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
 
-    if (is1h) {
-      // 1-hour high-resolution live stream: sub-sample each reading into 4 alternating needle oscillations
-      for (let i = 0; i < rawList.length; i++) {
-        const cur = rawList[i];
-        const next = rawList[i + 1] ?? cur;
-        const tCur = new Date(cur.t).getTime();
-        const tNext = next !== cur ? new Date(next.t).getTime() : tCur + 3000;
-        const stepMs = (tNext - tCur) / 4;
+    // Number of synthetic sub-samples to interpolate between each real reading.
+    // More sub-samples → denser, spikier oscillations like a real seismograph paper trace.
+    const SUBS = is1h ? 12 : 6;
 
-        const curVib = Number(cur.vibration ?? cur.vibAvg ?? 0.082);
-        const nextVib = Number(next.vibration ?? next.vibAvg ?? curVib);
+    for (let i = 0; i < rawList.length; i++) {
+      const cur = rawList[i];
+      const next = rawList[Math.min(i + 1, rawList.length - 1)];
+      const tCur = new Date(cur.t).getTime();
+      const tNext = new Date(next.t).getTime();
+      const spanMs = tNext > tCur ? tNext - tCur : (is1h ? 3000 : 7200000);
 
-        for (let s = 0; s < 4; s++) {
-          const subTime = new Date(tCur + s * stepMs);
-          const sign = (i * 4 + s) % 2 === 0 ? 1 : -1;
-          const interpVib = curVib + (nextVib - curVib) * (s / 4);
+      // Amplitude envelope from real vibration measurement
+      const ampCur = Math.max(Number(cur.vibration ?? cur.vibAvg ?? cur.vibMax ?? 0.082), 0.01);
+      const ampNext = Math.max(Number(next.vibration ?? next.vibAvg ?? next.vibMax ?? 0.082), 0.01);
 
-          // Fast ground motion carrier directly proportional to measured sensor vibration
-          const carrier = 1.0 + Math.sin((i * 4 + s) * 2.3) * 0.28;
-          const waveAmp = sign * (interpVib * 1.95) * carrier;
+      for (let s = 0; s < SUBS; s++) {
+        const frac = s / SUBS;
+        const t = new Date(tCur + frac * spanMs);
+        // Linearly interpolate amplitude between consecutive real readings
+        const amp = ampCur + (ampNext - ampCur) * frac;
 
-          pts.push({
-            time: formatAxisTime(subTime.toISOString()),
-            rawTime: subTime.toISOString(),
-            seismicWave: Number(waveAmp.toFixed(4)),
-            threshPos: 0.15,
-            threshNeg: -0.15,
-          });
-        }
-      }
-    } else {
-      // 24h, 7d, 30d long-term ranges: plot alternating needle oscillations for every historical record
-      for (let i = 0; i < rawList.length; i++) {
-        const d = rawList[i];
-        const sign = i % 2 === 0 ? 1 : -1;
-        const measuredVib = Number(d.vibMax ?? d.vibAvg ?? d.vibration ?? 0.082);
-        const carrier = 1.0 + Math.sin(i * 3.1) * 0.22;
-        const waveAmp = sign * (measuredVib * 1.85) * carrier;
+        // High-frequency oscillation carrier: fast sine at ~8 cycles per inter-sample gap.
+        // This is what makes the waveform look like dense seismograph needles.
+        const phase = (i * SUBS + s) * 0.79; // irrational step → no repeating pattern
+        const carrier = Math.sin(phase * 2.47) * 0.72           // primary carrier
+                      + Math.sin(phase * 5.13 + 1.1) * 0.22    // 2nd harmonic
+                      + Math.sin(phase * 11.3 + 2.7) * 0.06;   // 3rd harmonic (fine texture)
+
+        const waveAmp = amp * carrier * 2.1;  // scale to realistic g units
 
         pts.push({
-          time: formatAxisTime(d.t),
-          rawTime: d.t,
+          time: formatAxisTime(t.toISOString()),
+          rawTime: t.toISOString(),
           seismicWave: Number(waveAmp.toFixed(4)),
           threshPos: 0.15,
           threshNeg: -0.15,

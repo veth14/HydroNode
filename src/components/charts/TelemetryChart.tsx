@@ -74,27 +74,36 @@ export function TelemetryChart({
   }));
 
   // 2. High-density Seismogram Oscillogram derived 100% from actual data points
-  // Sub-samples each real reading into 4 alternating needle oscillations
+  // Uses multi-harmonic carrier oscillation so the trace looks like real seismograph needle output.
   const seismogramPoints = (() => {
-    const pts = [];
+    const pts: Array<{ time: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
     const sourceSlice = rawList.slice(-45);
+    const SUBS = 14; // sub-samples per real reading → dense needle texture
 
     for (let i = 0; i < sourceSlice.length; i++) {
       const current = sourceSlice[i];
-      const next = sourceSlice[i + 1] ?? current;
+      const next = sourceSlice[Math.min(i + 1, sourceSlice.length - 1)];
       const tCurrent = new Date(current.t).getTime();
-      const tNext = next !== current ? new Date(next.t).getTime() : tCurrent + 3000;
-      const stepMs = (tNext - tCurrent) / 4;
+      const tNext = new Date(next.t).getTime();
+      const spanMs = tNext > tCurrent ? tNext - tCurrent : 3000;
 
-      for (let s = 0; s < 4; s++) {
-        const subTime = new Date(tCurrent + s * stepMs);
-        const sign = (i * 4 + s) % 2 === 0 ? 1 : -1;
-        // Interpolate vibration between current and next
-        const interpVib = current.vibration + (next.vibration - current.vibration) * (s / 4);
-        
-        // High-frequency ground motion oscillation directly proportional to measured vibration
-        const carrier = 1.0 + Math.sin((i * 4 + s) * 2.3) * 0.28;
-        const waveAmp = sign * (interpVib * 1.95) * carrier;
+      // Amplitude envelope from real vibration data
+      const ampCur = Math.max(current.vibration, 0.01);
+      const ampNext = Math.max(next.vibration, 0.01);
+
+      for (let s = 0; s < SUBS; s++) {
+        const frac = s / SUBS;
+        const subTime = new Date(tCurrent + frac * spanMs);
+        // Interpolate amplitude between consecutive real readings
+        const amp = ampCur + (ampNext - ampCur) * frac;
+
+        // Multi-harmonic oscillation carrier (irrational phase steps = no repeating pattern)
+        const phase = (i * SUBS + s) * 0.79;
+        const carrier = Math.sin(phase * 2.47) * 0.72        // primary carrier
+                      + Math.sin(phase * 5.13 + 1.1) * 0.22  // 2nd harmonic
+                      + Math.sin(phase * 11.3 + 2.7) * 0.06; // fine texture
+
+        const waveAmp = amp * carrier * 2.1;
 
         pts.push({
           time: subTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
