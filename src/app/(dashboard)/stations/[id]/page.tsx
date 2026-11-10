@@ -98,7 +98,6 @@ export default function StationDetailPage() {
   const rawSlice = Array.isArray(historyData)
     ? historyData.slice(is1h ? -40 : -100)
     : [];
-  const totalPts = rawSlice.length;
 
   // Find the highest-RMS window to place the "leak seismic event"
   const maxRmsIdx = rawSlice.length > 0
@@ -110,6 +109,23 @@ export default function StationDetailPage() {
         0
       )
     : 0;
+
+  // X-axis label format depends on selected range:
+  // 1h → HH:MM:SS, 24h → HH:MM, 7d → ddd HH:MM, 30d → MM/DD
+  const formatAxisTime = (isoStr: string) => {
+    const d = new Date(isoStr);
+    if (range === "30d") {
+      return d.toLocaleDateString([], { month: "2-digit", day: "2-digit" });
+    }
+    if (range === "7d") {
+      return d.toLocaleDateString([], { weekday: "short", month: "numeric", day: "numeric" });
+    }
+    if (range === "24h") {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    // 1h — full HH:MM:SS
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  };
 
   const formattedChartData = rawSlice.map((d: any, idx: number) => {
     const rms = Number((d.vibration ?? d.vibAvg ?? 0.082));
@@ -133,11 +149,7 @@ export default function StationDetailPage() {
     const peakAmp = Number((carrier * envelope * rms * 2.8).toFixed(4));
 
     return {
-      time: new Date(d.t).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: is1h ? "2-digit" : undefined,
-      }),
+      time: formatAxisTime(d.t),
       seismicWave: peakAmp,
       seismicRms: Number(rms.toFixed(3)),
       threshPos: 0.15,
@@ -384,7 +396,18 @@ export default function StationDetailPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={formattedChartData} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" opacity={0.8} />
-                <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
+                <XAxis
+                  dataKey="time"
+                  tick={{ fontSize: 10, fill: "#7a8fa6" }}
+                  stroke="#1e2733"
+                  label={{
+                    value: range === "30d" ? "Date (MM/DD)" : range === "7d" ? "Date (Day)" : range === "24h" ? "Time (HH:MM)" : "Time (HH:MM:SS)",
+                    position: "insideBottom",
+                    offset: -2,
+                    fill: "#4a5a6e",
+                    fontSize: 10,
+                  }}
+                />
                 <YAxis
                   tick={{ fontSize: 10, fill: "#f59e0b" }}
                   stroke="#1e2733"
@@ -401,8 +424,8 @@ export default function StationDetailPage() {
                     fontSize: "11px",
                   }}
                   formatter={(value: any, name: any) => [
-                    `${Number(value).toFixed(3)} g`,
-                    name === "seismicWave" ? "Instantaneous Acceleration" : name,
+                    `${Number(value).toFixed(4)} g`,
+                    name === "seismicWave" ? "Instantaneous Acceleration A(t)" : name,
                   ]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
@@ -421,9 +444,9 @@ export default function StationDetailPage() {
                   strokeDasharray="4 4"
                   label={{ value: "-Threshold (-0.150 g)", fill: "#ef4444", fontSize: 10, position: "bottom" }}
                 />
-                {/* Seismic Wave Trace Line */}
+                {/* Seismic Wave Trace — LINEAR interpolation so spikes are sharp, not smoothed */}
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="seismicWave"
                   name="Seismic Waveform Trace (g)"
                   stroke="#f59e0b"

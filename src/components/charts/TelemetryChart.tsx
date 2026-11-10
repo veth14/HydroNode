@@ -284,13 +284,13 @@ export function TelemetryChart({
                 label={{ value: "-0.150 g Threshold", fill: "#ef4444", fontSize: 9, position: "insideBottomRight" }}
               />
 
-              {/* Instantaneous Seismic Ground Motion Oscillogram */}
+              {/* Instantaneous Seismic Ground Motion Oscillogram — LINEAR for sharp spikes */}
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="seismicWave"
                 name="Seismic Waveform A(t) (g)"
                 stroke="#f59e0b"
-                strokeWidth={2}
+                strokeWidth={1.5}
                 dot={false}
                 isAnimationActive={false}
               />
