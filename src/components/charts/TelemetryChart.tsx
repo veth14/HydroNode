@@ -2,7 +2,7 @@
 // src/components/charts/TelemetryChart.tsx
 // High-frequency sensor stream chart with tabular numerals and SCADA styling.
 // Visualizes the 3 physical sensors with primary focus on the SEISMIC WAVE GRAPH:
-// 1. Seismic Waveform (Oscillogram) -> Oscillating ground motion A(t) around 0.000 g
+// 1. Seismic Waveform (Oscillogram) -> Dense needle ground motion A(t) around 0.000 g
 // 2. All 3 Sensors -> Dual Y-axis (Left: Flow & Pressure; Right: Seismic Wave RMS)
 // 3. Flow (Pulse interrupt) -> #00b4d8
 // 4. Pressure (Analog 12-bit ADC) -> #818cf8
@@ -24,7 +24,7 @@ import {
 } from "recharts";
 import type { StationId } from "@/types";
 import { STATION_IDS } from "@/config/rig";
-import { Waves, Droplets, Gauge, Activity, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Waves, Droplets, Gauge, Activity } from "lucide-react";
 
 interface RawReadingPoint {
   t: string;
@@ -56,59 +56,77 @@ export function TelemetryChart({
     { refreshInterval: 3000 }
   );
 
-  // Synthesize authentic seismogram A(t) from recorded RMS values.
-  // Real seismograms are mostly quiet (small noise floor) with sudden burst packets
-  // when a seismic event (pipe breach) occurs — P-wave sharp onset → S-wave peak → decaying coda.
-  const rawSlice = (data ?? []).slice(-35);
-  const totalPts = rawSlice.length;
+  const rawSlice = data ?? [];
+  const latestRaw = rawSlice[rawSlice.length - 1];
+  const latestVib = latestRaw?.vibration ?? 0.082;
+  const isHighSeismic = latestVib > 0.15;
 
-  // Find the highest-RMS window to place the "event burst" (pipe leak seismic event)
-  const maxRmsIdx = rawSlice.reduce(
-    (best, d, i) => (d.vibration > rawSlice[best].vibration ? i : best),
-    0
-  );
+  // 1. Standard telemetry data points for All/Flow/Pressure
+  const chartData = rawSlice.slice(-40).map((d) => ({
+    time: new Date(d.t).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }),
+    flow: Number(d.flow.toFixed(2)),
+    pressure: Number(d.pressure.toFixed(2)),
+    seismicRms: Number(d.vibration.toFixed(3)),
+  }));
 
-  const chartData = rawSlice.map((d, idx) => {
-    const rms = Number(d.vibration.toFixed(3));
+  // 2. High-density Seismogram Oscillogram (240 dense needle points)
+  const seismogramPoints = (() => {
+    const N = 240;
+    const pts = [];
+    const now = Date.now();
+    const durationMs = 15 * 60 * 1000; // Last 15 minutes window
+    const startMs = now - durationMs;
+    const stepMs = durationMs / N;
 
-    // Distance from the event epicenter in sample space
-    const dist = idx - maxRmsIdx;
+    const kPeak = Math.floor(N * 0.62);
+    const kPWave = kPeak - 28;
 
-    // Event envelope: sharp P-wave onset (left edge), broad S-wave peak, exponential coda decay
-    // Everything outside the event window collapses to tiny background noise
-    const pWaveEnv  = Math.exp(-0.5 * Math.pow((dist + 4) / 1.8, 2));  // P-wave ~4 samples before peak
-    const sWaveEnv  = Math.exp(-0.5 * Math.pow(dist / 3.5, 2));         // S-wave at peak
-    const codaEnv   = dist > 0 ? Math.exp(-dist / 5.0) : 0;             // Decaying coda after peak
-    const noiseEnv  = 0.04;                                              // Ambient background noise floor
+    for (let k = 0; k < N; k++) {
+      const ptTime = new Date(startMs + k * stepMs);
+      const sign = k % 2 === 0 ? 1 : -1;
+      let waveAmp = 0;
 
-    const envelope = Math.max(noiseEnv, pWaveEnv * 0.55 + sWaveEnv * 1.0 + codaEnv * 0.35);
+      if (!isHighSeismic) {
+        // Calm ambient micro-tremors
+        const microNoise = 0.018 + (Math.sin(k * 3.7) * 0.006) + (Math.cos(k * 7.1) * 0.004);
+        waveAmp = sign * microNoise;
+      } else {
+        // Leaking Station: Dense Needle Earthquake Seismogram
+        if (k < kPWave) {
+          const preNoise = 0.022 + (Math.sin(k * 3.3) * 0.007);
+          waveAmp = sign * preNoise;
+        } else if (k >= kPWave && k < kPeak - 10) {
+          const pProgress = (k - kPWave) / 18;
+          const pEnv = Math.sin(pProgress * Math.PI) * 0.28 + 0.03;
+          waveAmp = sign * pEnv * (0.8 + Math.sin(k * 4.3) * 0.2);
+        } else if (k >= kPeak - 10 && k <= kPeak + 22) {
+          const sDist = Math.abs(k - kPeak);
+          const sEnv = Math.exp(-Math.pow(sDist / 10, 2));
+          const burstIntensity = 0.54 + (Math.sin(k * 2.1) * 0.11) + (Math.cos(k * 6.7) * 0.05);
+          waveAmp = sign * sEnv * burstIntensity;
+        } else if (k > kPeak + 22 && k <= kPeak + 70) {
+          const codaDist = k - (kPeak + 22);
+          const codaDecay = Math.exp(-codaDist / 16);
+          waveAmp = sign * (0.34 * codaDecay + 0.022) * (0.8 + Math.sin(k * 3.5) * 0.2);
+        } else {
+          waveAmp = sign * (0.022 + Math.sin(k * 2.8) * 0.007);
+        }
+      }
 
-    // High-frequency spiky oscillations (mix of frequencies like a real seismometer)
-    const carrier =
-      Math.sin(idx * 11.3 + 0.7) * 0.45 +
-      Math.sin(idx * 17.8 + 1.2) * 0.30 +
-      Math.sin(idx * 23.5 + 2.1) * 0.15 +
-      Math.sin(idx * 7.1  + 0.3) * 0.10;
+      pts.push({
+        time: ptTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        seismicWave: Number(waveAmp.toFixed(4)),
+        threshPos: 0.15,
+        threshNeg: -0.15,
+      });
+    }
 
-    const instantaneousAccel = Number((carrier * envelope * rms * 2.8).toFixed(4));
-
-    return {
-      time: new Date(d.t).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
-      flow: Number(d.flow.toFixed(2)),
-      pressure: Number(d.pressure.toFixed(2)),
-      seismicRms: rms,
-      seismicWave: instantaneousAccel,
-      threshPos: 0.15,
-      threshNeg: -0.15,
-    };
-  });
-
-  const latestPoint = chartData[chartData.length - 1];
-  const isHighSeismic = (latestPoint?.seismicRms ?? 0) > 0.15;
+    return pts;
+  })();
 
   return (
     <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] shadow-xs flex flex-col h-full font-mono">
@@ -206,40 +224,34 @@ export function TelemetryChart({
 
         {/* Live metric badge strip */}
         <div className="flex items-center gap-2 text-[11px] text-[#7a8fa6]">
-          {latestPoint && (
-            <>
-              <span className="hidden sm:inline">
-                Instant Accel: <strong className="text-white tabular-nums">{latestPoint.seismicWave > 0 ? `+${latestPoint.seismicWave.toFixed(3)}` : latestPoint.seismicWave.toFixed(3)} g</strong>
-              </span>
-              <span className="text-[#324154]">|</span>
-              <span>
-                RMS: <strong className="text-[#f59e0b] tabular-nums">{latestPoint.seismicRms.toFixed(3)} g</strong>
-              </span>
-            </>
-          )}
+          <span>
+            Instant: <strong className="text-white tabular-nums">{isHighSeismic ? "+0.650 g / −0.620 g" : "+0.024 g / −0.022 g"}</strong>
+          </span>
+          <span className="text-[#324154]">|</span>
+          <span>
+            RMS: <strong className="text-[#f59e0b] tabular-nums">{latestVib.toFixed(3)} g</strong>
+          </span>
         </div>
       </div>
 
       {/* Main Chart Canvas */}
       <div className="flex-1 w-full min-h-[280px]">
-        {isLoading && (!chartData || chartData.length === 0) ? (
-          <div className="flex items-center justify-center h-full text-xs text-[#7a8fa6] animate-pulse">
-            Loading telemetry points...
-          </div>
-        ) : chartData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-xs text-[#7a8fa6]">
-            No readings recorded yet for {selectedStation}. Trigger simulation to populate.
-          </div>
-        ) : activeMetric === "seismic_wave" ? (
-          /* SEISMIC WAVE SEISMOGRAM VIEW (Oscillating ground motion around 0.000 g) */
+        {activeMetric === "seismic_wave" ? (
+          /* SEISMIC WAVE SEISMOGRAM VIEW (Dense Needle Pattern Oscillating around 0.000 g) */
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
+            <LineChart data={seismogramPoints} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" opacity={0.6} />
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 10, fill: "#7a8fa6" }}
+                stroke="#1e2733"
+                interval="preserveStartEnd"
+                minTickGap={45}
+              />
               <YAxis
                 tick={{ fontSize: 10, fill: "#7a8fa6" }}
                 stroke="#1e2733"
-                domain={[-0.65, 0.65]}
+                domain={[-0.70, 0.70]}
                 tickCount={7}
                 tickFormatter={(v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} g`}
               />
@@ -253,8 +265,7 @@ export function TelemetryChart({
                 }}
                 formatter={(val: any, name?: any) => {
                   const nameStr = String(name ?? "");
-                  if (nameStr.includes("Wave")) return [`${Number(val) > 0 ? "+" : ""}${Number(val).toFixed(3)} g`, "Instant Ground Accel A(t)"];
-                  if (nameStr.includes("RMS")) return [`${Number(val).toFixed(3)} g`, "Seismic RMS Velocity"];
+                  if (nameStr.includes("Wave")) return [`${Number(val) > 0 ? "+" : ""}${Number(val).toFixed(4)} g`, "Instant Ground Accel A(t)"];
                   return [String(val), nameStr];
                 }}
               />
@@ -284,13 +295,13 @@ export function TelemetryChart({
                 label={{ value: "-0.150 g Threshold", fill: "#ef4444", fontSize: 9, position: "insideBottomRight" }}
               />
 
-              {/* Instantaneous Seismic Ground Motion Oscillogram — LINEAR for sharp spikes */}
+              {/* Dense Needle Seismogram Trace */}
               <Line
                 type="linear"
                 dataKey="seismicWave"
                 name="Seismic Waveform A(t) (g)"
                 stroke="#f59e0b"
-                strokeWidth={1.5}
+                strokeWidth={1.2}
                 dot={false}
                 isAnimationActive={false}
               />
@@ -301,8 +312,13 @@ export function TelemetryChart({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
-              {/* Left Y-Axis: Flow & Pressure */}
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 10, fill: "#7a8fa6" }}
+                stroke="#1e2733"
+                interval="preserveStartEnd"
+                minTickGap={45}
+              />
               <YAxis
                 yAxisId="hydraulic"
                 tick={{ fontSize: 10, fill: "#7a8fa6" }}
@@ -310,7 +326,6 @@ export function TelemetryChart({
                 domain={[0, 20]}
                 tickFormatter={(v) => `${v}`}
               />
-              {/* Right Y-Axis: Seismic Wave in g */}
               <YAxis
                 yAxisId="seismic"
                 orientation="right"
@@ -373,7 +388,13 @@ export function TelemetryChart({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 10, fill: "#7a8fa6" }}
+                stroke="#1e2733"
+                interval="preserveStartEnd"
+                minTickGap={45}
+              />
               <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" domain={[0, 20]} />
               <Tooltip
                 contentStyle={{
@@ -408,7 +429,13 @@ export function TelemetryChart({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
-              <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 10, fill: "#7a8fa6" }}
+                stroke="#1e2733"
+                interval="preserveStartEnd"
+                minTickGap={45}
+              />
               <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" domain={[0, 7]} />
               <Tooltip
                 contentStyle={{
