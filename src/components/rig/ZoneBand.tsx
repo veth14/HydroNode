@@ -43,7 +43,7 @@ export function ZoneBand({
       ? "#00b4d8"
       : "#1e2733";
 
-  const fillOpacity = severity === "high" ? 0.25 : severity === "medium" ? 0.18 : isSelected ? 0.15 : 0.05;
+  const fillOpacity = severity === "high" ? 0.28 : severity === "medium" ? 0.22 : isSelected ? 0.15 : 0.05;
 
   return (
     <g
@@ -70,7 +70,7 @@ export function ZoneBand({
         fill={fillColor}
         fillOpacity={fillOpacity}
         stroke={strokeColor}
-        strokeWidth={isAlert || isSelected ? "1.8" : "1"}
+        strokeWidth={isAlert ? "2.5" : isSelected ? "1.8" : "1"}
         strokeDasharray={isAlert ? "6 4" : "none"}
         className={isAlert ? "animate-pulse" : ""}
       />

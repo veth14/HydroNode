@@ -59,6 +59,33 @@ export function RigMap({
 
   const activeAlerts = alerts.filter((a) => a.status === "active");
 
+  // Merge DB alerts with any live injected leaks from simulation panel/valves
+  const displayedAlerts = [...activeAlerts];
+  injectedLeaks.forEach((zId) => {
+    if (!displayedAlerts.some((a) => a.zoneId === zId)) {
+      displayedAlerts.push({
+        id: 99000 + zId,
+        ts: new Date().toISOString(),
+        zoneId: zId,
+        stationId: ZONES.find((z) => z.id === zId)?.stationA ?? "S1",
+        severity: "high",
+        status: "active",
+        leakRate: 5.2,
+        si: 7.8,
+        confidence: 0.94,
+        recommendedAction: "Dispatch repair crew; isolate zone segment",
+        repeatCount: 1,
+        features: {
+          pressureDropRate: 0.35,
+          flowDifference: 4.8,
+          vibrationRms: 0.285,
+          dominantFreq: 88,
+          bandEnergy: 4.2,
+        },
+      });
+    }
+  });
+
   const getZoneSeverity = (zoneId: ZoneId) => {
     const alert = activeAlerts.find((a) => a.zoneId === zoneId);
     if (alert) return alert.severity;
@@ -314,7 +341,7 @@ export function RigMap({
           />
 
           {/* 6. ACTIVE LEAK VISUALS & EFFECTS */}
-          {activeAlerts.map((alert) => (
+          {displayedAlerts.map((alert) => (
             <LeakEffect
               key={`alert-fx-${alert.id}`}
               alert={alert}
