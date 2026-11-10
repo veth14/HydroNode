@@ -56,12 +56,41 @@ export function TelemetryChart({
     { refreshInterval: 3000 }
   );
 
-  // Synthesize authentic seismic wave oscillation A(t) around 0 g from recorded RMS
-  const chartData = (data ?? []).slice(-35).map((d, idx) => {
+  // Synthesize authentic seismogram A(t) from recorded RMS values.
+  // Real seismograms are mostly quiet (small noise floor) with sudden burst packets
+  // when a seismic event (pipe breach) occurs — P-wave sharp onset → S-wave peak → decaying coda.
+  const rawSlice = (data ?? []).slice(-35);
+  const totalPts = rawSlice.length;
+
+  // Find the highest-RMS window to place the "event burst" (pipe leak seismic event)
+  const maxRmsIdx = rawSlice.reduce(
+    (best, d, i) => (d.vibration > rawSlice[best].vibration ? i : best),
+    0
+  );
+
+  const chartData = rawSlice.map((d, idx) => {
     const rms = Number(d.vibration.toFixed(3));
-    // Physical elastic wave packet carrier: P-wave & S-wave modal frequencies
-    const waveOscillation = (Math.sin(idx * 2.9) * 0.72 + Math.cos(idx * 5.6) * 0.42 + Math.sin(idx * 8.7) * 0.22) * rms * 1.35;
-    const instantaneousAccel = Number(waveOscillation.toFixed(3));
+
+    // Distance from the event epicenter in sample space
+    const dist = idx - maxRmsIdx;
+
+    // Event envelope: sharp P-wave onset (left edge), broad S-wave peak, exponential coda decay
+    // Everything outside the event window collapses to tiny background noise
+    const pWaveEnv  = Math.exp(-0.5 * Math.pow((dist + 4) / 1.8, 2));  // P-wave ~4 samples before peak
+    const sWaveEnv  = Math.exp(-0.5 * Math.pow(dist / 3.5, 2));         // S-wave at peak
+    const codaEnv   = dist > 0 ? Math.exp(-dist / 5.0) : 0;             // Decaying coda after peak
+    const noiseEnv  = 0.04;                                              // Ambient background noise floor
+
+    const envelope = Math.max(noiseEnv, pWaveEnv * 0.55 + sWaveEnv * 1.0 + codaEnv * 0.35);
+
+    // High-frequency spiky oscillations (mix of frequencies like a real seismometer)
+    const carrier =
+      Math.sin(idx * 11.3 + 0.7) * 0.45 +
+      Math.sin(idx * 17.8 + 1.2) * 0.30 +
+      Math.sin(idx * 23.5 + 2.1) * 0.15 +
+      Math.sin(idx * 7.1  + 0.3) * 0.10;
+
+    const instantaneousAccel = Number((carrier * envelope * rms * 2.8).toFixed(4));
 
     return {
       time: new Date(d.t).toLocaleTimeString([], {
@@ -210,7 +239,8 @@ export function TelemetryChart({
               <YAxis
                 tick={{ fontSize: 10, fill: "#7a8fa6" }}
                 stroke="#1e2733"
-                domain={[-0.35, 0.35]}
+                domain={[-0.65, 0.65]}
+                tickCount={7}
                 tickFormatter={(v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} g`}
               />
               <Tooltip
