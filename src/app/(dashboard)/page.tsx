@@ -496,7 +496,7 @@ export default function NetworkOverviewPage() {
               Sensor Nodes Status (S1–S6)
             </h3>
             <p className="text-xs text-[#7a8fa6]">
-              Live telemetry via CAT6 multiplex bus · 3 transducers per station (Flow · Pressure · Vibration)
+              Live telemetry via CAT6 multiplex bus · 3 transducers per station (Flow · Pressure · Seismic Wave)
             </p>
           </div>
         </div>

@@ -118,7 +118,7 @@ export default function SiteMapInner() {
               ? stationData.latestPressure.toFixed(2) + " bar"
               : "--"
           }</strong></span><br/>
-          <span>Vibration: <strong>${
+          <span>Seismic Wave: <strong>${
             stationData?.latestVibration != null
               ? stationData.latestVibration.toFixed(3) + " g"
               : "--"
