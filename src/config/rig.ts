@@ -114,7 +114,7 @@ export const ELBOW_FITTINGS: [number, number][] = [
   [980, 550],
 ];
 
-// About 3 leak test point ports (ball valve/tee icons) per vertical leg
+// Leak test point ports (ball valve/orifice simulation valves) positioned along zone segments
 export interface TestPoint {
   id: string;
   zoneId: ZoneId;
@@ -124,30 +124,11 @@ export interface TestPoint {
 }
 
 export const TEST_POINTS: TestPoint[] = [
-  // Zone 1 (Leg 1 & Leg 2)
-  { id: "TP1-1", zoneId: 1, x: 120, y: 460, label: "TP 1.1" },
-  { id: "TP1-2", zoneId: 1, x: 120, y: 260, label: "TP 1.2" },
-  { id: "TP1-3", zoneId: 1, x: 260, y: 270, label: "TP 1.3" },
-
-  // Zone 2 (Leg 2 & Leg 3)
-  { id: "TP2-1", zoneId: 2, x: 260, y: 450, label: "TP 2.1" },
-  { id: "TP2-2", zoneId: 2, x: 440, y: 460, label: "TP 2.2" },
-  { id: "TP2-3", zoneId: 2, x: 440, y: 260, label: "TP 2.3" },
-
-  // Zone 3 (Leg 3 & Leg 4)
-  { id: "TP3-1", zoneId: 3, x: 440, y: 420, label: "TP 3.1" },
-  { id: "TP3-2", zoneId: 3, x: 620, y: 270, label: "TP 3.2" },
-  { id: "TP3-3", zoneId: 3, x: 620, y: 460, label: "TP 3.3" },
-
-  // Zone 4 (Leg 4 & Leg 5)
-  { id: "TP4-1", zoneId: 4, x: 620, y: 440, label: "TP 4.1" },
-  { id: "TP4-2", zoneId: 4, x: 800, y: 260, label: "TP 4.2" },
-  { id: "TP4-3", zoneId: 4, x: 800, y: 450, label: "TP 4.3" },
-
-  // Zone 5 (Leg 5 & Leg 6)
-  { id: "TP5-1", zoneId: 5, x: 800, y: 430, label: "TP 5.1" },
-  { id: "TP5-2", zoneId: 5, x: 980, y: 270, label: "TP 5.2" },
-  { id: "TP5-3", zoneId: 5, x: 980, y: 460, label: "TP 5.3" },
+  { id: "TP1", zoneId: 1, x: 190, y: 190, label: "Leak Valve Z1" },
+  { id: "TP2", zoneId: 2, x: 350, y: 550, label: "Leak Valve Z2" },
+  { id: "TP3", zoneId: 3, x: 530, y: 190, label: "Leak Valve Z3" },
+  { id: "TP4", zoneId: 4, x: 710, y: 550, label: "Leak Valve Z4" },
+  { id: "TP5", zoneId: 5, x: 890, y: 190, label: "Leak Valve Z5" },
 ];
 
 // Single above-ground ESP32 controller mounted at top center

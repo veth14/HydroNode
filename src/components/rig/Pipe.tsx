@@ -110,26 +110,26 @@ export function Pipe({
         </g>
       ))}
 
-      {/* Pipe Clamps to Workbench */}
+      {/* Pipe Clamps to Workbench (Anchoring pipe at top and bottom of each vertical run) */}
       {[
-        [120, 360],
-        [260, 360],
-        [440, 360],
-        [620, 360],
-        [800, 360],
-        [980, 360],
+        [120, 220], [120, 505],
+        [260, 220], [260, 505],
+        [440, 220], [440, 505],
+        [620, 220], [620, 505],
+        [800, 220], [800, 505],
+        [980, 220], [980, 505],
       ].map(([cx, cy], i) => (
         <rect
           key={`clamp-${i}`}
-          x={cx - 18}
-          y={cy - 3}
-          width="36"
-          height="6"
-          rx="2"
+          x={cx - 16}
+          y={cy - 2}
+          width="32"
+          height="4"
+          rx="1"
           fill="#1e293b"
-          stroke="#64748b"
-          strokeWidth="1"
-          opacity="0.8"
+          stroke="#475569"
+          strokeWidth="0.8"
+          opacity="0.7"
         />
       ))}
     </g>

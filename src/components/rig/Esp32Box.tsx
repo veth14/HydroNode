@@ -26,25 +26,27 @@ export function Esp32Box({ showCat6 = true, activeStationId }: Esp32BoxProps) {
             const pos = STATIONS[sid];
             const isPolled = activeStationId === sid;
 
-            // Curved cable path from ESP32 RJ45 ports to station clamp
+            // Curved cable path from ESP32 RJ45 ports to Station Node Hub CAT6 terminal
             const startX = x + 35 + STATION_IDS.indexOf(sid) * 26;
             const startY = y + height;
-            const midY = (startY + pos.y) / 2;
+            const targetX = pos.x - 34;
+            const targetY = pos.y - 38;
+            const midY = (startY + targetY) / 2;
 
             return (
               <g key={`cable-${sid}`}>
                 <path
-                  d={`M ${startX},${startY} C ${startX},${midY} ${pos.x},${midY} ${pos.x},${pos.y - 34}`}
+                  d={`M ${startX},${startY} C ${startX},${midY} ${targetX},${midY} ${targetX},${targetY}`}
                   fill="none"
                   stroke={isPolled ? "#00b4d8" : "#1e2733"}
                   strokeWidth={isPolled ? "2.2" : "1.2"}
                   strokeDasharray={isPolled ? "4 3" : "none"}
                   className={isPolled ? "animate-pulse" : ""}
                 />
-                {/* Port termination dot */}
+                {/* Port termination dot on station hub */}
                 <circle
-                  cx={pos.x}
-                  cy={pos.y - 34}
+                  cx={targetX}
+                  cy={targetY}
                   r="2.5"
                   fill={isPolled ? "#00b4d8" : "#4a5a6e"}
                 />

@@ -51,7 +51,7 @@ export function Legend({
           </span>
         </div>
 
-        {/* 3 Physical Sensors on CAT6 Bus */}
+        {/* 3 Physical Sensors on CAT6 Bus & Leak Valve */}
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-[#00b4d8]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00b4d8]" />
@@ -64,6 +64,10 @@ export function Legend({
           <span className="flex items-center gap-1 text-[#f59e0b]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
             Seismic (Wave/SPI)
+          </span>
+          <span className="flex items-center gap-1 text-slate-400 pl-2 border-l border-[#1e2733]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#b45309]" />
+            Leak Valve (Simulate)
           </span>
         </div>
       </div>
