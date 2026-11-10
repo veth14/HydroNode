@@ -1,0 +1,275 @@
+"use client";
+// src/app/(dashboard)/analysis/page.tsx
+// Leak Analysis & Calculator — Mission Control SCADA Design System.
+
+import { useState } from "react";
+import {
+  leakRate,
+  severityIndex,
+  classifySeverity,
+  recommendedAction,
+} from "@/lib/leakLogic";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { Activity, Cpu, Waves, Droplets, Gauge } from "lucide-react";
+
+export default function LeakAnalysisPage() {
+  const [q0, setQ0] = useState<number>(15.0);
+  const [q, setQ] = useState<number>(11.2);
+  const [p0, setP0] = useState<number>(5.0);
+  const [p, setP] = useState<number>(4.4);
+
+  const [lowThresh, setLowThresh] = useState<number>(5.0);
+  const [medThresh, setMedThresh] = useState<number>(10.0);
+
+  const computedLeakRate = leakRate(q0, q);
+  const computedSI = severityIndex(p0, p);
+  const computedSeverity = classifySeverity(computedSI, {
+    low: lowThresh,
+    medium: medThresh,
+  });
+  const computedAction = recommendedAction(computedSeverity);
+
+  return (
+    <div className="space-y-8 max-w-7xl mx-auto pb-12 font-sans font-mono">
+      <div className="pb-2 border-b border-[#1e2733]">
+        <h1 className="text-xl font-bold text-white tracking-tight">
+          Hydraulic Leak Analysis & Models
+        </h1>
+        <p className="text-xs text-[#7a8fa6] mt-0.5">
+          Compute severity indices and review the algorithmic detection pipeline
+        </p>
+      </div>
+
+      {/* Interactive Calculator Card */}
+      <Card glow={true}>
+        <CardHeader
+          title="Hydraulic Severity & Leak Rate Calculator"
+          subtitle="Evaluates L = Q₀ − Q and SI = (ΔP / P₀) × 100%"
+        />
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Inputs Column */}
+            <div className="space-y-4">
+              <span className="text-xs font-semibold text-[#7a8fa6] block">
+                Hydraulic Parameters
+              </span>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-medium text-[#7a8fa6] mb-1">
+                    Baseline Flow Q₀ (L/min)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={q0}
+                    onChange={(e) => setQ0(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 text-xs border border-[#1e2733] rounded-lg bg-[#0a0d12] text-white tabular-nums focus:outline-none focus:border-[#00b4d8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#7a8fa6] mb-1">
+                    Measured Flow Q (L/min)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={q}
+                    onChange={(e) => setQ(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 text-xs border border-[#1e2733] rounded-lg bg-[#0a0d12] text-white tabular-nums focus:outline-none focus:border-[#00b4d8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#7a8fa6] mb-1">
+                    Baseline Pressure P₀ (bar)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={p0}
+                    onChange={(e) => setP0(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 text-xs border border-[#1e2733] rounded-lg bg-[#0a0d12] text-white tabular-nums focus:outline-none focus:border-[#00b4d8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#7a8fa6] mb-1">
+                    Measured Pressure P (bar)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={p}
+                    onChange={(e) => setP(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 text-xs border border-[#1e2733] rounded-lg bg-[#0a0d12] text-white tabular-nums focus:outline-none focus:border-[#00b4d8]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-[#1e2733] flex items-center gap-6 text-xs text-[#7a8fa6]">
+                <div className="flex items-center gap-1.5">
+                  <span>Low Threshold: &lt;</span>
+                  <input
+                    type="number"
+                    value={lowThresh}
+                    onChange={(e) => setLowThresh(parseFloat(e.target.value) || 0)}
+                    className="w-14 px-1.5 py-0.5 border border-[#1e2733] rounded text-center tabular-nums bg-[#0a0d12] text-white"
+                  />
+                  <span>%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span>Medium Threshold: &lt;</span>
+                  <input
+                    type="number"
+                    value={medThresh}
+                    onChange={(e) => setMedThresh(parseFloat(e.target.value) || 0)}
+                    className="w-14 px-1.5 py-0.5 border border-[#1e2733] rounded text-center tabular-nums bg-[#0a0d12] text-white"
+                  />
+                  <span>%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Results Column */}
+            <div className="bg-[#0a0d12] p-4 rounded-lg border border-[#1e2733] flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-semibold text-[#7a8fa6]">
+                    Calculated Result
+                  </span>
+                  <Badge
+                    variant={
+                      computedSeverity === "high"
+                        ? "critical"
+                        : computedSeverity === "medium"
+                        ? "warning"
+                        : "info"
+                    }
+                    dot
+                  >
+                    {computedSeverity.toUpperCase()} SEVERITY
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <span className="text-xs text-[#7a8fa6] block">
+                      Estimated Leak Rate
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-2xl font-bold tabular-nums text-red-400">
+                        {computedLeakRate.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-[#7a8fa6]">L/min</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-xs text-[#7a8fa6] block">
+                      Severity Index (SI)
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-2xl font-bold tabular-nums text-amber-400">
+                        {computedSI.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-[#0f1419] rounded-md border border-[#1e2733]">
+                  <span className="text-xs font-semibold text-[#7a8fa6] block mb-1">
+                    Recommended Response:
+                  </span>
+                  <p className="text-xs font-medium text-white">
+                    {computedAction}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[#7a8fa6] mt-4 pt-3 border-t border-[#1e2733] tabular-nums">
+                ΔP: {(p0 - p).toFixed(2)} bar · Flow Drop: {(q0 - q).toFixed(2)} L/min
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Algorithmic Pipeline Section */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-base font-bold text-white tracking-tight">
+            Detection Architecture & Algorithmic Methods
+          </h2>
+          <p className="text-xs text-[#7a8fa6]">
+            Three synergistic mathematical stages running across ESP32 edge MCU and web dashboard
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1 */}
+          <Card>
+            <CardHeader
+              title={
+                <div className="flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-[#00b4d8]" />
+                  <span>1. Flow Imbalance Localization</span>
+                </div>
+              }
+            />
+            <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
+              <p>
+                Compares flow rates between adjacent sensor stations bounding each pipe zone: <strong className="text-white">ΔQ = Q_up − Q_down</strong>.
+              </p>
+              <p>
+                In a closed pipeline, flow into a zone must equal flow out minus leaks. The zone with maximum negative ΔQ is localized as the breach segment.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card 2 */}
+          <Card>
+            <CardHeader
+              title={
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-[#818cf8]" />
+                  <span>2. Pressure Severity Index (SI)</span>
+                </div>
+              }
+            />
+            <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
+              <p>
+                Calculates relative pressure deficit against calibrated baseline P₀: <strong className="text-white">SI = (ΔP / P₀) × 100%</strong>.
+              </p>
+              <p>
+                SI maps directly to water district triage tiers: Low (&lt;5%), Medium (5–10%), High (&gt;10%), dictating response dispatch urgency.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Card 3 */}
+          <Card>
+            <CardHeader
+              title={
+                <div className="flex items-center gap-2">
+                  <Waves className="w-4 h-4 text-[#f59e0b]" />
+                  <span>3. Acoustic Random Forest (Edge)</span>
+                </div>
+              }
+            />
+            <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
+              <p>
+                Clamped MPU6050 accelerometers capture high-frequency wall vibrations over SPI. FFT feature extraction computes RMS energy and dominant frequency.
+              </p>
+              <p>
+                The on-device model distinguishes true turbulent orifice jet noise (100–600 Hz) from pump transients and user demand spikes.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

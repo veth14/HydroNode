@@ -1,0 +1,399 @@
+"use client";
+// src/app/(dashboard)/settings/page.tsx
+// Configuration, Baselines, Severity Thresholds, and Database Usage — Mission Control SCADA System.
+
+import { useState, useEffect } from "react";
+import useSWR from "swr";
+import { formatBytes } from "@/lib/utils";
+import type { DbUsage } from "@/types";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Save, Trash2, Database, ShieldAlert, Cpu } from "lucide-react";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+interface SettingsMap {
+  baseline_S1?: { q0: number; p0: number };
+  baseline_S2?: { q0: number; p0: number };
+  baseline_S3?: { q0: number; p0: number };
+  baseline_S4?: { q0: number; p0: number };
+  baseline_S5?: { q0: number; p0: number };
+  baseline_S6?: { q0: number; p0: number };
+  severity_thresholds?: { low: number; medium: number };
+  repeat_alert_window_min?: { value: number };
+  data_source?: { value: string };
+  units?: { flow: string; pressure: string; vibration: string };
+}
+
+export default function SettingsPage() {
+  const { data: settingsData, mutate: mutateSettings } = useSWR<SettingsMap>(
+    "/api/settings",
+    fetcher
+  );
+
+  const { data: dbUsage, mutate: mutateDbUsage } = useSWR<DbUsage>(
+    "/api/db-usage",
+    fetcher,
+    { refreshInterval: 10000 }
+  );
+
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const [lowThresh, setLowThresh] = useState<number>(5);
+  const [medThresh, setMedThresh] = useState<number>(10);
+  const [repeatWindow, setRepeatWindow] = useState<number>(10);
+  const [dataSource, setDataSource] = useState<string>("simulated");
+
+  const [baselines, setBaselines] = useState<
+    Record<string, { q0: number; p0: number }>
+  >({
+    S1: { q0: 15.0, p0: 5.0 },
+    S2: { q0: 14.8, p0: 4.9 },
+    S3: { q0: 14.6, p0: 4.8 },
+    S4: { q0: 14.4, p0: 4.7 },
+    S5: { q0: 14.2, p0: 4.6 },
+    S6: { q0: 14.0, p0: 4.5 },
+  });
+
+  useEffect(() => {
+    if (settingsData) {
+      if (settingsData.severity_thresholds) {
+        setLowThresh(settingsData.severity_thresholds.low ?? 5);
+        setMedThresh(settingsData.severity_thresholds.medium ?? 10);
+      }
+      if (settingsData.repeat_alert_window_min) {
+        setRepeatWindow(settingsData.repeat_alert_window_min.value ?? 10);
+      }
+      if (settingsData.data_source) {
+        setDataSource(settingsData.data_source.value ?? "simulated");
+      }
+      const bMap: Record<string, { q0: number; p0: number }> = {};
+      ["S1", "S2", "S3", "S4", "S5", "S6"].forEach((id) => {
+        const key = `baseline_${id}` as keyof SettingsMap;
+        if (settingsData[key]) {
+          bMap[id] = settingsData[key] as { q0: number; p0: number };
+        }
+      });
+      if (Object.keys(bMap).length > 0) {
+        setBaselines((prev) => ({ ...prev, ...bMap }));
+      }
+    }
+  }, [settingsData]);
+
+  const handleSaveAll = async () => {
+    setSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const updates = [
+        {
+          key: "severity_thresholds",
+          value: { low: lowThresh, medium: medThresh },
+        },
+        {
+          key: "repeat_alert_window_min",
+          value: { value: repeatWindow },
+        },
+        {
+          key: "data_source",
+          value: { value: dataSource },
+        },
+        ...Object.entries(baselines).map(([id, val]) => ({
+          key: `baseline_${id}`,
+          value: val,
+        })),
+      ];
+
+      for (const item of updates) {
+        await fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item),
+        });
+      }
+
+      mutateSettings();
+      setSaveMessage("Settings updated successfully.");
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      console.error(err);
+      setSaveMessage("Failed to update settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCleanupNow = async () => {
+    try {
+      const res = await fetch("/api/cron/cleanup", {
+        headers: { "x-cron-secret": "hydronode_cron_secret_2026" },
+      });
+      await res.json();
+      mutateDbUsage();
+      alert("Retention cleanup complete: pruned raw readings older than 48h.");
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans font-mono">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#1e2733]">
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            System Settings & Calibration
+          </h1>
+          <p className="text-xs text-[#7a8fa6] mt-0.5">
+            Configure hydraulic station baselines, classification thresholds, and storage quotas
+          </p>
+        </div>
+
+        <Button
+          variant="primary"
+          loading={saving}
+          onClick={handleSaveAll}
+          icon={<Save className="w-3.5 h-3.5" />}
+        >
+          Save Configuration
+        </Button>
+      </div>
+
+      {saveMessage && (
+        <div className="p-3 bg-emerald-950/40 text-emerald-300 border border-emerald-900 rounded-lg text-xs font-medium">
+          {saveMessage}
+        </div>
+      )}
+
+      {/* Grid: Calibration & Storage */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column (2 spans): Baselines & Severity Thresholds */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Station Baselines */}
+          <Card glow={true}>
+            <CardHeader
+              title="Station Baselines (Q₀, P₀)"
+              subtitle="Calibrated steady-state parameters measured under zero-leak flow"
+            />
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5">
+                {(["S1", "S2", "S3", "S4", "S5", "S6"] as const).map((id) => (
+                  <div
+                    key={id}
+                    className="p-3 bg-[#0a0d12] border border-[#1e2733] rounded-lg space-y-2 text-xs"
+                  >
+                    <div className="font-semibold text-white">
+                      Station {id}
+                    </div>
+                    <div>
+                      <label className="text-[#7a8fa6] text-[11px] block mb-0.5">
+                        Flow Q₀ (L/min)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={baselines[id]?.q0 ?? 15.0}
+                        onChange={(e) =>
+                          setBaselines({
+                            ...baselines,
+                            [id]: {
+                              ...baselines[id],
+                              q0: parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full px-2 py-1 bg-[#0f1419] border border-[#1e2733] rounded text-xs tabular-nums text-white focus:outline-none focus:border-[#00b4d8]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[#7a8fa6] text-[11px] block mb-0.5">
+                        Pressure P₀ (bar)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={baselines[id]?.p0 ?? 5.0}
+                        onChange={(e) =>
+                          setBaselines({
+                            ...baselines,
+                            [id]: {
+                              ...baselines[id],
+                              p0: parseFloat(e.target.value) || 0,
+                            },
+                          })
+                        }
+                        className="w-full px-2 py-1 bg-[#0f1419] border border-[#1e2733] rounded text-xs tabular-nums text-white focus:outline-none focus:border-[#00b4d8]"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Severity Thresholds */}
+          <Card>
+            <CardHeader
+              title="Classification Thresholds & Windowing"
+              subtitle="Severity Index SI = (ΔP / P₀) × 100%"
+            />
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                <div className="p-3.5 border border-[#1e2733] rounded-lg space-y-1.5 bg-[#0a0d12]">
+                  <span className="font-semibold text-emerald-400 block">
+                    Low Severity
+                  </span>
+                  <span className="text-[#7a8fa6] text-[11px] block">
+                    SI &lt; Low Threshold
+                  </span>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <input
+                      type="number"
+                      value={lowThresh}
+                      onChange={(e) => setLowThresh(parseFloat(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 border border-[#1e2733] rounded text-xs tabular-nums bg-[#0f1419] text-white"
+                    />
+                    <span className="text-[#7a8fa6]">%</span>
+                  </div>
+                  <span className="text-[11px] text-[#4a5a6e] block pt-1">
+                    Action: Monitor
+                  </span>
+                </div>
+
+                <div className="p-3.5 border border-[#1e2733] rounded-lg space-y-1.5 bg-[#0a0d12]">
+                  <span className="font-semibold text-amber-400 block">
+                    Medium Severity
+                  </span>
+                  <span className="text-[#7a8fa6] text-[11px] block">
+                    Low ≤ SI &lt; Medium
+                  </span>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <input
+                      type="number"
+                      value={medThresh}
+                      onChange={(e) => setMedThresh(parseFloat(e.target.value) || 0)}
+                      className="w-16 px-2 py-1 border border-[#1e2733] rounded text-xs tabular-nums bg-[#0f1419] text-white"
+                    />
+                    <span className="text-[#7a8fa6]">%</span>
+                  </div>
+                  <span className="text-[11px] text-[#4a5a6e] block pt-1">
+                    Action: Schedule inspection
+                  </span>
+                </div>
+
+                <div className="p-3.5 border border-[#1e2733] rounded-lg space-y-1.5 bg-[#0a0d12]">
+                  <span className="font-semibold text-red-400 block">
+                    High Severity
+                  </span>
+                  <span className="text-[#7a8fa6] text-[11px] block">
+                    SI ≥ {medThresh}%
+                  </span>
+                  <div className="pt-2 text-xs font-bold text-red-400 tabular-nums">
+                    &gt; {medThresh}% SI
+                  </div>
+                  <span className="text-[11px] text-[#4a5a6e] block pt-1">
+                    Action: Immediate response
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-[#1e2733] flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-semibold text-white block">
+                    Repeated Incident Window
+                  </span>
+                  <span className="text-[#7a8fa6] text-[11px]">
+                    Alerts from the same zone within this window increment repeat count
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={repeatWindow}
+                    onChange={(e) => setRepeatWindow(parseInt(e.target.value) || 1)}
+                    className="w-16 px-2 py-1 border border-[#1e2733] rounded text-xs tabular-nums text-center bg-[#0a0d12] text-white"
+                  />
+                  <span className="text-[#7a8fa6]">min</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Database Storage & Hardware Guide */}
+        <div className="space-y-6">
+          {/* Neon Storage Card */}
+          <Card>
+            <CardHeader
+              title="Database Storage Monitor"
+              subtitle="Neon serverless free quota (1 GB budget)"
+              action={<Database className="w-4 h-4 text-[#00b4d8]" />}
+            />
+            <CardContent className="space-y-4">
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1.5 border-b border-[#1e2733]">
+                  <span className="text-[#7a8fa6]">Total Storage Used:</span>
+                  <span className="font-bold tabular-nums text-white">
+                    {dbUsage ? formatBytes(dbUsage.dbSizeBytes) : "Querying..."}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#1e2733]">
+                  <span className="text-[#7a8fa6]">readings_raw (48h):</span>
+                  <span className="tabular-nums text-white">
+                    {dbUsage?.rawRows.toLocaleString() ?? "0"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#1e2733]">
+                  <span className="text-[#7a8fa6]">readings_minute (permanent):</span>
+                  <span className="tabular-nums text-white">
+                    {dbUsage?.minuteRows.toLocaleString() ?? "0"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-[#1e2733]">
+                  <span className="text-[#7a8fa6]">alerts log:</span>
+                  <span className="tabular-nums text-white">
+                    {dbUsage?.alertRows.toLocaleString() ?? "0"}
+                  </span>
+                </div>
+              </div>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                onClick={handleCleanupNow}
+                icon={<Trash2 className="w-3.5 h-3.5 text-red-400" />}
+              >
+                Execute 48h Retention Cleanup
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Hardware Device Ingest Guide */}
+          <Card>
+            <CardHeader
+              title="ESP32 Ingest Integration"
+              subtitle="Device HTTPS header specification"
+              action={<Cpu className="w-4 h-4 text-[#00b4d8]" />}
+            />
+            <CardContent className="space-y-2.5 text-xs text-[#7a8fa6] leading-relaxed">
+              <p>
+                Configure the ESP32 firmware HTTP client to post batched payload cycles to the ingestion endpoint:
+              </p>
+              <div className="p-3 bg-[#0a0d12] text-slate-200 rounded-lg text-[11px] font-mono space-y-0.5 border border-[#1e2733]">
+                <div>POST /api/ingest HTTP/1.1</div>
+                <div>Host: your-hydronode.vercel.app</div>
+                <div className="text-[#00b4d8]">Content-Type: application/json</div>
+                <div className="text-emerald-400">x-api-key: [INGEST_API_KEY]</div>
+              </div>
+              <p className="text-[11px] text-[#4a5a6e]">
+                Key is validated against the server-side environment variable.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

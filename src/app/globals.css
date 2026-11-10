@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/* ─── Design Tokens ───────────────────────────────────────────────────────── */
+:root {
+  /* Surface */
+  --surface-bg:       #0a0d12;
+  --surface-raised:   #0f1419;
+  --surface-overlay:  #141c24;
+  --surface-border:   #1e2733;
+  --surface-muted:    #1a2230;
+
+  /* Text */
+  --text-primary:     #e8edf2;
+  --text-secondary:   #7a8fa6;
+  --text-tertiary:    #4a5a6e;
+  --text-inverse:     #0a0d12;
+
+  /* Accent — cyan-teal brand color */
+  --accent:           #00b4d8;
+  --accent-dim:       #0096b414;
+  --accent-border:    #0096b440;
+
+  /* Semantic */
+  --critical:         #ef4444;
+  --critical-dim:     #ef44441a;
+  --critical-border:  #ef444440;
+  --warning:          #f59e0b;
+  --warning-dim:      #f59e0b1a;
+  --warning-border:   #f59e0b40;
+  --success:          #10b981;
+  --success-dim:      #10b9811a;
+  --success-border:   #10b98140;
+  --info:             #3b82f6;
+  --info-dim:         #3b82f61a;
+  --info-border:      #3b82f640;
+
+  /* Sensor colors */
+  --sensor-flow:      #38bdf8;   /* sky  — pulse signal */
+  --sensor-pressure:  #818cf8;   /* violet — analog */
+  --sensor-vibration: #fb923c;   /* orange — SPI/MEMS */
+}
+
+/* Force dark background at root level */
+html, body {
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e2733 transparent;
+}
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #1e2733; border-radius: 3px; }
+
+/* ─── Keyframes ───────────────────────────────────────────────────────────── */
+@keyframes waterFlow {
+  from { stroke-dashoffset: 60; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes pulseRing {
+  0%   { transform: scale(1);    opacity: 0.8; }
+  100% { transform: scale(1.6);  opacity: 0; }
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+.animate-flow        { animation: waterFlow 1.8s linear infinite; }
+.animate-pulse-ring  { animation: pulseRing 1.4s ease-out infinite; }
+.animate-fade-in     { animation: fadeSlideIn 0.25s ease-out both; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #0f1419 25%, #1a2230 50%, #0f1419 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+/* ─── Sensor pill utilities ───────────────────────────────────────────────── */
+.sensor-flow      { color: var(--sensor-flow); }
+.sensor-pressure  { color: var(--sensor-pressure); }
+.sensor-vibration { color: var(--sensor-vibration); }
+
+/* ─── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-flow,
+  .animate-ping,
+  .animate-pulse,
+  .animate-pulse-ring,
+  .animate-spin,
+  .animate-bounce { animation: none !important; }
+}
