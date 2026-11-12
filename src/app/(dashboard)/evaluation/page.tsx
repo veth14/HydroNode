@@ -90,7 +90,7 @@ export default function EvaluationPage() {
           value="99.1%"
           tone="default"
           icon={<Radio className="w-4 h-4 text-[#7a8fa6]" />}
-          subtext="Mean latency 48 ms via CAT6 bus"
+          subtext="Mean latency 48 ms via shielded cable"
         />
       </div>
 
@@ -134,8 +134,11 @@ export default function EvaluationPage() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="p-3 bg-[#0a0d12] rounded-lg text-xs text-[#7a8fa6] border border-[#1e2733]">
-              Result: Adaptive sampling achieves an estimated <strong className="text-emerald-400">62% reduction</strong> in continuous node energy consumption.
+            <div className="p-3 bg-[#0a0d12] rounded-lg text-xs text-[#7a8fa6] border border-[#1e2733] flex items-center justify-between">
+              <span>
+                Result: Adaptive sampling achieves an estimated <strong className="text-emerald-400">62% reduction</strong> in node energy consumption.
+              </span>
+              <span className="text-[10px] text-[#4a5a6e]">ESP32-S3 + ADS1115 Rig Benchmark</span>
             </div>
           </CardContent>
         </Card>

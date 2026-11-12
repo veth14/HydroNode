@@ -8,8 +8,8 @@ import { ZoomIn, ZoomOut, RotateCcw, Layers, Cpu, Activity, Tag } from "lucide-r
 interface LegendProps {
   showZones: boolean;
   setShowZones: (val: boolean | ((v: boolean) => boolean)) => void;
-  showCat6: boolean;
-  setShowCat6: (val: boolean | ((v: boolean) => boolean)) => void;
+  showCables: boolean;
+  setShowCables: (val: boolean | ((v: boolean) => boolean)) => void;
   showVibration: boolean;
   setShowVibration: (val: boolean | ((v: boolean) => boolean)) => void;
   showLabels: boolean;
@@ -22,8 +22,8 @@ interface LegendProps {
 export function Legend({
   showZones,
   setShowZones,
-  showCat6,
-  setShowCat6,
+  showCables,
+  setShowCables,
   showVibration,
   setShowVibration,
   showLabels,
@@ -88,9 +88,9 @@ export function Legend({
         </button>
 
         <button
-          onClick={() => setShowCat6((v) => !v)}
+          onClick={() => setShowCables((v) => !v)}
           className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded font-medium transition-colors cursor-pointer ${
-            showCat6
+            showCables
               ? "bg-[#00b4d822] text-[#00b4d8] border border-[#00b4d844]"
               : "text-[#7a8fa6] hover:text-[#e8edf2]"
           }`}

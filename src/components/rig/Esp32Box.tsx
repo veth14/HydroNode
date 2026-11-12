@@ -11,18 +11,18 @@
 import { ESP32_POS, STATIONS, STATION_IDS, type StationId } from "@/config/rig";
 
 interface Esp32BoxProps {
-  showCat6?: boolean;
+  showCables?: boolean;
   activeStationId?: StationId | null;
 }
 
-export function Esp32Box({ showCat6 = true, activeStationId }: Esp32BoxProps) {
+export function Esp32Box({ showCables = true, activeStationId }: Esp32BoxProps) {
   const { x, y, width, height } = ESP32_POS;
 
   return (
     <g id="esp32-controller">
-      {/* CAT6 Industrial Multi-drop Cabling */}
-      {showCat6 && (
-        <g id="cat6-cables">
+      {/* 2AWG Shielded Signal Cabling Runs */}
+      {showCables && (
+        <g id="signal-cables">
           {STATION_IDS.map((sid) => {
             const pos = STATIONS[sid];
             const isPolled = activeStationId === sid;

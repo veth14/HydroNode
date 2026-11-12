@@ -204,7 +204,7 @@ export default function LeakAnalysisPage() {
             Detection Architecture & Algorithmic Methods
           </h2>
           <p className="text-xs text-[#7a8fa6]">
-            Three synergistic mathematical stages running across ESP32 edge MCU and web dashboard
+            Three synergistic mathematical stages running across ESP32-S3 edge MCU and web dashboard
           </p>
         </div>
 
@@ -221,7 +221,7 @@ export default function LeakAnalysisPage() {
             />
             <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
               <p>
-                Compares flow rates between adjacent sensor stations bounding each pipe zone: <strong className="text-white">ΔQ = Q_up − Q_down</strong>.
+                Compares flow rates between adjacent sensor stations bounding each pipe zone: <strong className="text-white">ΔQ = Q_up − Q_down</strong> via Hall-effect turbine meters isolated through EL817 optocouplers.
               </p>
               <p>
                 In a closed pipeline, flow into a zone must equal flow out minus leaks. The zone with maximum negative ΔQ is localized as the breach segment.
@@ -241,7 +241,7 @@ export default function LeakAnalysisPage() {
             />
             <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
               <p>
-                Calculates relative pressure deficit against calibrated baseline P₀: <strong className="text-white">SI = (ΔP / P₀) × 100%</strong>.
+                Calculates relative pressure deficit against calibrated baseline P₀: <strong className="text-white">SI = (ΔP / P₀) × 100%</strong> using 5V transducers with 10kΩ/20kΩ dividers digitized on dual ADS1115 16-bit I²C ADCs.
               </p>
               <p>
                 SI maps directly to water district triage tiers: Low (&lt;5%), Medium (5–10%), High (&gt;10%), dictating response dispatch urgency.
@@ -261,7 +261,7 @@ export default function LeakAnalysisPage() {
             />
             <CardContent className="space-y-2 text-xs text-[#7a8fa6] leading-relaxed">
               <p>
-                Clamped geophones and seismic MEMS transducers measure low-frequency elastic P/S ground motion waves propagating through the pipe casing and soil. FFT feature extraction computes seismic RMS velocity/acceleration and wavefront energy bands.
+                Piezoelectric film sensor modules isolated via EL817 optocouplers measure elastic acoustic and physical vibration waves propagating through the pipe wall. Edge feature extraction computes seismic RMS acceleration and wavefront energy bands.
               </p>
               <p>
                 The on-device model distinguishes true pressurized orifice seismic wave dispersion (15–240 Hz) from surface pump transients and vehicular ground traffic.

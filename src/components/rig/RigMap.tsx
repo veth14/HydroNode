@@ -44,7 +44,7 @@ export function RigMap({
 
   // Layer toggles
   const [showZones, setShowZones] = useState(true);
-  const [showCat6, setShowCat6] = useState(true);
+  const [showCables, setShowCables] = useState(true);
   const [showVibration, setShowVibration] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
 
@@ -334,9 +334,9 @@ export function RigMap({
             )}
           </g>
 
-          {/* 5. ESP32 CONTROLLER ENCLOSURE & CAT6 CABLING */}
+          {/* 5. ESP32-S3 CONTROLLER ENCLOSURE & SIGNAL CABLING */}
           <Esp32Box
-            showCat6={showCat6}
+            showCables={showCables}
             activeStationId={selectedStationId}
           />
 
@@ -355,8 +355,8 @@ export function RigMap({
       <Legend
         showZones={showZones}
         setShowZones={setShowZones}
-        showCat6={showCat6}
-        setShowCat6={setShowCat6}
+        showCables={showCables}
+        setShowCables={setShowCables}
         showVibration={showVibration}
         setShowVibration={setShowVibration}
         showLabels={showLabels}
