@@ -1,27 +1,14 @@
 "use client";
 // src/app/(dashboard)/page.tsx
-// Pipeline Network Overview in Light Mode.
-// Follows all 20 Rules to Unslop AI UI:
-// 1. Delete filler badges
-// 2. Drop redundant labels
-// 3. Unitalicize random words
-// 4. Mono only where needed (numbers & timestamps)
-// 5. Unified design system (Light Mode Slate tokens)
-// 6. Show the actual physical product clearly
-// 7. Enlarge the main feature (Hero RigMap)
-// 8. Group with clean whitespace
-// 9. Specific headlines
-// 10. Emphasize CTAs
-// 11. Single precision accent (Sky 600)
-// 12. Consistent Lucide icons
-// 13. Remove embellishments & fake neon glow
-// 14. Inner radius = outer - padding
-// 15. Improve WCAG AAA text contrast
-// 16. Wrap headlines properly (text-balance)
-// 17. Align by eye
-// 18. Tabular nums for all metrics
-// 19. Add loading states
-// 20. Animate useful feedback
+// Ultra-Premium HydroNode SCADA Dashboard.
+// Faithfully matches the modern SaaS luxury design language (FlowAI reference):
+// - Soft warm-neutral canvas (#f1f3f6) with pure white floating cards (#ffffff)
+// - High-contrast dark charcoal CTA button
+// - Date badge pill (e.g. "12 Nov, 2026")
+// - 4 floating Stat metric cards with dotted ring trend indicators
+// - Hero Pipeline Rig Canvas in a luxury card with fluted vertical pinstripe accent
+// - "Active Pipeline Zones" table with pastel rounded-square icons, tabular nums, and fluted footer
+// - "Sensor Transducer Pods & Actuators" 4-card carousel with miniature graphics and hardware tags
 
 import { useState } from "react";
 import Link from "next/link";
@@ -43,11 +30,17 @@ import {
   Zap,
   FlaskConical,
   ChevronRight,
+  ChevronLeft,
   X,
   Gauge,
   Activity,
   Cpu,
   ArrowRight,
+  Calendar,
+  Plus,
+  Waves,
+  MoreHorizontal,
+  ExternalLink,
 } from "lucide-react";
 
 export default function NetworkOverviewPage() {
@@ -91,502 +84,679 @@ export default function NetworkOverviewPage() {
     ? activeStation.latestFlow - nextStation.latestFlow
     : 0;
 
+  // Formatted date string matching "27 April, 2026" in reference
+  const formattedDate = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+
+  // Pastel styling config for Zone table icons
+  const zoneIconStyles = [
+    { bg: "bg-rose-50 border-rose-100 text-rose-600", icon: <Waves className="w-4 h-4" /> },
+    { bg: "bg-amber-50 border-amber-100 text-amber-600", icon: <Droplets className="w-4 h-4" /> },
+    { bg: "bg-sky-50 border-sky-100 text-sky-600", icon: <Gauge className="w-4 h-4" /> },
+    { bg: "bg-indigo-50 border-indigo-100 text-indigo-600", icon: <Activity className="w-4 h-4" /> },
+    { bg: "bg-emerald-50 border-emerald-100 text-emerald-600", icon: <ShieldCheck className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
-      {/* 1. Page Header (Rule 1: No filler badges; Rule 9: Specific headline; Rule 10: Emphasize CTA) */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 font-sans">
+      {/* ─── 1. Header Section (Welcome Back + Date + Dark Primary CTA) ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight text-balance">
-            Pipeline Network Monitor
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Welcome Back, Operator!
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time acoustic & pressure telemetry across 5 pipeline zones (Stations S1–S6 Tri-Sensor Bus)
+            Autonomous pipeline integrity monitor & acoustic leak localization powered by ESP32-S3.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
+          {/* Date pill badge */}
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-medium text-slate-600 shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>{formattedDate}</span>
+          </div>
+
+          {/* Dark Charcoal Primary CTA */}
           <Link href="/simulation">
             <Button
-              variant="accent"
-              size="sm"
-              icon={<FlaskConical className="w-3.5 h-3.5 text-sky-700" />}
+              variant="primary"
+              size="md"
+              icon={<Plus className="w-4 h-4" />}
             >
-              Simulation Panel
-            </Button>
-          </Link>
-          <Link href="/alerts">
-            <Button
-              variant={activeAlerts.length > 0 ? "destructive" : "secondary"}
-              size="sm"
-              icon={<AlertTriangle className="w-3.5 h-3.5" />}
-            >
-              Alerts ({activeAlerts.length})
+              Simulate Leak
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* 2. KPI Metrics Row (Rule 2: Drop redundant labels; Rule 18: Tabular nums) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+      {/* ─── 2. Top Metric Row (4 Floating Stat Cards) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat
           label="Active Alerts"
           value={kpi?.activeAlerts ?? 0}
           tone={(kpi?.activeAlerts ?? 0) > 0 ? "critical" : "success"}
           icon={<AlertTriangle className="w-4 h-4" />}
-          subtext={(kpi?.activeAlerts ?? 0) > 0 ? "Leak triage required" : "All zones nominal"}
+          trend={{
+            direction: (kpi?.activeAlerts ?? 0) > 0 ? "up" : "flat",
+            label: (kpi?.activeAlerts ?? 0) > 0 ? "Immediate triage required" : "All 5 zones nominal",
+          }}
         />
 
         <Stat
-          label="Zones Monitored"
+          label="Network Integrity"
           value={`${kpi?.zonesHealthy ?? 5} / ${kpi?.zonesTotal ?? 5}`}
-          tone="default"
-          icon={<ShieldCheck className="w-4 h-4 text-emerald-600" />}
-          subtext="Segments pressurized"
+          tone="success"
+          icon={<ShieldCheck className="w-4 h-4" />}
+          trend={{
+            direction: "up",
+            label: "100% nominal pressure hold",
+          }}
         />
 
         <Stat
-          label="Stations Online"
+          label="Active Stations"
           value={`${kpi?.stationsOnline ?? 6} / ${kpi?.stationsTotal ?? 6}`}
           tone="default"
-          icon={<Radio className="w-4 h-4 text-sky-600" />}
-          subtext="18 active sensors"
+          icon={<Radio className="w-4 h-4" />}
+          trend={{
+            direction: "up",
+            label: "18 physical transducers online",
+          }}
         />
 
         <Stat
-          label="Estimated Water Loss"
+          label="Fluid Loss Rate"
           value={kpi?.estimatedWaterLoss?.toFixed(1) ?? "0.0"}
           unit="L/min"
           tone={(kpi?.estimatedWaterLoss ?? 0) > 0 ? "critical" : "default"}
-          icon={<Droplets className="w-4 h-4 text-sky-600" />}
-          subtext={(kpi?.estimatedWaterLoss ?? 0) > 0 ? "Compromised line" : "Zero fluid loss"}
-        />
-
-        <Stat
-          label="Adaptive Sampling"
-          value={
-            stations.some((s) => s.samplingMode === "elevated")
-              ? "100 Hz"
-              : "10 Hz"
-          }
-          tone={
-            stations.some((s) => s.samplingMode === "elevated")
-              ? "warning"
-              : "default"
-          }
-          icon={<Zap className="w-4 h-4 text-amber-600" />}
-          subtext={
-            stations.some((s) => s.samplingMode === "elevated")
-              ? "Elevated frequency"
-              : "Nominal edge polling"
-          }
+          icon={<Droplets className="w-4 h-4" />}
+          trend={{
+            direction: (kpi?.estimatedWaterLoss ?? 0) > 0 ? "up" : "flat",
+            label: (kpi?.estimatedWaterLoss ?? 0) > 0 ? "Leak delta detected" : "Zero fluid loss recorded",
+          }}
         />
       </div>
 
-      {/* 3. Hero Feature: Live Test Rig Map (Rule 6: Show actual product; Rule 7: Enlarge feature) */}
-      <div className="relative">
-        <RigMap
-          selectedStationId={selectedStation}
-          selectedZoneId={selectedZone}
-          onSelectStation={(id) => setSelectedStation(id)}
-          onSelectZone={(id) => setSelectedZone(id)}
-          onInjectLeak={handleTestPointClick}
-        />
-
-        {/* Selected Zone Side Drawer in Light Mode */}
-        {selectedZone && selectedZoneData && (
-          <div className="absolute top-4 right-4 z-20 w-80 bg-white/95 backdrop-blur-md border border-slate-200 text-slate-800 rounded-xl p-4 shadow-xl animate-fade-in">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                  <span>Zone {selectedZoneData.id} Segment</span>
-                  <Badge
-                    variant={
-                      zoneAlert?.severity === "high"
-                        ? "critical"
-                        : zoneAlert?.severity === "medium"
-                        ? "warning"
-                        : "success"
-                    }
-                    size="sm"
-                    dot
-                  >
-                    {zoneAlert ? zoneAlert.severity.toUpperCase() : "NOMINAL"}
-                  </Badge>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Bounded by Station {selectedZoneData.stationA} ➔ {selectedZoneData.stationB}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedZone(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-md transition-colors cursor-pointer"
-                aria-label="Close drawer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-2 text-xs">
-              {zoneAlert ? (
-                <>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Severity Index (SI)</span>
-                    <span className="font-bold font-mono tabular-nums text-amber-700">
-                      {zoneAlert.si?.toFixed(1) ?? "--"}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Estimated Leak Rate</span>
-                    <span className="font-bold font-mono tabular-nums text-red-600">
-                      {zoneAlert.leakRate?.toFixed(1) ?? "--"} L/min
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-slate-100">
-                    <span className="text-slate-500">Model Confidence</span>
-                    <span className="font-bold font-mono tabular-nums text-sky-700">
-                      {(zoneAlert.confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="py-1">
-                    <span className="text-slate-500 block mb-1">
-                      Action Protocol:
-                    </span>
-                    <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 text-xs leading-relaxed">
-                      {zoneAlert.recommendedAction}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="py-4 text-center text-xs text-slate-500">
-                  <ShieldCheck className="w-8 h-8 text-emerald-600 mx-auto mb-2 opacity-80" />
-                  No acoustic or flow deviations flagged in this zone segment.
-                </div>
-              )}
-
-              <div className="pt-2 text-[11px] text-slate-400 leading-normal border-t border-slate-100">
-                Localizes pipe segment between sensor stations via flow loss delta & acoustic emission.
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 4. Tri-Sensor Architecture Pod Breakdown (Rule 14: Inner radius = outer - padding) */}
-      <Card className="overflow-hidden">
+      {/* ─── 3. Hero Feature: Pipeline Rig Canvas ─── */}
+      <Card hasFlutedFooter>
         <CardHeader
           title={
             <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-sky-600" />
-              <span>Station {selectedStation} Tri-Sensor Pod Architecture & Telemetry</span>
+              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+              <span>Pipeline Rig Canvas</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 ml-1">
+                ESP32-S3 Edge Controller
+              </span>
             </div>
           }
-          subtitle="Each station deploys 3 distinct physical transducers multiplexed to the ESP32 edge controller"
+          subtitle="Real-time physical test rig schematic · 6 sensor stations across 5 monitored pipeline zones"
           action={
-            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
-              {STATION_IDS.map((sid) => (
+            <div className="flex items-center gap-1.5">
+              <div className="hidden sm:flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                {STATION_IDS.map((sid) => (
+                  <button
+                    key={sid}
+                    onClick={() => setSelectedStation(sid)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                      selectedStation === sid
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {sid}
+                  </button>
+                ))}
+              </div>
+              <Link href="/simulation">
+                <Button variant="outline" size="sm" icon={<FlaskConical className="w-3.5 h-3.5 text-sky-600" />}>
+                  Simulate
+                </Button>
+              </Link>
+            </div>
+          }
+        />
+        <div className="relative p-2 sm:p-4 bg-slate-50/50">
+          <RigMap
+            selectedStationId={selectedStation}
+            selectedZoneId={selectedZone}
+            onSelectStation={(id) => setSelectedStation(id)}
+            onSelectZone={(id) => setSelectedZone(id)}
+            onInjectLeak={handleTestPointClick}
+          />
+
+          {/* Selected Zone Side Drawer */}
+          {selectedZone && selectedZoneData && (
+            <div className="absolute top-6 right-6 z-20 w-80 bg-white/95 backdrop-blur-md border border-slate-200/90 text-slate-800 rounded-2xl p-4 shadow-floating animate-fade-in">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <span>Zone {selectedZoneData.id} Segment</span>
+                    <Badge
+                      variant={
+                        zoneAlert?.severity === "high"
+                          ? "critical"
+                          : zoneAlert?.severity === "medium"
+                          ? "warning"
+                          : "success"
+                      }
+                      size="sm"
+                      dot
+                    >
+                      {zoneAlert ? zoneAlert.severity.toUpperCase() : "NOMINAL"}
+                    </Badge>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Station {selectedZoneData.stationA} ➔ Station {selectedZoneData.stationB} (1.2m)
+                  </p>
+                </div>
                 <button
-                  key={sid}
-                  onClick={() => setSelectedStation(sid)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                    selectedStation === sid
-                      ? "bg-sky-600 text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
+                  onClick={() => setSelectedZone(null)}
+                  className="text-slate-400 hover:text-slate-700 p-1 rounded-md transition-colors cursor-pointer"
+                  aria-label="Close drawer"
                 >
-                  {sid}
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
+              </div>
+
+              <div className="mt-3 space-y-2 text-xs">
+                {zoneAlert ? (
+                  <>
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Severity Index (SI)</span>
+                      <span className="font-bold font-mono tabular-nums text-amber-700">
+                        {zoneAlert.si?.toFixed(1) ?? "--"}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Estimated Leak Rate</span>
+                      <span className="font-bold font-mono tabular-nums text-red-600">
+                        {zoneAlert.leakRate?.toFixed(1) ?? "--"} L/min
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-slate-100">
+                      <span className="text-slate-500">Model Confidence</span>
+                      <span className="font-bold font-mono tabular-nums text-sky-700">
+                        {(zoneAlert.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="py-1">
+                      <span className="text-slate-500 block mb-1">
+                        Action Protocol:
+                      </span>
+                      <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-800 text-xs leading-relaxed">
+                        {zoneAlert.recommendedAction}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-4 text-center text-xs text-slate-500">
+                    <ShieldCheck className="w-8 h-8 text-emerald-600 mx-auto mb-2 opacity-80" />
+                    No acoustic or flow deviations flagged in this zone segment.
+                  </div>
+                )}
+
+                <div className="pt-2 text-[11px] text-slate-400 leading-normal border-t border-slate-100">
+                  Localizes pipe segment between sensor stations via flow loss delta & acoustic emission.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* ─── 4. Active Pipeline Zones Table (Matching "Active Workflows" in FlowAI) ─── */}
+      <Card hasFlutedFooter>
+        <CardHeader
+          title="Active Pipeline Zones"
+          subtitle="Real-time acoustic & pressure telemetry across 5 physical pipe segments"
+          action={
+            <Link
+              href="/alerts"
+              className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 transition-colors"
+            >
+              View All <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          }
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50/70 text-slate-500 font-medium border-b border-slate-100">
+                <th className="py-3 px-5">Pipeline Zone</th>
+                <th className="py-3 px-4">Boundary Stations</th>
+                <th className="py-3 px-4 text-right">Flow In / Out</th>
+                <th className="py-3 px-4 text-right">Head Pressure</th>
+                <th className="py-3 px-4 text-right">Acoustic RMS</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {ZONES.map((zone, idx) => {
+                const alert = activeAlerts.find((a) => a.zoneId === zone.id);
+                const stA = stations.find((s) => s.id === zone.stationA);
+                const stB = stations.find((s) => s.id === zone.stationB);
+                const isSelected = selectedZone === zone.id;
+                const iconStyle = zoneIconStyles[idx % zoneIconStyles.length];
+
+                return (
+                  <tr
+                    key={zone.id}
+                    onClick={() => setSelectedZone(isSelected ? null : zone.id)}
+                    className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
+                      isSelected ? "bg-sky-50/50" : ""
+                    }`}
+                  >
+                    {/* Zone Name with Pastel Square Icon */}
+                    <td className="py-3 px-5">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${iconStyle.bg}`}
+                        >
+                          {iconStyle.icon}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-900 block">
+                            Zone {zone.id} Segment
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            1.2m Schedule-40 PVC
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Boundary Stations */}
+                    <td className="py-3 px-4 text-slate-600 font-medium">
+                      Station {zone.stationA} ➔ {zone.stationB}
+                    </td>
+
+                    {/* Flow In / Out */}
+                    <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-800 font-semibold">
+                      {stA?.latestFlow != null ? stA.latestFlow.toFixed(1) : "--"} /{" "}
+                      {stB?.latestFlow != null ? stB.latestFlow.toFixed(1) : "--"}{" "}
+                      <span className="text-[10px] font-normal text-slate-400">L/m</span>
+                    </td>
+
+                    {/* Head Pressure */}
+                    <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-800 font-semibold">
+                      {stA?.latestPressure != null ? stA.latestPressure.toFixed(2) : "--"}{" "}
+                      <span className="text-[10px] font-normal text-slate-400">bar</span>
+                    </td>
+
+                    {/* Acoustic RMS */}
+                    <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-800 font-semibold">
+                      {stA?.latestVibration != null ? stA.latestVibration.toFixed(3) : "--"}{" "}
+                      <span className="text-[10px] font-normal text-slate-400">g</span>
+                    </td>
+
+                    {/* Status Pill Badge */}
+                    <td className="py-3 px-4">
+                      {alert ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                          Leak Alert
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Active
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Action */}
+                    <td className="py-3 px-5 text-right">
+                      <div className="flex items-center justify-end gap-3 text-slate-500">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedZone(zone.id);
+                          }}
+                          className="hover:text-slate-900 font-medium transition-colors cursor-pointer"
+                        >
+                          View
+                        </button>
+                        <Link
+                          href={`/stations/${zone.stationA}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-slate-900 font-medium transition-colors"
+                        >
+                          Inspect
+                        </Link>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="hover:text-slate-900 p-1 rounded-md transition-colors cursor-pointer"
+                          aria-label="More options"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* ─── 5. Hardware Transducer Pods & Actuators (Matching "Recent Using Templates" in FlowAI) ─── */}
+      <Card hasFlutedFooter>
+        <CardHeader
+          title="Hardware Transducer Pods & Actuators"
+          subtitle="Physical transducers & power actuators instrumented on the HydroNode test rig"
+          action={
+            <div className="flex items-center gap-1.5">
+              <button
+                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                aria-label="Previous"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                aria-label="Next"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           }
         />
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Sensor 1: Flow Sensor */}
-            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Pod 1: Flow Sensor */}
+            <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-sky-600" />
-                    <span className="text-xs font-bold text-slate-900">Flow Sensor</span>
+                {/* Miniature Visual Container */}
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-sky-600">
+                    <Droplets className="w-6 h-6 stroke-[1.75]" />
                   </div>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200">
-                    Pulse Signal
+                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Active
                   </span>
                 </div>
 
-                <div className="mt-3">
-                  <div className="text-3xl font-bold font-mono tabular-nums text-sky-700">
-                    {activeStation?.latestFlow != null ? activeStation.latestFlow.toFixed(2) : "--"}
-                    <span className="text-xs font-normal text-slate-500 ml-1.5">L/min</span>
-                  </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    Hall-effect turbine sensor with EL817 optocoupler isolation (5V→3.3V) feeding ESP32-S3 GPIO pulse interrupts.
+                <div className="mt-3.5">
+                  <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Flow Sensor Pod
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Hall-Effect Pulse · EL817 Isolated
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Used across S1–S6 · GPIO interrupts
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Downstream Delta:</span>
-                  <span className={`font-bold font-mono tabular-nums ${flowDelta > 2 ? "text-red-600" : "text-slate-800"}`}>
-                    {nextStation ? `${flowDelta.toFixed(2)} L/min` : "Rig Exit"}
+              {/* Card Footer: Micro Tech Stack Badges + Rating/Spec */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center -space-x-1">
+                  <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    ESP
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    OPTO
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    5V
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 border border-white text-[9px] font-bold flex items-center justify-center">
+                    +2
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Neighboring station flow imbalance flags the leaking zone.
-                </div>
+                <span className="text-[11px] font-medium text-slate-400 font-mono tabular-nums">
+                  1,200 p/L
+                </span>
               </div>
             </div>
 
-            {/* Sensor 2: Pressure Sensor */}
-            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between">
+            {/* Pod 2: Pressure Sensor */}
+            <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
-                    <span className="text-xs font-bold text-slate-900">Pressure Sensor</span>
+                {/* Miniature Visual Container */}
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-indigo-600">
+                    <Gauge className="w-6 h-6 stroke-[1.75]" />
                   </div>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    ADS1115 I²C
+                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Active
                   </span>
                 </div>
 
-                <div className="mt-3">
-                  <div className="text-3xl font-bold font-mono tabular-nums text-indigo-700">
-                    {activeStation?.latestPressure != null ? activeStation.latestPressure.toFixed(2) : "--"}
-                    <span className="text-xs font-normal text-slate-500 ml-1.5">bar</span>
-                  </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    5V piezoresistive transducer (0.5–4.5V) with 10kΩ/20kΩ divider read via ADS1115 16-bit I2C ADC.
+                <div className="mt-3.5">
+                  <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Pressure Transducer
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    0–1.2 MPa · ADS1115 16-Bit I²C
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Used across S1–S6 · 10k/20k divider
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Baseline Calibration:</span>
-                  <span className="text-slate-800 font-bold font-mono tabular-nums">5.00 bar (P₀)</span>
+              {/* Card Footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center -space-x-1">
+                  <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    ADS
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    I²C
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    16b
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 border border-white text-[9px] font-bold flex items-center justify-center">
+                    +1
+                  </span>
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Sudden or gradual pressure drop rate computes Severity Index.
-                </div>
+                <span className="text-[11px] font-medium text-slate-400 font-mono tabular-nums">
+                  0.01 bar
+                </span>
               </div>
             </div>
 
-            {/* Sensor 3: Seismic Sensor */}
-            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between">
+            {/* Pod 3: Seismic Wave Acoustic Sensor */}
+            <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-600" />
-                    <span className="text-xs font-bold text-slate-900">Seismic Wave Sensor</span>
+                {/* Miniature Visual Container */}
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-amber-600">
+                    <Activity className="w-6 h-6 stroke-[1.75]" />
                   </div>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
-                    Piezo Film
+                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Active
                   </span>
                 </div>
 
-                <div className="mt-3">
-                  <div className="text-3xl font-bold font-mono tabular-nums text-amber-700">
-                    {activeStation?.latestVibration != null ? activeStation.latestVibration.toFixed(3) : "--"}
-                    <span className="text-xs font-normal text-slate-500 ml-1.5">RMS (g)</span>
-                  </div>
-                  <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                    Piezoelectric film module isolated via EL817 optocoupler, measuring elastic pipe-wall acoustic waves from turbulence.
+                <div className="mt-3.5">
+                  <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Seismic Wave Sensor
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Piezo Film · 60–240 Hz P/S Band
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Used across S1–S6 · Acoustic noise
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Wavefront Band:</span>
-                  <span className="text-slate-800 font-bold font-mono tabular-nums">60–240 Hz (P/S Waves)</span>
+              {/* Card Footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center -space-x-1">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    PZT
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    EL817
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    RMS
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 border border-white text-[9px] font-bold flex items-center justify-center">
+                    +1
+                  </span>
                 </div>
-                <div className="text-[11px] text-slate-500">
-                  Elastic seismic waves confirm subsurface pipe wall breach.
+                <span className="text-[11px] font-medium text-slate-400 font-mono tabular-nums">
+                  60–240 Hz
+                </span>
+              </div>
+            </div>
+
+            {/* Pod 4: JT-800D Circulation Pump */}
+            <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
+              <div>
+                {/* Miniature Visual Container */}
+                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-slate-800">
+                    <Cpu className="w-6 h-6 stroke-[1.75]" />
+                  </div>
+                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Active
+                  </span>
                 </div>
+
+                <div className="mt-3.5">
+                  <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                    JT-800D Circulation Pump
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    24V DC Brushless · LR7843 MOSFET
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Rig prime feed · PWM throttle
+                  </p>
+                </div>
+              </div>
+
+              {/* Card Footer */}
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center -space-x-1">
+                  <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    24V
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    PWM
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 border border-white text-[9px] font-bold flex items-center justify-center">
+                    MOS
+                  </span>
+                  <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 border border-white text-[9px] font-bold flex items-center justify-center">
+                    +1
+                  </span>
+                </div>
+                <span className="text-[11px] font-medium text-slate-400 font-mono tabular-nums">
+                  0–100% PWM
+                </span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 5. Telemetry Chart & Active Alerts Log */}
+      {/* ─── 6. Station Tri-Sensor Pod Architecture & Telemetry Waveforms ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <TelemetryChart initialStation={selectedStation} />
         </div>
 
-        {/* Active Alerts Card */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+        {/* Selected Station Pod Live Telemetry Card */}
+        <Card>
+          <CardHeader
+            title={
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
-                <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
-                  Active Alerts Log
-                </h3>
+                <Cpu className="w-4 h-4 text-slate-900" />
+                <span>Station {selectedStation} Transducer Bus</span>
               </div>
-              <Badge variant={activeAlerts.length > 0 ? "critical" : "neutral"} size="sm">
-                {activeAlerts.length}
-              </Badge>
-            </div>
-
-            <div className="space-y-2.5 max-h-[300px] overflow-y-auto">
-              {activeAlerts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 text-slate-500 text-xs text-center p-4">
-                  <ShieldCheck className="w-8 h-8 text-emerald-600 mb-2 stroke-[1.5]" />
-                  <span>Pipeline operating nominally with no active leak events.</span>
+            }
+            subtitle="Multiplexed 3-sensor pod telemetry"
+            action={
+              <Link
+                href={`/stations/${selectedStation}`}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 transition-colors"
+              >
+                Inspect <ArrowRight className="w-3 h-3" />
+              </Link>
+            }
+          />
+          <CardContent className="space-y-3.5">
+            {/* Flow Transducer */}
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-sky-500" />
+                  <span className="text-xs font-bold text-slate-900">Flow Transducer</span>
                 </div>
-              ) : (
-                activeAlerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:border-slate-300 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <Badge
-                        variant={alert.severity === "high" ? "critical" : "warning"}
-                        size="sm"
-                        dot
-                      >
-                        {alert.severity.toUpperCase()}
-                      </Badge>
-                      <span className="text-xs text-slate-500 font-mono tabular-nums">
-                        {new Date(alert.ts).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </span>
-                    </div>
-
-                    <div className="font-semibold text-xs text-slate-900">
-                      Zone {alert.zoneId ?? "?"} ({alert.stationId})
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1 line-clamp-2">
-                      {alert.recommendedAction}
-                    </p>
-
-                    <div className="mt-2 flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-200 font-mono">
-                      <span className="tabular-nums">SI: {alert.si?.toFixed(1) ?? "--"}%</span>
-                      <span className="tabular-nums">Rate: {alert.leakRate?.toFixed(1) ?? "--"} L/min</span>
-                      {alert.repeatCount > 1 && (
-                        <span className="text-red-600 font-bold tabular-nums">
-                          ×{alert.repeatCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                  Pulse / EL817
+                </span>
+              </div>
+              <div className="mt-2.5 flex items-baseline justify-between">
+                <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
+                  {activeStation?.latestFlow != null ? activeStation.latestFlow.toFixed(2) : "--"}
+                  <span className="text-xs font-normal text-slate-500 ml-1">L/min</span>
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Δ {flowDelta.toFixed(2)} L/m
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="pt-3 border-t border-slate-100 mt-3">
-            <Link
-              href="/alerts"
-              className="text-xs font-semibold text-sky-700 hover:text-sky-800 flex items-center justify-center gap-1"
-            >
-              Alert Log & Triage <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </div>
+            {/* Pressure Transducer */}
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                  <span className="text-xs font-bold text-slate-900">Pressure Transducer</span>
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  ADS1115 I²C
+                </span>
+              </div>
+              <div className="mt-2.5 flex items-baseline justify-between">
+                <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
+                  {activeStation?.latestPressure != null ? activeStation.latestPressure.toFixed(2) : "--"}
+                  <span className="text-xs font-normal text-slate-500 ml-1">bar</span>
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  P₀ = 5.00 bar
+                </span>
+              </div>
+            </div>
 
-      {/* 6. Sensor Nodes Status Table (S1–S6) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
-              Sensor Nodes Status (S1–S6)
-            </h3>
-            <p className="text-xs text-slate-500">
-              Live telemetry via 2 AWG shielded cable · 3 transducers per station (Flow · Pressure · Seismic)
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
-                <th className="py-2.5 px-4">Station</th>
-                <th className="py-2.5 px-4">Status</th>
-                <th className="py-2.5 px-4">Sampling Mode</th>
-                <th className="py-2.5 px-4 text-right text-sky-700">Flow (Pulse)</th>
-                <th className="py-2.5 px-4 text-right text-indigo-700">Pressure (ADS1115)</th>
-                <th className="py-2.5 px-4 text-right text-amber-800">Seismic Wave (g)</th>
-                <th className="py-2.5 px-4">Last Seen</th>
-                <th className="py-2.5 px-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {stations.map((s) => (
-                <tr
-                  key={s.id}
-                  className={`hover:bg-slate-50 transition-colors cursor-pointer ${
-                    selectedStation === s.id ? "bg-sky-50/50" : ""
-                  }`}
-                  onClick={() => setSelectedStation(s.id)}
-                >
-                  <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${statusColor(s.status)}`} />
-                    {s.name}
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge
-                      variant={
-                        s.status === "online"
-                          ? "success"
-                          : s.status === "elevated"
-                          ? "warning"
-                          : s.status === "alert"
-                          ? "critical"
-                          : "neutral"
-                      }
-                      size="sm"
-                    >
-                      {s.status}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="capitalize text-slate-700">
-                      {s.samplingMode}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right tabular-nums font-mono text-sky-700 font-bold">
-                    {s.latestFlow != null ? `${s.latestFlow.toFixed(2)} L/m` : "--"}
-                  </td>
-                  <td className="py-3 px-4 text-right tabular-nums font-mono text-indigo-700 font-bold">
-                    {s.latestPressure != null ? `${s.latestPressure.toFixed(2)} bar` : "--"}
-                  </td>
-                  <td className="py-3 px-4 text-right tabular-nums font-mono text-amber-800 font-bold">
-                    {s.latestVibration != null ? `${s.latestVibration.toFixed(3)} g` : "--"}
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 font-mono tabular-nums">
-                    {s.lastSeen
-                      ? new Date(s.lastSeen).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })
-                      : "Never"}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <Link
-                      href={`/stations/${s.id}`}
-                      className="text-sky-700 hover:text-sky-800 font-semibold flex items-center justify-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Inspect <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            {/* Seismic Sensor */}
+            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-xs font-bold text-slate-900">Seismic Wave Sensor</span>
+                </div>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                  Piezo Film
+                </span>
+              </div>
+              <div className="mt-2.5 flex items-baseline justify-between">
+                <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
+                  {activeStation?.latestVibration != null ? activeStation.latestVibration.toFixed(3) : "--"}
+                  <span className="text-xs font-normal text-slate-500 ml-1">g RMS</span>
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  60–240 Hz
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

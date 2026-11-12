@@ -120,7 +120,7 @@ export function TelemetryChart({
   })();
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs select-none">
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-premium select-none">
       {/* Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">

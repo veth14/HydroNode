@@ -15,11 +15,11 @@ export default function DashboardLayout({
   usePolling();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex h-screen overflow-hidden bg-[#f1f3f6] text-slate-900 font-sans">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-5 lg:p-6 bg-slate-50">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 bg-[#f1f3f6]">
           {children}
         </main>
       </div>

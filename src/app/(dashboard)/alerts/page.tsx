@@ -86,9 +86,9 @@ export default function AlertsPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-4 text-xs">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-premium flex flex-wrap items-center gap-4 text-xs">
         <div className="flex items-center gap-1.5 text-slate-600 font-semibold mr-1">
-          <Filter className="w-3.5 h-3.5 text-sky-600" />
+          <Filter className="w-3.5 h-3.5 text-slate-900" />
           <span>Filters:</span>
         </div>
 
@@ -96,7 +96,7 @@ export default function AlertsPage() {
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+            className="border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 text-slate-800 font-medium shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
           >
             <option value="all">All Severities</option>
             <option value="high">High Severity</option>
@@ -109,7 +109,7 @@ export default function AlertsPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+            className="border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 text-slate-800 font-medium shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
@@ -122,7 +122,7 @@ export default function AlertsPage() {
           <select
             value={zoneFilter}
             onChange={(e) => setZoneFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-800 font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+            className="border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 text-slate-800 font-medium shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
           >
             <option value="all">All Zones</option>
             {[1, 2, 3, 4, 5].map((z) => (
@@ -139,7 +139,7 @@ export default function AlertsPage() {
       </div>
 
       {/* Alerts Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-premium overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
@@ -254,6 +254,7 @@ export default function AlertsPage() {
             </tbody>
           </table>
         </div>
+        <div className="h-3.5 w-full pattern-fluted border-t border-slate-100 opacity-60" />
       </div>
 
       {/* Incident Dossier Detail Drawer */}
