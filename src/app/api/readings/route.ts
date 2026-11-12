@@ -63,12 +63,13 @@ function getLiveStream(stationId: string): Array<{ t: string; flow: number; pres
   if (timeDiff >= 2000) {
     const stepsToAdd = Math.min(Math.floor(timeDiff / 3000), 10);
     for (let s = 1; s <= stepsToAdd; s++) {
-      const nextTime = new Date(lastTime + s * 3000).toISOString();
-      const i = buffer.length;
-      const flow = base.q0 + (isStation2 ? -1.8 : 0) + (Math.sin(i * 0.35) * 0.22) + (Math.random() - 0.5) * 0.12;
-      const pressure = base.p0 + (isStation2 ? -0.35 : 0) + (Math.cos(i * 0.25) * 0.03) + (Math.random() - 0.5) * 0.015;
+      const stepMs = lastTime + s * 3000;
+      const nextTime = new Date(stepMs).toISOString();
+      const stepIdx = Math.floor(stepMs / 3000);
+      const flow = base.q0 + (isStation2 ? -1.8 : 0) + (Math.sin(stepIdx * 0.35) * 0.22) + (Math.random() - 0.5) * 0.12;
+      const pressure = base.p0 + (isStation2 ? -0.35 : 0) + (Math.cos(stepIdx * 0.25) * 0.03) + (Math.random() - 0.5) * 0.015;
       const vibration = isStation2
-        ? 0.25 + Math.sin(i * 0.4) * 0.035 + (Math.random() - 0.5) * 0.02
+        ? 0.25 + Math.sin(stepIdx * 0.4) * 0.035 + (Math.random() - 0.5) * 0.02
         : 0.076 + (Math.random() - 0.5) * 0.014;
 
       buffer.push({

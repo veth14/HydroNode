@@ -1,11 +1,12 @@
 "use client";
 // src/components/rig/Esp32Box.tsx
-// Above-ground ESP32 controller module with CAT6 lines and Wi-Fi uplink.
-// Represents the actual edge hardware:
-// - Flow: Pulse GPIO input interrupts
-// - Pressure: 12-bit ADC analog input channels
-// - Vibration: SPI Bus + dedicated CS lines (MPU6050 MEMS)
-// - CAT6 multi-conductor cable bundling all 6 stations
+// ESP32-S3 above-ground IP65 controller enclosure with shielded multi-conductor cable runs.
+// Actual hardware:
+// - ESP32-S3-DevKitC-1U-N8R8 on screw-terminal expansion board
+// - Flow: Hall-effect pulse → EL817 Optocoupler → GPIO interrupt
+// - Pressure: 5V transducer → 10kΩ/20kΩ divider → ADS1115 16-bit I2C ADC (×2)
+// - Seismic: Piezoelectric film sensor → EL817 Optocoupler → GPIO
+// - Shielded 2 AWG multi-conductor cable from stations to ESP32 enclosure
 
 import { ESP32_POS, STATIONS, STATION_IDS, type StationId } from "@/config/rig";
 
@@ -90,19 +91,19 @@ export function Esp32Box({ showCat6 = true, activeStationId }: Esp32BoxProps) {
           letterSpacing="0.6"
           fontFamily="monospace"
         >
-          ESP32 EDGE CONTROLLER
+          ESP32-S3 EDGE CONTROLLER
         </text>
 
         {/* Hardware & Sensor Bus Specs */}
-        <g transform="translate(14, 40)" fontSize="8.5" fontFamily="monospace">
+        <g transform="translate(14, 40)" fontSize="8" fontFamily="monospace">
           <text x="0" y="0" fill="#7a8fa6">
-            Model: <tspan fill="#e8edf2">Random Forest (On-Device)</tspan>
+            MCU: <tspan fill="#e8edf2">ESP32-S3 (Random Forest Edge-AI)</tspan>
           </text>
           <text x="0" y="13" fill="#7a8fa6">
-            Flow: <tspan fill="#00b4d8">Pulse GPIO</tspan> · Press: <tspan fill="#818cf8">ADC</tspan> · Seismic: <tspan fill="#f59e0b">SPI Wave</tspan>
+            Flow: <tspan fill="#00b4d8">Hall/EL817</tspan> · Press: <tspan fill="#818cf8">ADS1115 I²C</tspan> · Seismic: <tspan fill="#f59e0b">Piezo/EL817</tspan>
           </text>
           <text x="0" y="26" fill="#7a8fa6">
-            Bus: <tspan fill="#38bdf8">CAT6 Multiplex (6× CS pins)</tspan>
+            Wiring: <tspan fill="#38bdf8">2AWG Shielded</tspan> · Pump: <tspan fill="#10b981">LR7843 PWM</tspan>
           </text>
           <text x="0" y="39" fill="#7a8fa6">
             Sampling: <tspan fill="#10b981">Adaptive (10Hz ➔ 100Hz)</tspan>

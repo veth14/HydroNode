@@ -85,12 +85,12 @@ export function Sidebar() {
         <div className="flex items-center justify-between text-[#c0d0e0]">
           <span className="flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-[#00b4d8]" />
-            ESP32 Master
+            ESP32-S3 Master
           </span>
           <span className="text-emerald-400 font-bold">ONLINE</span>
         </div>
         <div className="text-[10px] text-[#4a5a6e]">
-          CAT6 Bus · 18 Sensors (6× F·P·V)
+          2AWG Shielded · 18 Sensors (6× F·P·S)
         </div>
       </div>
     </aside>

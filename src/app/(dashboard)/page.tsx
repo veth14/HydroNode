@@ -9,7 +9,7 @@
 // - Deep representation of the 3 physical sensors per station:
 //   1. Flow (Pulse) -> Q (L/min), inter-station imbalance
 //   2. Pressure (Analog) -> P (bar), Severity Index SI
-//   3. Vibration (SPI/MEMS MPU6050) -> acoustic turbulence noise
+//   3. Seismic Vibration (Piezoelectric Film via EL817 Optocoupler) -> acoustic turbulence noise
 
 import { useState } from "react";
 import Link from "next/link";
@@ -143,7 +143,7 @@ export default function NetworkOverviewPage() {
           value={`${kpi?.stationsOnline ?? 6} / ${kpi?.stationsTotal ?? 6}`}
           tone="default"
           icon={<Radio className="w-4 h-4 text-[#00b4d8]" />}
-          subtext="CAT6 multiplexed bus"
+          subtext="2AWG shielded cable"
         />
 
         <Stat
@@ -314,7 +314,7 @@ export default function NetworkOverviewPage() {
                     <span className="text-xs font-normal text-[#7a8fa6] ml-1.5">L/min</span>
                   </div>
                   <p className="text-[11px] text-[#7a8fa6] mt-1.5 leading-relaxed">
-                    Outputs high-speed pulse interrupts connected directly to an ESP32 pulse counter pin.
+                    Hall-effect turbine sensor with EL817 optocoupler isolation (5V→3.3V) feeding ESP32-S3 GPIO pulse interrupts.
                   </p>
                 </div>
               </div>
@@ -341,7 +341,7 @@ export default function NetworkOverviewPage() {
                     <span className="text-xs font-bold text-white">Pressure Sensor</span>
                   </div>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#818cf815] text-[#818cf8] border border-[#818cf830]">
-                    Analog ADC
+                    ADS1115 I²C
                   </span>
                 </div>
 
@@ -351,7 +351,7 @@ export default function NetworkOverviewPage() {
                     <span className="text-xs font-normal text-[#7a8fa6] ml-1.5">bar</span>
                   </div>
                   <p className="text-[11px] text-[#7a8fa6] mt-1.5 leading-relaxed">
-                    Analog piezoresistive transducer measuring hydraulic line pressure on 12-bit ADC.
+                    5V piezoresistive transducer (0.5–4.5V) with 10kΩ/20kΩ divider read via ADS1115 16-bit I2C ADC.
                   </p>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function NetworkOverviewPage() {
                     <span className="text-xs font-bold text-white">Seismic Wave Sensor</span>
                   </div>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#f59e0b15] text-[#f59e0b] border border-[#f59e0b30]">
-                    SPI · Seismic
+                    Piezoelectric Film
                   </span>
                 </div>
 
@@ -386,7 +386,7 @@ export default function NetworkOverviewPage() {
                     <span className="text-xs font-normal text-[#7a8fa6] ml-1.5">RMS (g)</span>
                   </div>
                   <p className="text-[11px] text-[#7a8fa6] mt-1.5 leading-relaxed">
-                    Measures ground motion & elastic pipe-wall seismic waves induced by pressurized fluid escape turbulence.
+                    Piezoelectric film sensor isolated via EL817 optocoupler, measuring elastic pipe-wall acoustic waves induced by fluid escape turbulence.
                   </p>
                 </div>
               </div>
@@ -496,7 +496,7 @@ export default function NetworkOverviewPage() {
               Sensor Nodes Status (S1–S6)
             </h3>
             <p className="text-xs text-[#7a8fa6]">
-              Live telemetry via CAT6 multiplex bus · 3 transducers per station (Flow · Pressure · Seismic Wave)
+              Live telemetry via 2AWG shielded cable · 3 transducers per station (Flow · Pressure · Seismic Wave)
             </p>
           </div>
         </div>
@@ -509,7 +509,7 @@ export default function NetworkOverviewPage() {
                 <th className="py-2.5 px-4">Status</th>
                 <th className="py-2.5 px-4">Sampling Mode</th>
                 <th className="py-2.5 px-4 text-right text-[#00b4d8]">Flow (Pulse)</th>
-                <th className="py-2.5 px-4 text-right text-[#818cf8]">Pressure (ADC)</th>
+                <th className="py-2.5 px-4 text-right text-[#818cf8]">Pressure (ADS1115)</th>
                 <th className="py-2.5 px-4 text-right text-[#f59e0b]">Seismic Wave (g)</th>
                 <th className="py-2.5 px-4">Last Seen</th>
                 <th className="py-2.5 px-4 text-center">Action</th>

@@ -18,6 +18,9 @@ import {
   Zap,
   Trash2,
   Terminal,
+  Gauge,
+  Power,
+  Sliders,
 } from "lucide-react";
 
 export default function SimulationPage() {
@@ -31,6 +34,9 @@ export default function SimulationPage() {
   const [activeZone, setActiveZone] = useState<ZoneId>(2);
   const [magnitude, setMagnitude] = useState<"small" | "medium" | "large">("medium");
   const [isSending, setIsSending] = useState(false);
+  const [pumpOn, setPumpOn] = useState(true);
+  const [pumpPwm, setPumpPwm] = useState(190); // ~75% duty cycle (BOM standard)
+  const [pidAutoBalance, setPidAutoBalance] = useState(true);
   const [logs, setLogs] = useState<string[]>([
     "Rig simulation service connected. Ready to generate test cycles.",
   ]);
@@ -40,6 +46,18 @@ export default function SimulationPage() {
       `[${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}] ${msg}`,
       ...prev.slice(0, 19),
     ]);
+  };
+
+  const handleTogglePump = () => {
+    const nextState = !pumpOn;
+    setPumpOn(nextState);
+    addLog(`Water Pump: ${nextState ? "ON (PWM Active)" : "OFF (0% Duty Cycle via LR7843 MOSFET)"}`);
+  };
+
+  const handlePwmChange = (val: number) => {
+    setPumpPwm(val);
+    const pct = Math.round((val / 255) * 100);
+    addLog(`Pump PWM adjusted to: ${val}/255 (${pct}% Duty Cycle). Target Flow: ${(8 + (val / 255) * 4).toFixed(1)} LPM`);
   };
 
   const handleToggleDataSource = async (mode: "simulated" | "live") => {
@@ -185,8 +203,147 @@ export default function SimulationPage() {
 
       {/* Grid: Controls & Output */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 spans): Injectors */}
+        {/* Left Column (2 spans): Injectors & Pump Control */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Water Pump & PWM Pressure Controller Card */}
+          <Card glow={true}>
+            <CardHeader
+              title={
+                <div className="flex items-center gap-2">
+                  <Power className={`w-4 h-4 ${pumpOn ? "text-emerald-400" : "text-slate-500"}`} />
+                  <span>Water Pump & PWM Pressure Control</span>
+                </div>
+              }
+              subtitle="24V Brushless Centrifugal Pump (JT-800D) paired with LR7843 MOSFET PWM Driver"
+              action={
+                <Badge variant={pumpOn ? "success" : "neutral"} dot size="sm">
+                  {pumpOn ? `RUNNING (${Math.round((pumpPwm / 255) * 100)}% PWM)` : "STOPPED"}
+                </Badge>
+              }
+            />
+            <CardContent className="space-y-4">
+              {/* Pump Metrics & Controls */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-[#0a0d12] rounded-lg border border-[#1e2733]">
+                  <div className="text-[11px] text-[#7a8fa6]">Target Flow Rate</div>
+                  <div className="text-xl font-bold tabular-nums text-[#00b4d8] mt-0.5">
+                    {pumpOn ? (8 + (pumpPwm / 255) * 4).toFixed(1) : "0.0"} <span className="text-xs font-normal text-[#7a8fa6]">LPM</span>
+                  </div>
+                  <div className="text-[10px] text-[#4a5a6e] mt-1">Native 1/2&quot; BSP/NPT Loop</div>
+                </div>
+
+                <div className="p-3 bg-[#0a0d12] rounded-lg border border-[#1e2733]">
+                  <div className="text-[11px] text-[#7a8fa6]">Supply Head Pressure</div>
+                  <div className="text-xl font-bold tabular-nums text-[#818cf8] mt-0.5">
+                    {pumpOn ? (2.5 + (pumpPwm / 255) * 2.5).toFixed(2) : "0.00"} <span className="text-xs font-normal text-[#7a8fa6]">bar</span>
+                  </div>
+                  <div className="text-[10px] text-[#4a5a6e] mt-1">5–7m Head Capability</div>
+                </div>
+
+                <div className="p-3 bg-[#0a0d12] rounded-lg border border-[#1e2733] flex flex-col justify-between">
+                  <div>
+                    <div className="text-[11px] text-[#7a8fa6]">PID Pressure Balancing</div>
+                    <div className="text-xs font-bold text-emerald-400 mt-1">
+                      {pidAutoBalance ? "ACTIVE (Station 1 Feedback)" : "MANUAL OPEN LOOP"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const next = !pidAutoBalance;
+                      setPidAutoBalance(next);
+                      addLog(`PID Automatic Pressure Balancing: ${next ? "ENABLED" : "DISABLED"}`);
+                    }}
+                    className="text-[10px] text-left text-[#7a8fa6] hover:text-white underline cursor-pointer mt-1"
+                  >
+                    Toggle Closed-Loop Auto
+                  </button>
+                </div>
+              </div>
+
+              {/* PWM Duty Cycle Slider */}
+              <div className="space-y-2 pt-2 border-t border-[#1e2733]">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-white flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-[#00b4d8]" />
+                    ESP32-S3 PWM Signal (`ledcWrite`):
+                  </span>
+                  <span className="font-mono text-[#00b4d8] font-bold">
+                    {pumpPwm} / 255 ({Math.round((pumpPwm / 255) * 100)}% Duty Cycle)
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max="255"
+                  value={pumpPwm}
+                  onChange={(e) => handlePwmChange(Number(e.target.value))}
+                  className="w-full h-2 bg-[#1e2733] rounded-lg appearance-none cursor-pointer accent-[#00b4d8]"
+                />
+
+                {/* Quick Presets */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setPumpOn(false);
+                        setPumpPwm(0);
+                        addLog("Pump Cutoff: 0% Duty Cycle (MOSFET Pin LOW)");
+                      }}
+                      className="px-2 py-1 rounded bg-[#0a0d12] border border-[#1e2733] text-[#7a8fa6] hover:text-white"
+                    >
+                      OFF (0%)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPumpOn(true);
+                        handlePwmChange(128);
+                      }}
+                      className="px-2 py-1 rounded bg-[#0a0d12] border border-[#1e2733] text-[#7a8fa6] hover:text-white"
+                    >
+                      Low (50%)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPumpOn(true);
+                        handlePwmChange(190);
+                      }}
+                      className="px-2 py-1 rounded bg-[#0a0d12] border border-[#00b4d844] text-[#00b4d8]"
+                    >
+                      Nominal (75%)
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPumpOn(true);
+                        handlePwmChange(255);
+                      }}
+                      className="px-2 py-1 rounded bg-[#0a0d12] border border-[#1e2733] text-[#7a8fa6] hover:text-white"
+                    >
+                      Max (100%)
+                    </button>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant={pumpOn ? "destructive" : "primary"}
+                    onClick={handleTogglePump}
+                    icon={<Power className="w-3.5 h-3.5" />}
+                  >
+                    {pumpOn ? "Stop Pump (Cut Power)" : "Start Pump"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Hardware Vibration Isolation Note */}
+              <div className="p-2.5 rounded bg-[#0a0d12] border border-[#1e2733] text-[10px] text-[#7a8fa6] flex items-center justify-between">
+                <span>
+                  Plumbing: 4–6&quot; flexible silicone coupling isolates centrifugal motor hum from rigid 1/2&quot; PVC loop.
+                </span>
+                <span className="text-[#00b4d8] font-bold">Clean Piezo Readings</span>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Pipe Leak Injection Card */}
           <Card glow={true}>
             <CardHeader

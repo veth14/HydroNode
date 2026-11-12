@@ -51,19 +51,19 @@ export function Legend({
           </span>
         </div>
 
-        {/* 3 Physical Sensors on CAT6 Bus & Leak Valve */}
+        {/* 3 Physical Sensors & Leak Simulation Valve */}
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-[#00b4d8]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00b4d8]" />
-            Flow (Pulse)
+            Flow (Pulse/EL817)
           </span>
           <span className="flex items-center gap-1 text-[#818cf8]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#818cf8]" />
-            Pressure (Analog)
+            Pressure (ADS1115 I²C)
           </span>
           <span className="flex items-center gap-1 text-[#f59e0b]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#f59e0b]" />
-            Seismic (Wave/SPI)
+            Seismic (Piezo/EL817)
           </span>
           <span className="flex items-center gap-1 text-slate-400 pl-2 border-l border-[#1e2733]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#b45309]" />
@@ -94,10 +94,10 @@ export function Legend({
               ? "bg-[#00b4d822] text-[#00b4d8] border border-[#00b4d844]"
               : "text-[#7a8fa6] hover:text-[#e8edf2]"
           }`}
-          title="Toggle CAT6 Multiplex Lines"
+          title="Toggle Station Signal Cables"
         >
           <Cpu className="w-3 h-3" />
-          CAT6 Bus
+          Signal Cables
         </button>
 
         <button

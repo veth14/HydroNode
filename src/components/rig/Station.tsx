@@ -3,9 +3,9 @@
 // Sensor clamp station module (S1–S6) on the straight PVC pipe.
 // Clean, professional SCADA / P&ID instrument presentation:
 // Displays the 3 physical sensors per station in a compact, high-contrast enclosure:
-// 1. Flow Sensor (Pulse): Q L/min
-// 2. Pressure Sensor (Analog 12-bit ADC): P bar
-// 3. Seismic Wave Sensor (SPI MEMS/Geophone): S g RMS
+// 1. Flow Sensor (Hall-Effect Pulse via EL817): Q L/min
+// 2. Pressure Sensor (5V Transducer via ADS1115 16-bit I2C ADC): P bar
+// 3. Seismic Sensor (Piezoelectric Film Module via EL817): S g RMS
 
 import type { StationId, StationPos } from "@/config/rig";
 import type { LiveStation } from "@/types";
@@ -76,7 +76,7 @@ export function Station({
 
       {/* Subtle Upper Flange (In-Line Flow Meter Coupling) */}
       <rect x="-14" y="-40" width="28" height="4" rx="1" fill="#1e293b" stroke="#334155" strokeWidth="0.8" />
-      {/* Subtle Lower Clamp (Seismic Geophone Bracket) */}
+      {/* Subtle Lower Clamp (Piezoelectric Film Clamp Bracket) */}
       <rect x="-14" y="36" width="28" height="4" rx="1" fill="#1e293b" stroke="#334155" strokeWidth="0.8" />
 
       {/* Industrial Collar Enclosure */}
@@ -128,7 +128,7 @@ export function Station({
         </text>
       </g>
 
-      {/* 2. Pressure Sensor (Analog ADC) -> Indigo */}
+      {/* 2. Pressure Sensor (ADS1115 16-bit I2C) -> Indigo */}
       <g transform="translate(-20, 5)">
         <rect x="0" y="0" width="40" height="9.5" rx="2" fill="#818cf812" stroke="#818cf835" strokeWidth="0.8" />
         <circle cx="4.5" cy="4.7" r="1.8" fill="#818cf8" />
@@ -137,7 +137,7 @@ export function Station({
         </text>
       </g>
 
-      {/* 3. Seismic Wave Sensor (SPI MEMS) -> Amber */}
+      {/* 3. Seismic Sensor (Piezoelectric Film via EL817) -> Amber */}
       <g transform="translate(-20, 17)">
         <rect x="0" y="0" width="40" height="9.5" rx="2" fill="#f59e0b12" stroke="#f59e0b35" strokeWidth="0.8" />
         <circle cx="4.5" cy="4.7" r="1.8" fill="#f59e0b" />

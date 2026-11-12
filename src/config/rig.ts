@@ -131,8 +131,8 @@ export const TEST_POINTS: TestPoint[] = [
   { id: "TP5", zoneId: 5, x: 890, y: 190, label: "Leak Valve Z5" },
 ];
 
-// Single above-ground ESP32 controller mounted at top center
-export const ESP32_POS = { x: 490, y: 35, width: 220, height: 95 };
+// Single above-ground ESP32-S3 controller mounted at top center
+export const ESP32_POS = { x: 480, y: 35, width: 240, height: 95 };
 
 // Geographic coordinates for site map
 export const SITE_CENTER: [number, number] = [14.6507, 120.9822];

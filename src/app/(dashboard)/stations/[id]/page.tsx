@@ -2,9 +2,9 @@
 // src/app/(dashboard)/stations/[id]/page.tsx
 // Detailed analytics for a single station (S1–S6) — Mission Control SCADA System.
 // Highlights the 3 physical sensors per station, with primary focus on the SEISMIC WAVE GRAPH:
-// 1. Seismic Wave Sensor (MEMS/Geophone via SPI -> High-density Digital Seismogram & RMS Acceleration in g)
-// 2. Flow Sensor (Pulse pin interrupt -> Q L/min)
-// 3. Pressure Sensor (Analog 12-bit ADC -> P bar)
+// 1. Seismic Sensor (Piezoelectric Film via EL817 -> High-density Digital Seismogram & RMS Acceleration in g)
+// 2. Flow Sensor (Hall-Effect Pulse via EL817 -> Q L/min)
+// 3. Pressure Sensor (5V Transducer via ADS1115 16-bit I2C ADC -> P bar)
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
@@ -144,9 +144,9 @@ export default function StationDetailPage() {
         // Linearly interpolate amplitude between consecutive real readings
         const amp = ampCur + (ampNext - ampCur) * frac;
 
-        // High-frequency oscillation carrier: fast sine at ~8 cycles per inter-sample gap.
-        // This is what makes the waveform look like dense seismograph needles.
-        const phase = (i * SUBS + s) * 0.79; // irrational step → no repeating pattern
+        // Time-continuous carrier oscillation: smooth scrolling as real time advances
+        const timeSec = t.getTime() / 1000;
+        const phase = timeSec * 14.5;
         const carrier = Math.sin(phase * 2.47) * 0.72           // primary carrier
                       + Math.sin(phase * 5.13 + 1.1) * 0.22    // 2nd harmonic
                       + Math.sin(phase * 11.3 + 2.7) * 0.06;   // 3rd harmonic (fine texture)
@@ -203,7 +203,7 @@ export default function StationDetailPage() {
               </Badge>
             </div>
             <p className="text-xs text-[#7a8fa6] mt-0.5">
-              Elastic ground/pipe seismic wave telemetry · Flow pulse interrupts · 12-bit analog pressure
+              Elastic ground/pipe seismic wave telemetry · Flow pulse interrupts · 16-bit I2C pressure (ADS1115)
             </p>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function StationDetailPage() {
           tone={
             (currentStation?.latestVibration ?? 0) > 0.15 ? "warning" : "default"
           }
-          badge="SPI · Seismic"
+          badge="Piezo · EL817"
         />
 
         <Stat
@@ -259,7 +259,7 @@ export default function StationDetailPage() {
         />
 
         <Stat
-          label="Pressure (Analog ADC)"
+          label="Pressure (ADS1115 I²C)"
           value={
             currentStation?.latestPressure != null
               ? currentStation.latestPressure.toFixed(2)
@@ -269,7 +269,7 @@ export default function StationDetailPage() {
           subtext={`Baseline P₀: ${currentBaseline.p0} bar`}
           icon={<Gauge className="w-4 h-4 text-[#818cf8]" />}
           tone="default"
-          badge="12-Bit ADC"
+          badge="ADS1115 I²C"
         />
 
         <Stat
@@ -319,7 +319,7 @@ export default function StationDetailPage() {
                 ? "Smoothed RMS energy magnitude (g) compared to 0.150 g trigger threshold"
                 : chartMode === "flow"
                 ? "Pulse turbine volumetric flow rate in L/min"
-                : "12-bit ADC piezoresistive line pressure in bar"}
+                : "5V transducer via ADS1115 16-bit I2C ADC in bar"}
             </p>
           </div>
 
@@ -327,7 +327,10 @@ export default function StationDetailPage() {
             {/* Mode Selector Tabs */}
             <div className="flex items-center gap-1 bg-[#0a0d12] p-1 rounded-lg border border-[#1e2733] text-xs">
               <button
-                onClick={() => setChartMode("seismic_wave")}
+                onClick={() => {
+                  setChartMode("seismic_wave");
+                  if (range !== "1h") setRange("1h");
+                }}
                 className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
                   chartMode === "seismic_wave"
                     ? "bg-[#f59e0b] text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
@@ -373,7 +376,12 @@ export default function StationDetailPage() {
               {(["1h", "24h", "7d", "30d"] as const).map((r) => (
                 <button
                   key={r}
-                  onClick={() => setRange(r)}
+                  onClick={() => {
+                    setRange(r);
+                    if (r !== "1h" && chartMode === "seismic_wave") {
+                      setChartMode("seismic_rms");
+                    }
+                  }}
                   className={`px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer ${
                     range === r
                       ? "bg-slate-700 text-white"
@@ -601,7 +609,7 @@ export default function StationDetailPage() {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="text-[11px] text-slate-300">
-              SPI Geophone / MEMS Bus Active · On-Device Random Forest
+              Piezoelectric Film Sensor Active · On-Device Random Forest
             </span>
           </div>
         </div>
@@ -618,11 +626,11 @@ export default function StationDetailPage() {
                 Seismic Wave FFT Spectrum (P/S Elastic Wavebands)
               </h3>
               <span className="text-[10px] px-2 py-0.5 rounded bg-[#f59e0b15] text-[#f59e0b] border border-[#f59e0b30] font-mono">
-                SPI Geophone/MEMS
+                Piezoelectric Film
               </span>
             </div>
             <p className="text-xs text-[#7a8fa6] mt-0.5">
-              Low-frequency energy distribution (15 Hz – 360 Hz) classified on ESP32
+              Turbulence & structural vibration energy distribution (15 Hz – 360 Hz) classified on ESP32-S3
             </p>
           </div>
 
@@ -734,7 +742,7 @@ export default function StationDetailPage() {
               <span>Transducer Specifications & Bus Pinout</span>
             </div>
           }
-          subtitle={`Physical wiring mapping from Station ${stationId} to the ESP32 Controller`}
+          subtitle={`Physical wiring mapping from Station ${stationId} to the ESP32-S3 Controller`}
         />
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
@@ -742,10 +750,10 @@ export default function StationDetailPage() {
             <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
               <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
                 <span className="font-bold text-[#f59e0b]">1. Seismic Wave Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">SPI · Seismic</span>
+                <span className="text-[10px] text-[#7a8fa6]">Piezo · EL817</span>
               </div>
               <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
-                Clamped geophone / seismic MEMS accelerometer capturing elastic ground motion & low-frequency P/S wave propagation induced by pipe wall fracture turbulence.
+                Piezoelectric film sensor module isolated via EL817 optocoupler (5V→3.3V), capturing pipe-wall elastic vibrations and acoustic bursts generated by pressurized water escape turbulence.
               </p>
               <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
                 <strong>Algorithm Role:</strong> Feeds seismic RMS velocity & peak wave frequency to on-device Random Forest classifier.
@@ -756,10 +764,10 @@ export default function StationDetailPage() {
             <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
               <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
                 <span className="font-bold text-[#00b4d8]">2. Flow Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">Hall Pulse</span>
+                <span className="text-[10px] text-[#7a8fa6]">Hall / EL817</span>
               </div>
               <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
-                Measures volumetric water passage in <strong className="text-white">L/min</strong>. Outputs square wave frequency proportional to velocity.
+                Hall-effect water flow turbine measuring volumetric flow in <strong className="text-white">L/min</strong>. Isolated via EL817 optocoupler to ESP32-S3 GPIO pulse interrupts.
               </p>
               <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
                 <strong>Algorithm Role:</strong> Inter-station flow difference ΔQ = Q_up − Q_down flags leaking pipe segment.
@@ -770,10 +778,10 @@ export default function StationDetailPage() {
             <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
               <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
                 <span className="font-bold text-[#818cf8]">3. Pressure Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">0–5V Analog</span>
+                <span className="text-[10px] text-[#7a8fa6]">ADS1115 16-bit I²C</span>
               </div>
               <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
-                Piezoresistive diaphragm transducer measuring static/dynamic line pressure in <strong className="text-white">bar</strong>.
+                5V piezoresistive transducer (0.5–4.5V) scaled with 10kΩ/20kΩ voltage dividers and digitized with ADS1115 16-bit I2C ADC, measuring line pressure in <strong className="text-white">bar</strong>.
               </p>
               <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
                 <strong>Algorithm Role:</strong> Drop rate ΔP feeds Severity Index: SI = (P₀ − P) / P₀ × 100%.

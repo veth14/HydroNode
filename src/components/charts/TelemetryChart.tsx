@@ -4,8 +4,8 @@
 // 100% data-driven: moves in real time as live readings arrive.
 // 1. Seismic Waveform (Oscillogram) -> Live oscillating ground motion A(t) derived from data
 // 2. All 3 Sensors -> Dual Y-axis (Left: Flow & Pressure; Right: Seismic Wave RMS)
-// 3. Flow (Pulse interrupt) -> #00b4d8
-// 4. Pressure (Analog 12-bit ADC) -> #818cf8
+// 3. Flow (Hall-Effect Pulse via EL817) -> #00b4d8
+// 4. Pressure (ADS1115 16-bit I2C ADC) -> #818cf8
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
@@ -97,8 +97,9 @@ export function TelemetryChart({
         // Interpolate amplitude between consecutive real readings
         const amp = ampCur + (ampNext - ampCur) * frac;
 
-        // Multi-harmonic oscillation carrier (irrational phase steps = no repeating pattern)
-        const phase = (i * SUBS + s) * 0.79;
+        // Time-continuous carrier oscillation: smooth scrolling as real time advances
+        const timeSec = subTime.getTime() / 1000;
+        const phase = timeSec * 14.5;
         const carrier = Math.sin(phase * 2.47) * 0.72        // primary carrier
                       + Math.sin(phase * 5.13 + 1.1) * 0.22  // 2nd harmonic
                       + Math.sin(phase * 11.3 + 2.7) * 0.06; // fine texture
@@ -122,7 +123,7 @@ export function TelemetryChart({
     : `+${(latestVib * 0.4).toFixed(3)} g / −${(latestVib * 0.4).toFixed(3)} g`;
 
   return (
-    <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] shadow-xs flex flex-col h-full font-mono">
+    <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] shadow-xs flex flex-col font-mono">
       {/* Header with Title and Station Pills */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-2 border-b border-[#1e2733]">
         <div className="flex items-center gap-2.5">
@@ -211,7 +212,7 @@ export function TelemetryChart({
             }`}
           >
             <Gauge className="w-3.5 h-3.5" />
-            Pressure (Analog)
+            Pressure (ADS1115)
           </button>
         </div>
 
@@ -228,7 +229,7 @@ export function TelemetryChart({
       </div>
 
       {/* Main Chart Canvas */}
-      <div className="flex-1 w-full min-h-[280px]">
+      <div className="w-full h-[300px]">
         {isLoading && chartData.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-[#7a8fa6] animate-pulse">
             Connecting to live telemetry stream...
@@ -356,7 +357,7 @@ export function TelemetryChart({
                 yAxisId="hydraulic"
                 type="monotone"
                 dataKey="pressure"
-                name="Pressure (ADC) [bar]"
+                name="Pressure (ADS1115) [bar]"
                 stroke="#818cf8"
                 strokeWidth={2}
                 dot={false}
@@ -366,7 +367,7 @@ export function TelemetryChart({
                 yAxisId="seismic"
                 type="monotone"
                 dataKey="seismicRms"
-                name="Seismic Wave RMS (SPI) [g]"
+                name="Seismic Wave RMS (Piezo) [g]"
                 stroke="#f59e0b"
                 strokeWidth={2}
                 dot={false}
@@ -416,7 +417,7 @@ export function TelemetryChart({
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          /* PRESSURE (12-BIT ANALOG ADC) */
+          /* PRESSURE (ADS1115 16-BIT I2C ADC) */
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
@@ -469,12 +470,12 @@ export function TelemetryChart({
               : activeMetric === "all"
               ? "Dual-Axis SCADA Telemetry: Left axis = Flow & Pressure; Right axis = Seismic RMS (g)"
               : activeMetric === "flow"
-              ? "Flow Telemetry: Hall effect pulse counting calibrated to volumetric L/min"
-              : "Pressure Telemetry: Piezoresistive diaphragm transducer calibrated to bar"}
+              ? "Flow Telemetry: Hall effect pulse counting via EL817 optocoupler calibrated to L/min"
+              : "Pressure Telemetry: 5V piezoresistive transducer via ADS1115 16-bit I2C ADC calibrated to bar"}
           </span>
         </div>
         <div className="text-[10px] text-[#4a5a6e]">
-          SPI BUS · 6× CS NODES · 3S LIVE POLLING
+          I²C ADS1115 · EL817 ISOLATION · 3S LIVE POLLING
         </div>
       </div>
     </div>
