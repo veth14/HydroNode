@@ -1,37 +1,33 @@
 @import "tailwindcss";
 
-/* ─── Ultra-Premium SaaS Design Tokens (FlowAI / Linear / Stripe Style) ─── */
+/* ─── HydroNode Design Tokens ─── */
 :root {
-  /* Surfaces */
-  --surface-canvas:   #f1f3f6; /* Soft warm-neutral backdrop */
-  --surface-card:     #ffffff; /* Crisp pure white */
-  --surface-subtle:   #f8f9fb; /* Delicate light tint */
-  --surface-border:   #e5e8ec; /* Subtle border */
-  --surface-border-subtle: #edf0f3;
+  --surface-canvas:        #eef1f5;
+  --surface-card:          #ffffff;
+  --surface-subtle:        #f4f6f9;
+  --surface-border:        #e2e6ec;
+  --surface-border-subtle: #edf0f4;
 
-  /* Text Hierarchy */
-  --text-primary:     #0f172a; /* Slate 900 */
-  --text-secondary:   #475569; /* Slate 600 */
-  --text-muted:       #94a3b8; /* Slate 400 */
-  --text-light:       #cbd5e1; /* Slate 300 */
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+  --text-light:     #cbd5e1;
 
-  /* Premium Accents */
-  --accent-dark:      #0f172a; /* Charcoal / Dark Slate for primary CTAs */
-  --accent-primary:   #0284c7; /* Sky 600 */
-  --accent-soft:      #e0f2fe; /* Sky 100 */
+  --accent-dark:    #0f172a;
+  --accent-primary: #0284c7;
+  --accent-soft:    #e0f2fe;
 
-  /* Semantic Colors */
-  --success:          #10b981; /* Emerald 500 */
-  --success-bg:       #ecfdf5; /* Emerald 50 */
-  --success-text:     #047857; /* Emerald 700 */
+  --success:      #10b981;
+  --success-bg:   #ecfdf5;
+  --success-text: #047857;
 
-  --warning:          #f59e0b; /* Amber 500 */
-  --warning-bg:       #fffbeb; /* Amber 50 */
-  --warning-text:     #b45309; /* Amber 700 */
+  --warning:      #f59e0b;
+  --warning-bg:   #fffbeb;
+  --warning-text: #b45309;
 
-  --danger:           #ef4444; /* Red 500 */
-  --danger-bg:        #fef2f2; /* Red 50 */
-  --danger-text:      #b91c1c; /* Red 700 */
+  --danger:      #ef4444;
+  --danger-bg:   #fef2f2;
+  --danger-text: #b91c1c;
 }
 
 /* Base Body */
@@ -46,85 +42,116 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle, Elegant Scrollbar */
+/* Subtle Scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
 }
-*::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-*::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+*::-webkit-scrollbar        { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track  { background: transparent; }
+*::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-/* Premium Card Shadows */
+/* ─── Card Shadows (depth layers) ─── */
 .shadow-premium {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 4px 16px 0 rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.04),
+    0 4px 12px rgba(0,0,0,0.05),
+    0 8px 24px rgba(0,0,0,0.04);
 }
-
 .shadow-subtle {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
 .shadow-floating {
-  box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.05), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.04),
+    0 12px 36px rgba(0,0,0,0.08),
+    0 24px 48px rgba(0,0,0,0.04);
+}
+.shadow-card-hover {
+  box-shadow:
+    0 4px 8px rgba(0,0,0,0.06),
+    0 16px 40px rgba(0,0,0,0.08);
 }
 
-/* Dotted fluted accent bar */
+/* ─── Canvas dot grid texture (like Figma / Linear canvas) ─── */
+.canvas-grid {
+  background-image: radial-gradient(circle, #c8cdd7 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ─── Fluted pinstripe accent bar (card footer) ─── */
+.pattern-fluted {
+  background: repeating-linear-gradient(
+    90deg,
+    #d1d5db 0,
+    #d1d5db 1px,
+    transparent 1px,
+    transparent 6px
+  );
+}
+
+/* ─── Old dots pattern (kept for compat) ─── */
 .pattern-dots {
   background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
   background-size: 8px 8px;
 }
 
-/* Fluted vertical barcode/pinstripe accent bar matching FlowAI reference */
-.pattern-fluted {
-  background: repeating-linear-gradient(
-    90deg,
-    #cbd5e1 0,
-    #cbd5e1 1px,
-    transparent 1px,
-    transparent 5px
-  );
+/* ─── Sidebar: left-border active indicator ─── */
+.nav-active-indicator {
+  position: relative;
+}
+.nav-active-indicator::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 2px 2px 0;
+  background: #0f172a;
 }
 
-/* Keyframe animations */
+/* ─── Keyframe animations ─── */
 @keyframes waterFlow {
   from { stroke-dashoffset: 60; }
-  to   { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 0;  }
 }
-
 @keyframes pulseRing {
   0%   { transform: scale(1);   opacity: 0.8; }
-  100% { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1.5); opacity: 0;   }
 }
-
 @keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }
 
-.animate-flow       { animation: waterFlow 1.8s linear infinite; }
-.animate-pulse-ring { animation: pulseRing 1.4s ease-out infinite; }
-.animate-fade-in    { animation: fadeSlideIn 0.2s ease-out both; }
+.animate-flow        { animation: waterFlow 1.8s linear infinite; }
+.animate-pulse-ring  { animation: pulseRing 1.4s ease-out infinite; }
+.animate-fade-in     { animation: fadeSlideIn 0.2s ease-out both; }
+.animate-fade-up     { animation: fadeSlideUp 0.3s ease-out both; }
+.animate-shimmer {
+  background: linear-gradient(90deg, #f0f4f8 25%, #e8ecf0 50%, #f0f4f8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+}
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-flow,
-  .animate-ping,
-  .animate-pulse,
-  .animate-spin {
+  .animate-flow, .animate-ping, .animate-pulse, .animate-spin,
+  .animate-shimmer, .animate-fade-up {
     animation: none !important;
   }
 }

@@ -102,34 +102,49 @@ export default function NetworkOverviewPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 font-sans">
-      {/* ─── 1. Header Section (Welcome Back + Date + Dark Primary CTA) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Welcome Back, Operator!
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Autonomous pipeline integrity monitor & acoustic leak localization powered by ESP32-S3.
-          </p>
-        </div>
+      {/* ─── 1. Header Section ─── */}
+      <div className="relative rounded-2xl overflow-hidden bg-white border border-slate-200/80
+        shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_20px_rgba(0,0,0,0.05)] p-6">
+        {/* Subtle gradient backdrop inside the header card */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-sky-50/40 pointer-events-none" />
+        {/* Decorative dot grid top-right */}
+        <div className="absolute right-0 top-0 w-48 h-full pattern-dots opacity-30 pointer-events-none" />
 
-        <div className="flex items-center gap-3">
-          {/* Date pill badge */}
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-medium text-slate-600 shadow-2xs">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <span>{formattedDate}</span>
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                SCADA LIVE
+              </span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Welcome Back, Operator!
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Autonomous pipeline integrity monitor & acoustic leak localization powered by ESP32-S3.
+            </p>
           </div>
 
-          {/* Dark Charcoal Primary CTA */}
-          <Link href="/simulation">
-            <Button
-              variant="primary"
-              size="md"
-              icon={<Plus className="w-4 h-4" />}
-            >
-              Simulate Leak
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* Date pill badge */}
+            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-medium text-slate-600
+              shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>{formattedDate}</span>
+            </div>
+
+            {/* Dark Charcoal Primary CTA */}
+            <Link href="/simulation">
+              <Button
+                variant="primary"
+                size="md"
+                icon={<Plus className="w-4 h-4" />}
+              >
+                Simulate Leak
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 

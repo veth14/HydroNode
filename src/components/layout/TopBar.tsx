@@ -43,7 +43,9 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3.5 bg-white/80 backdrop-blur-md border-b border-slate-200/80 select-none">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3.5 select-none
+      bg-white/90 backdrop-blur-xl border-b border-slate-200/60
+      shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]">
       {/* Left: Current Page Breadcrumb */}
       <div className="flex items-center gap-2 text-slate-700">
         <LayoutDashboard className="w-4 h-4 text-slate-400" />

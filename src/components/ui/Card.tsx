@@ -1,6 +1,6 @@
 "use client";
 // src/components/ui/Card.tsx
-// Ultra-Premium Card component with diffused shadows and rounded-2xl geometry.
+// Premium Card with richer shadow layering, fluted footer, and inset highlight.
 
 import React from "react";
 
@@ -13,11 +13,15 @@ interface CardProps {
 export function Card({ children, className = "", hasFlutedFooter = false }: CardProps) {
   return (
     <div
-      className={`bg-white border border-slate-200/80 rounded-2xl shadow-premium overflow-hidden transition-all ${className}`}
+      className={`relative bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all duration-200
+        shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05),0_8px_24px_rgba(0,0,0,0.04)]
+        ${className}`}
     >
+      {/* Inset top highlight line */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none" />
       {children}
       {hasFlutedFooter && (
-        <div className="h-3.5 w-full pattern-fluted border-t border-slate-100 opacity-60" />
+        <div className="h-4 w-full pattern-fluted border-t border-slate-100 opacity-50" />
       )}
     </div>
   );
@@ -36,14 +40,14 @@ export function CardHeader({
 }) {
   return (
     <div
-      className={`flex items-start justify-between gap-4 p-5 pb-4 border-b border-slate-100 ${className}`}
+      className={`flex items-start justify-between gap-4 px-5 pt-5 pb-4 border-b border-slate-100 ${className}`}
     >
       <div className="space-y-0.5 min-w-0">
-        <h3 className="text-sm font-semibold text-slate-900 tracking-tight truncate">
+        <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
           {title}
         </h3>
         {subtitle && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             {subtitle}
           </p>
         )}
