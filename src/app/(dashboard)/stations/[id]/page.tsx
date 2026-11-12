@@ -197,14 +197,14 @@ export default function StationDetailPage() {
         </div>
 
         {/* Station Navigation Pill Bar */}
-        <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200/80 shadow-2xs">
           {STATION_IDS.map((sid) => (
             <Link
               key={sid}
               href={`/stations/${sid}`}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
                 sid === stationId
-                  ? "bg-sky-600 text-white shadow-xs"
+                  ? "bg-slate-900 text-white shadow-2xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -253,7 +253,7 @@ export default function StationDetailPage() {
       </div>
 
       {/* Main Feature: Seismic Wave Seismogram & Telemetry Visualizer */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-premium space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2">
@@ -575,14 +575,14 @@ export default function StationDetailPage() {
       {/* Secondary Row: FFT Spectrum & Hydraulic Correlation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: FFT Spectrum */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-3">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-premium space-y-3">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
                 <Activity className="w-4 h-4 text-amber-600" />
                 Seismic Wave FFT Spectrum (P/S Elastic Wavebands)
               </h3>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
                 Piezoelectric Film
               </span>
             </div>
@@ -616,7 +616,7 @@ export default function StationDetailPage() {
         </div>
 
         {/* Right: Hydraulic Correlation */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-3">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-premium space-y-3">
           <div>
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
