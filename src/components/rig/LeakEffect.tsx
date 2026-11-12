@@ -1,7 +1,7 @@
 "use client";
 // src/components/rig/LeakEffect.tsx
-// Professional industrial SCADA leak alarm indicator (ISA-101 High Performance HMI standard).
-// Highlights the compromised pipe segment and provides a clean, restrained telemetry callout.
+// Professional industrial SCADA leak alarm indicator in Light Mode.
+// High-visibility, crisp ISA-101 compliant visualization.
 
 import type { LiveAlert } from "@/types";
 import { ZONES, type ZoneId } from "@/config/rig";
@@ -11,7 +11,6 @@ interface LeakEffectProps {
   vibrationRms?: number;
 }
 
-// Physical leak detection coordinate per zone along the pipe
 const ZONE_LEAK_ANCHORS: Record<ZoneId, { x: number; y: number; isTop: boolean }> = {
   1: { x: 190, y: 190, isTop: true },
   2: { x: 350, y: 550, isTop: false },
@@ -20,7 +19,6 @@ const ZONE_LEAK_ANCHORS: Record<ZoneId, { x: number; y: number; isTop: boolean }
   5: { x: 890, y: 190, isTop: true },
 };
 
-// Exact pipe run for each zone between bounding stations
 const ZONE_PIPE_PATHS: Record<ZoneId, string> = {
   1: "M 120,360 L 120,190 L 260,190 L 260,360",
   2: "M 260,360 L 260,550 L 440,550 L 440,360",
@@ -39,17 +37,15 @@ export function LeakEffect({ alert }: LeakEffectProps) {
   const pipePath = ZONE_PIPE_PATHS[alert.zoneId];
 
   const isHigh = alert.severity === "high";
-  const alertColor = isHigh ? "#ef4444" : "#f59e0b";
+  const alertColor = isHigh ? "#dc2626" : "#d97706";
 
-  // Banner positioned cleanly adjacent to the pipe run
   const bannerY = anchor.isTop ? anchor.y + 26 : anchor.y - 56;
 
   return (
-    <g id={`leak-alarm-${alert.id}`} className="select-none font-mono">
-      {/* ─── 1. COMPROMISED PIPE SEGMENT ALARM OVERLAY ─── */}
+    <g id={`leak-alarm-${alert.id}`} className="select-none">
+      {/* 1. Compromised Pipe Segment Alarm Outline */}
       {pipePath && (
         <g id={`pipe-alarm-zone-${alert.zoneId}`}>
-          {/* Subtle warning glow along the pipe */}
           <path
             d={pipePath}
             fill="none"
@@ -57,10 +53,8 @@ export function LeakEffect({ alert }: LeakEffectProps) {
             strokeWidth="24"
             strokeLinecap="round"
             strokeLinejoin="round"
-            opacity="0.18"
-            className="animate-pulse"
+            opacity="0.15"
           />
-          {/* Inner alarm flow line */}
           <path
             d={pipePath}
             fill="none"
@@ -69,15 +63,14 @@ export function LeakEffect({ alert }: LeakEffectProps) {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeDasharray="8 6"
-            opacity="0.85"
+            opacity="0.9"
             className="animate-flow"
           />
         </g>
       )}
 
-      {/* ─── 2. ORIFICE BREACH LOCATION TARGET (CLEAN SCADA CROSSHAIR) ─── */}
+      {/* 2. Orifice Breach Crosshair Target */}
       <g transform={`translate(${anchor.x}, ${anchor.y})`}>
-        {/* Subtle pulsing indicator ring */}
         <circle
           cx="0"
           cy="0"
@@ -86,47 +79,41 @@ export function LeakEffect({ alert }: LeakEffectProps) {
           stroke={alertColor}
           strokeWidth="1.2"
           className="animate-ping"
-          opacity="0.6"
+          opacity="0.5"
         />
-        {/* Orifice marker */}
-        <circle cx="0" cy="0" r="4.5" fill={alertColor} stroke="#0f1419" strokeWidth="1.5" />
-        {/* Precision crosshair ticks */}
-        <line x1="-8" y1="0" x2="-5" y2="0" stroke={alertColor} strokeWidth="1.2" />
-        <line x1="5" y1="0" x2="8" y2="0" stroke={alertColor} strokeWidth="1.2" />
-        <line x1="0" y1="-8" x2="0" y2="-5" stroke={alertColor} strokeWidth="1.2" />
-        <line x1="0" y1="5" x2="0" y2="8" stroke={alertColor} strokeWidth="1.2" />
+        <circle cx="0" cy="0" r="4.5" fill={alertColor} stroke="#ffffff" strokeWidth="1.5" />
+        <line x1="-8" y1="0" x2="-5" y2="0" stroke={alertColor} strokeWidth="1.5" />
+        <line x1="5" y1="0" x2="8" y2="0" stroke={alertColor} strokeWidth="1.5" />
+        <line x1="0" y1="-8" x2="0" y2="-5" stroke={alertColor} strokeWidth="1.5" />
+        <line x1="0" y1="5" x2="0" y2="8" stroke={alertColor} strokeWidth="1.5" />
       </g>
 
-      {/* ─── 3. CLEAN SCADA TELEMETRY CALLOUT TAG ─── */}
+      {/* 3. Telemetry Callout Card */}
       <g transform={`translate(${anchor.x - 85}, ${bannerY})`}>
-        {/* Minimalist industrial card */}
         <rect
           x="0"
           y="0"
           width="170"
           height="42"
-          rx="5"
-          fill="#0c1219"
+          rx="6"
+          fill="#ffffff"
           stroke={alertColor}
-          strokeWidth="1.2"
+          strokeWidth="1.5"
         />
 
-        {/* Status dot */}
-        <circle cx="10" cy="13" r="3" fill={alertColor} className="animate-pulse" />
-
         {/* Header: Zone & Severity */}
+        <circle cx="10" cy="13" r="3" fill={alertColor} />
         <text
           x="18"
           y="16"
-          fill="#e8edf2"
+          fill="#0f172a"
           fontSize="9.5"
-          fontWeight="700"
-          letterSpacing="0.5"
+          fontWeight="bold"
+          fontFamily="sans-serif"
         >
           {`ZONE ${alert.zoneId} LEAK DETECTED`}
         </text>
 
-        {/* Confidence pill */}
         <text
           x="160"
           y="16"
@@ -134,26 +121,26 @@ export function LeakEffect({ alert }: LeakEffectProps) {
           fontSize="8.5"
           fontWeight="bold"
           textAnchor="end"
+          fontFamily="sans-serif"
         >
           {`${(alert.confidence * 100).toFixed(0)}%`}
         </text>
 
-        {/* Divider */}
-        <line x1="8" y1="23" x2="162" y2="23" stroke="#1e2733" strokeWidth="0.8" />
+        <line x1="8" y1="23" x2="162" y2="23" stroke="#f1f5f9" strokeWidth="1" />
 
-        {/* Telemetry data: Loss rate and flow delta */}
         <text
           x="10"
           y="34"
-          fill="#7a8fa6"
-          fontSize="8"
+          fill="#475569"
+          fontSize="8.5"
+          fontFamily="monospace"
         >
           Rate:{" "}
-          <tspan fill="#ef4444" fontWeight="bold">
+          <tspan fill="#dc2626" fontWeight="bold">
             {alert.leakRate != null ? alert.leakRate.toFixed(1) : "4.8"} L/m
           </tspan>
           {" · "}ΔQ:{" "}
-          <tspan fill="#00b4d8" fontWeight="bold">
+          <tspan fill="#0284c7" fontWeight="bold">
             {`-${alert.features?.flowDifference != null ? alert.features.flowDifference.toFixed(1) : "4.0"} L/m`}
           </tspan>
         </text>

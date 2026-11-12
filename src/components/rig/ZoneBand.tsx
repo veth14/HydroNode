@@ -1,7 +1,7 @@
 "use client";
 // src/components/rig/ZoneBand.tsx
-// Translucent colored zone band behind the pipe with alternating labels.
-// High-contrast industrial SCADA styling.
+// Translucent colored zone band behind the pipe in Light Mode.
+// High-contrast, clean industrial styling.
 
 import type { ZoneMeta } from "@/config/rig";
 import type { Severity } from "@/types";
@@ -27,23 +27,21 @@ export function ZoneBand({
 
   const fillColor =
     severity === "high"
-      ? "#ef4444"
+      ? "#fef2f2"
       : severity === "medium"
-      ? "#f59e0b"
+      ? "#fffbeb"
       : isSelected
-      ? "#00b4d8"
-      : "#1e293b";
+      ? "#f0f9ff"
+      : "#ffffff";
 
   const strokeColor =
     severity === "high"
-      ? "#ef4444"
+      ? "#dc2626"
       : severity === "medium"
-      ? "#f59e0b"
+      ? "#d97706"
       : isSelected
-      ? "#00b4d8"
-      : "#1e2733";
-
-  const fillOpacity = severity === "high" ? 0.28 : severity === "medium" ? 0.22 : isSelected ? 0.15 : 0.05;
+      ? "#0284c7"
+      : "#e2e8f0";
 
   return (
     <g
@@ -68,11 +66,9 @@ export function ZoneBand({
         height={bandRect.height}
         rx="12"
         fill={fillColor}
-        fillOpacity={fillOpacity}
         stroke={strokeColor}
-        strokeWidth={isAlert ? "2.5" : isSelected ? "1.8" : "1"}
+        strokeWidth={isAlert ? "2" : isSelected ? "1.5" : "1"}
         strokeDasharray={isAlert ? "6 4" : "none"}
-        className={isAlert ? "animate-pulse" : ""}
       />
 
       {/* Zone Label ("ZONE n") */}
@@ -84,20 +80,20 @@ export function ZoneBand({
             width="88"
             height="24"
             rx="6"
-            fill="#0f1419"
-            stroke={isAlert ? strokeColor : isSelected ? "#00b4d8" : "#1e2733"}
+            fill="#ffffff"
+            stroke={isAlert ? strokeColor : isSelected ? "#0284c7" : "#cbd5e1"}
             strokeWidth={isAlert || isSelected ? "1.5" : "1"}
-            className="transition-colors group-hover:border-[#00b4d8]"
+            className="transition-colors group-hover:stroke-sky-600 shadow-xs"
           />
           <text
             x="0"
             y="3"
-            fill={isAlert ? strokeColor : isSelected ? "#00b4d8" : "#7a8fa6"}
+            fill={isAlert ? strokeColor : isSelected ? "#0284c7" : "#475569"}
             fontSize="10"
             fontWeight="bold"
             textAnchor="middle"
-            letterSpacing="0.8"
-            fontFamily="monospace"
+            letterSpacing="0.5"
+            fontFamily="sans-serif"
           >
             {`ZONE ${id}`}
           </text>

@@ -1,7 +1,10 @@
 "use client";
 // src/components/rig/RigMap.tsx
-// Hero physical test rig component.
-// Composed of modular subcomponents: Pipe, Station, ZoneBand, TestPoint, LeakEffect, Esp32Box, Legend.
+// Hero physical test rig component in Light Mode.
+// Follows 20 Rules:
+// - Shows the actual physical product cleanly without dark mud or fake glow
+// - Clean engineering blueprint grid on slate-50
+// - White Schedule-40 PVC pipe with clear flow direction
 
 import { useState, useRef, useEffect } from "react";
 import {
@@ -117,14 +120,14 @@ export function RigMap({
   // Avoid hydration mismatch by waiting for mount
   if (!mounted) {
     return (
-      <div className="w-full h-[520px] bg-[#0a0d12] rounded-xl flex items-center justify-center text-[#7a8fa6] text-xs font-mono animate-pulse border border-[#1e2733]">
-        Initializing Rig Hardware Model (S1–S6 Tri-Sensor Bus)...
+      <div className="w-full h-[520px] bg-slate-100 rounded-xl flex items-center justify-center text-slate-500 text-xs font-mono animate-pulse border border-slate-200">
+        Loading Rig Hardware Model (S1–S6 Tri-Sensor Bus)...
       </div>
     );
   }
 
   return (
-    <div className="relative w-full bg-[#080b10] rounded-xl overflow-hidden shadow-2xl border border-[#1e2733] select-none flex flex-col">
+    <div className="relative w-full bg-white rounded-xl overflow-hidden shadow-xs border border-slate-200 select-none flex flex-col">
       {/* SVG Rig Canvas */}
       <svg
         viewBox="0 0 1200 720"
@@ -136,7 +139,7 @@ export function RigMap({
         style={{ touchAction: "none" }}
       >
         <defs>
-          {/* Subtle SCADA workbench grid */}
+          {/* Subtle SCADA workbench engineering grid */}
           <pattern
             id="workbench-grid"
             width="35"
@@ -146,15 +149,10 @@ export function RigMap({
             <path
               d="M 35 0 L 0 0 0 35"
               fill="none"
-              stroke="#131b24"
+              stroke="#e2e8f0"
               strokeWidth="0.8"
             />
           </pattern>
-
-          {/* Soft Drop Shadow Filter */}
-          <filter id="soft-shadow" x="-10%" y="-10%" width="120%" height="120%">
-            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
-          </filter>
         </defs>
 
         {/* Transform Group for Pan & Zoom */}
@@ -162,9 +160,9 @@ export function RigMap({
           transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
           style={{ transformOrigin: "center" }}
         >
-          {/* Workbench table background with faint grid */}
-          <rect width="1200" height="720" fill="#080b10" />
-          <rect width="1200" height="720" fill="url(#workbench-grid)" opacity="0.6" />
+          {/* Workbench canvas background with subtle grid */}
+          <rect width="1200" height="720" fill="#f8fafc" />
+          <rect width="1200" height="720" fill="url(#workbench-grid)" />
 
           {/* RESERVOIR TANK (Far Left) */}
           <g transform="translate(15, 480)">
@@ -174,10 +172,9 @@ export function RigMap({
               width="65"
               height="110"
               rx="8"
-              fill="#0f1419"
-              stroke="#1e2733"
+              fill="#ffffff"
+              stroke="#cbd5e1"
               strokeWidth="2"
-              filter="url(#soft-shadow)"
             />
             {/* Water level indicator */}
             <rect
@@ -186,34 +183,34 @@ export function RigMap({
               width="57"
               height="78"
               rx="4"
-              fill="#00b4d8"
-              opacity="0.3"
+              fill="#0284c7"
+              opacity="0.2"
             />
-            <line x1="4" y1="28" x2="61" y2="28" stroke="#38bdf8" strokeWidth="2" />
+            <line x1="4" y1="28" x2="61" y2="28" stroke="#0284c7" strokeWidth="2" />
             <text
               x="32"
               y="60"
-              fill="#e8edf2"
-              fontSize="8.5"
+              fill="#0f172a"
+              fontSize="9"
               fontWeight="bold"
               textAnchor="middle"
-              fontFamily="monospace"
+              fontFamily="sans-serif"
             >
               SUPPLY
             </text>
             <text
               x="32"
               y="72"
-              fill="#7a8fa6"
+              fill="#64748b"
               fontSize="7.5"
               textAnchor="middle"
-              fontFamily="monospace"
+              fontFamily="sans-serif"
             >
               RESERVOIR
             </text>
             {/* Top inlet valve */}
-            <rect x="26" y="-8" width="13" height="8" fill="#1e2733" stroke="#4a5a6e" strokeWidth="1" />
-            <circle cx="32" cy="-12" r="5" fill="#f59e0b" />
+            <rect x="26" y="-8" width="13" height="8" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+            <circle cx="32" cy="-12" r="5" fill="#d97706" />
           </g>
 
           {/* PUMP & INLET (Between Tank and S1) */}
@@ -222,19 +219,19 @@ export function RigMap({
               cx="14"
               cy="0"
               r="14"
-              fill="#0f1419"
-              stroke="#00b4d8"
+              fill="#ffffff"
+              stroke="#0284c7"
               strokeWidth="2"
             />
-            <polygon points="10,-6 20,0 10,6" fill="#00b4d8" />
+            <polygon points="10,-6 20,0 10,6" fill="#0284c7" />
             <text
               x="14"
               y="-18"
-              fill="#00b4d8"
-              fontSize="7.5"
+              fill="#0284c7"
+              fontSize="8"
               textAnchor="middle"
               fontWeight="bold"
-              fontFamily="monospace"
+              fontFamily="sans-serif"
             >
               PUMP
             </text>
@@ -248,10 +245,9 @@ export function RigMap({
               width="65"
               height="100"
               rx="8"
-              fill="#0f1419"
-              stroke="#1e2733"
+              fill="#ffffff"
+              stroke="#cbd5e1"
               strokeWidth="2"
-              filter="url(#soft-shadow)"
             />
             <rect
               x="4"
@@ -259,32 +255,32 @@ export function RigMap({
               width="57"
               height="58"
               rx="4"
-              fill="#00b4d8"
-              opacity="0.25"
+              fill="#0284c7"
+              opacity="0.15"
             />
             <text
               x="32"
               y="62"
-              fill="#e8edf2"
-              fontSize="8.5"
+              fill="#0f172a"
+              fontSize="9"
               fontWeight="bold"
               textAnchor="middle"
-              fontFamily="monospace"
+              fontFamily="sans-serif"
             >
               DRAIN
             </text>
             <text
               x="32"
               y="74"
-              fill="#7a8fa6"
+              fill="#64748b"
               fontSize="7.5"
               textAnchor="middle"
-              fontFamily="monospace"
+              fontFamily="sans-serif"
             >
               RECOVERY
             </text>
             {/* Outlet valve */}
-            <circle cx="-6" cy="60" r="5" fill="#10b981" />
+            <circle cx="-6" cy="60" r="5" fill="#16a34a" />
           </g>
 
           {/* 1. ZONE BANDS (Behind the pipe) */}

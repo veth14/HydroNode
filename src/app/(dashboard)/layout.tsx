@@ -1,6 +1,6 @@
 "use client";
 // src/app/(dashboard)/layout.tsx
-// Dashboard Shell with Sidebar, TopBar, and live polling hook.
+// Dashboard Shell with Sidebar, TopBar, and live polling hook in Light Mode.
 
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
@@ -15,11 +15,11 @@ export default function DashboardLayout({
   usePolling();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0d12] text-[#e8edf2]">
+    <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-5 lg:p-6 bg-[#0a0d12]">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-6 bg-slate-50">
           {children}
         </main>
       </div>

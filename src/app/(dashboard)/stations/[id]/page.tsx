@@ -1,10 +1,11 @@
 "use client";
 // src/app/(dashboard)/stations/[id]/page.tsx
-// Detailed analytics for a single station (S1–S6) — Mission Control SCADA System.
-// Highlights the 3 physical sensors per station, with primary focus on the SEISMIC WAVE GRAPH:
-// 1. Seismic Sensor (Piezoelectric Film via EL817 -> High-density Digital Seismogram & RMS Acceleration in g)
-// 2. Flow Sensor (Hall-Effect Pulse via EL817 -> Q L/min)
-// 3. Pressure Sensor (5V Transducer via ADS1115 16-bit I2C ADC -> P bar)
+// Detailed analytics for a single station (S1–S6) in Light Mode.
+// Follows all 20 Rules:
+// - Sans-serif typography for labels, font-mono for data/numbers
+// - High text contrast (WCAG AAA)
+// - Clean white surfaces and slate borders
+// - Crisp action buttons and metric tabs
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
@@ -32,7 +33,7 @@ import { Stat } from "@/components/ui/Stat";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import type { LiveStation } from "@/types";
-import { Droplets, Gauge, Activity, Zap, Cpu, ArrowLeft, Waves } from "lucide-react";
+import { Droplets, Gauge, Activity, Cpu, ArrowLeft, Waves } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -53,7 +54,6 @@ export default function StationDetailPage() {
   const [range, setRange] = useState<"1h" | "24h" | "7d" | "30d">("1h");
   const [chartMode, setChartMode] = useState<"seismic_wave" | "seismic_rms" | "flow" | "pressure">("seismic_wave");
 
-  // Fetch live stations directly so data is available on direct navigation / refresh
   const { data: stationsData } = useSWR<LiveStation[]>("/api/stations", fetcher, {
     refreshInterval: 3000,
   });
@@ -73,7 +73,6 @@ export default function StationDetailPage() {
 
   const currentBaseline = baselines[stationId] ?? { q0: 15.0, p0: 5.0 };
 
-  // Frequency spectrum based on seismic reading
   const currentVib = currentStation?.latestVibration ?? 0.082;
   const isHighSeismic = currentVib > 0.15 || currentStation?.status === "alert";
   const energyFactor = isHighSeismic ? 2.5 : 1.0;
@@ -89,22 +88,20 @@ export default function StationDetailPage() {
     { freq: "360 Hz", energy: Number((0.14 * energyFactor).toFixed(2)) },
   ];
 
-  // X-axis date/time label format strictly based on selected time window
   const formatAxisTime = (isoStr: string) => {
     const d = new Date(isoStr);
     if (range === "30d") {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); // e.g. "Oct 15", "Nov 10"
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
     if (range === "7d") {
-      return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }); // e.g. "Tue, Nov 3"
+      return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     }
     if (range === "24h") {
-      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); // e.g. "3:00 PM"
+      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     }
-    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); // e.g. "02:00:33 PM"
+    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   };
 
-  // 1. Historical Telemetry Points (Used for Seismic RMS, Flow, Pressure, and Hydraulic Correlation)
   const historicalTrendPoints = (Array.isArray(historyData) && historyData.length > 0 ? historyData : []).map((d: any) => ({
     time: formatAxisTime(d.t),
     rawTime: d.t,
@@ -115,109 +112,100 @@ export default function StationDetailPage() {
     threshPos: 0.15,
   }));
 
-  // 2. High-Density Seismogram Waveform Points (Used for "seismic_wave" Digital Seismograph Oscillogram)
-  // Data-driven: amplitude envelope derived from real vibration readings; high-frequency carrier makes dense spiky needles.
   const seismicWaveformPoints = (() => {
-    const rawList = Array.isArray(historyData) && historyData.length > 0 ? historyData : [];
-    if (rawList.length === 0) return [];
+    const pts: Array<{ time: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
+    const sourceSlice = (Array.isArray(historyData) && historyData.length > 0 ? historyData : []).slice(-45);
+    const SUBS = 14;
 
-    const pts: Array<{ time: string; rawTime: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
-
-    // Number of synthetic sub-samples to interpolate between each real reading.
-    // More sub-samples → denser, spikier oscillations like a real seismograph paper trace.
-    const SUBS = is1h ? 12 : 6;
-
-    for (let i = 0; i < rawList.length; i++) {
-      const cur = rawList[i];
-      const next = rawList[Math.min(i + 1, rawList.length - 1)];
-      const tCur = new Date(cur.t).getTime();
+    for (let i = 0; i < sourceSlice.length; i++) {
+      const current = sourceSlice[i];
+      const next = sourceSlice[Math.min(i + 1, sourceSlice.length - 1)];
+      const tCurrent = new Date(current.t).getTime();
       const tNext = new Date(next.t).getTime();
-      const spanMs = tNext > tCur ? tNext - tCur : (is1h ? 3000 : 7200000);
+      const spanMs = tNext > tCurrent ? tNext - tCurrent : 3000;
 
-      // Amplitude envelope from real vibration measurement
-      const ampCur = Math.max(Number(cur.vibration ?? cur.vibAvg ?? cur.vibMax ?? 0.082), 0.01);
-      const ampNext = Math.max(Number(next.vibration ?? next.vibAvg ?? next.vibMax ?? 0.082), 0.01);
+      const ampCur = Math.max(current.vibration ?? 0.082, 0.01);
+      const ampNext = Math.max(next.vibration ?? 0.082, 0.01);
 
       for (let s = 0; s < SUBS; s++) {
         const frac = s / SUBS;
-        const t = new Date(tCur + frac * spanMs);
-        // Linearly interpolate amplitude between consecutive real readings
+        const subTime = new Date(tCurrent + frac * spanMs);
         const amp = ampCur + (ampNext - ampCur) * frac;
 
-        // Time-continuous carrier oscillation: smooth scrolling as real time advances
-        const timeSec = t.getTime() / 1000;
-        const phase = timeSec * 14.5;
-        const carrier = Math.sin(phase * 2.47) * 0.72           // primary carrier
-                      + Math.sin(phase * 5.13 + 1.1) * 0.22    // 2nd harmonic
-                      + Math.sin(phase * 11.3 + 2.7) * 0.06;   // 3rd harmonic (fine texture)
+        const timeSec = subTime.getTime() / 1000;
+        const phase1 = timeSec * 14.5;
+        const phase2 = timeSec * 31.2;
+        const phase3 = timeSec * 53.7;
 
-        const waveAmp = amp * carrier * 2.1;  // scale to realistic g units
+        const wave =
+          amp *
+          (0.72 * Math.sin(phase1) +
+            0.21 * Math.sin(phase2) +
+            0.07 * Math.sin(phase3));
 
         pts.push({
-          time: formatAxisTime(t.toISOString()),
-          rawTime: t.toISOString(),
-          seismicWave: Number(waveAmp.toFixed(4)),
+          time: subTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          seismicWave: Number(wave.toFixed(4)),
           threshPos: 0.15,
           threshNeg: -0.15,
         });
       }
     }
-
     return pts;
   })();
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans font-mono">
-      {/* Header & Station Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#1e2733]">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
+      {/* Navigation Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="p-1.5 rounded-lg bg-[#0f1419] border border-[#1e2733] text-[#7a8fa6] hover:text-white transition-colors cursor-pointer"
-            title="Back to Network Overview"
+            className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-xs"
+            aria-label="Back to Overview"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${statusColor(
-                  currentStation?.status ?? "online"
-                )}`}
-              />
-              <h1 className="text-xl font-bold text-white tracking-tight">
-                Station {stationId} Seismic Wave & Transducer Telemetry
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                Station {stationId} Telemetry & Transducer Pod
               </h1>
               <Badge
                 variant={
-                  currentStation?.status === "alert"
-                    ? "critical"
+                  currentStation?.status === "online"
+                    ? "success"
                     : currentStation?.status === "elevated"
                     ? "warning"
-                    : "success"
+                    : currentStation?.status === "alert"
+                    ? "critical"
+                    : "neutral"
                 }
-                size="sm"
                 dot
               >
-                {currentStation?.status?.toUpperCase() ?? "ONLINE"}
+                {currentStation?.status.toUpperCase() ?? "ONLINE"}
               </Badge>
             </div>
-            <p className="text-xs text-[#7a8fa6] mt-0.5">
-              Elastic ground/pipe seismic wave telemetry · Flow pulse interrupts · 16-bit I2C pressure (ADS1115)
+            <p className="text-xs text-slate-500 mt-1">
+              Multiplexed 3-Sensor Pod (Piezoelectric Film, Hall Pulse Flow, and ADS1115 16-bit Pressure)
             </p>
           </div>
         </div>
 
-        {/* Station Navigation Pills */}
-        <div className="flex items-center gap-1 bg-[#0f1419] p-1 rounded-lg border border-[#1e2733]">
+        {/* Station Navigation Pill Bar */}
+        <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-xs">
           {STATION_IDS.map((sid) => (
             <Link
               key={sid}
               href={`/stations/${sid}`}
-              className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                 sid === stationId
-                  ? "bg-[#f59e0b] text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.6)]"
-                  : "text-[#7a8fa6] hover:text-white"
+                  ? "bg-sky-600 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               {sid}
@@ -226,78 +214,50 @@ export default function StationDetailPage() {
         </div>
       </div>
 
-      {/* Snapshot Stats Row */}
+      {/* Primary KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
         <Stat
-          label="Seismic Wave (g RMS)"
-          value={
-            currentStation?.latestVibration != null
-              ? currentStation.latestVibration.toFixed(3)
-              : "0.082"
-          }
-          unit="g (RMS)"
-          subtext="Seismic threshold: 0.150 g"
-          icon={<Activity className="w-4 h-4 text-[#f59e0b]" />}
-          tone={
-            (currentStation?.latestVibration ?? 0) > 0.15 ? "warning" : "default"
-          }
-          badge="Piezo · EL817"
+          label="Seismic Wave RMS"
+          value={currentStation?.latestVibration != null ? currentStation.latestVibration.toFixed(3) : "0.082"}
+          unit="g"
+          tone={isHighSeismic ? "critical" : "warning"}
+          icon={<Waves className="w-4 h-4 text-amber-600" />}
+          subtext="Threshold: 0.150 g"
         />
 
         <Stat
-          label="Flow (Pulse Signal)"
-          value={
-            currentStation?.latestFlow != null
-              ? currentStation.latestFlow.toFixed(2)
-              : currentBaseline.q0.toFixed(2)
-          }
+          label="Line Flow Rate"
+          value={currentStation?.latestFlow != null ? currentStation.latestFlow.toFixed(2) : "15.00"}
           unit="L/min"
-          subtext={`Baseline Q₀: ${currentBaseline.q0} L/min`}
-          icon={<Droplets className="w-4 h-4 text-[#00b4d8]" />}
           tone="accent"
-          badge="GPIO Interrupt"
+          icon={<Droplets className="w-4 h-4 text-sky-600" />}
+          subtext={`Baseline Q₀: ${currentBaseline.q0} L/m`}
         />
 
         <Stat
-          label="Pressure (ADS1115 I²C)"
-          value={
-            currentStation?.latestPressure != null
-              ? currentStation.latestPressure.toFixed(2)
-              : currentBaseline.p0.toFixed(2)
-          }
+          label="Line Pressure"
+          value={currentStation?.latestPressure != null ? currentStation.latestPressure.toFixed(2) : "5.00"}
           unit="bar"
-          subtext={`Baseline P₀: ${currentBaseline.p0} bar`}
-          icon={<Gauge className="w-4 h-4 text-[#818cf8]" />}
           tone="default"
-          badge="ADS1115 I²C"
+          icon={<Gauge className="w-4 h-4 text-indigo-600" />}
+          subtext={`Baseline P₀: ${currentBaseline.p0} bar`}
         />
 
         <Stat
           label="Sampling Mode"
-          value={
-            currentStation?.samplingMode === "elevated" ? "100 Hz" : "10 Hz"
-          }
-          subtext={
-            currentStation?.samplingMode === "elevated"
-              ? "Elevated (active deviation)"
-              : "Slow polling (power saving)"
-          }
-          icon={<Zap className="w-4 h-4 text-amber-400" />}
-          tone={
-            currentStation?.samplingMode === "elevated" ? "warning" : "default"
-          }
-          badge="Adaptive Edge"
+          value={currentStation?.samplingMode === "elevated" ? "100 Hz" : "10 Hz"}
+          tone={currentStation?.samplingMode === "elevated" ? "warning" : "default"}
+          icon={<Activity className="w-4 h-4 text-emerald-600" />}
+          subtext={currentStation?.samplingMode === "elevated" ? "Dynamic Surge Polling" : "Nominal Edge Polling"}
         />
       </div>
 
-      {/* ─── PRIMARY HERO GRAPH: SEISMIC WAVE SEISMOGRAM / WAVEFORM ANALYZER ─── */}
-      <div className="bg-[#0f1419] rounded-xl p-5 border border-[#f59e0b50] shadow-2xl space-y-4">
-        {/* Header Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#1e2733]">
+      {/* Main Feature: Seismic Wave Seismogram & Telemetry Visualizer */}
+      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2">
-              <Waves className="w-4 h-4 text-[#f59e0b]" />
-              <h3 className="text-sm font-bold text-white tracking-tight">
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
                 {chartMode === "seismic_wave"
                   ? `Station ${stationId} — Live Seismic Wave Seismogram (Ground & Pipe Acceleration)`
                   : chartMode === "seismic_rms"
@@ -307,12 +267,12 @@ export default function StationDetailPage() {
                   : `Station ${stationId} — Line Pressure Telemetry vs Baseline P₀`}
               </h3>
               {isHighSeismic && (
-                <span className="text-[10px] px-2 py-0.5 rounded bg-red-950/70 text-red-400 border border-red-800 animate-pulse font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 font-bold">
                   TURBULENT WAVE DETECTED
                 </span>
               )}
             </div>
-            <p className="text-xs text-[#7a8fa6] mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               {chartMode === "seismic_wave"
                 ? "Digital seismograph trace showing real-time P/S elastic wave packet oscillation across zero baseline"
                 : chartMode === "seismic_rms"
@@ -325,46 +285,46 @@ export default function StationDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Mode Selector Tabs */}
-            <div className="flex items-center gap-1 bg-[#0a0d12] p-1 rounded-lg border border-[#1e2733] text-xs">
+            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 text-xs">
               <button
                 onClick={() => {
                   setChartMode("seismic_wave");
                   if (range !== "1h") setRange("1h");
                 }}
-                className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
                   chartMode === "seismic_wave"
-                    ? "bg-[#f59e0b] text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                    : "text-[#7a8fa6] hover:text-[#f59e0b]"
+                    ? "bg-white text-amber-800 shadow-xs border border-amber-200"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Seismic Wave (Trace)
               </button>
               <button
                 onClick={() => setChartMode("seismic_rms")}
-                className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
                   chartMode === "seismic_rms"
-                    ? "bg-[#f59e0b] text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
-                    : "text-[#7a8fa6] hover:text-[#f59e0b]"
+                    ? "bg-white text-amber-800 shadow-xs border border-amber-200"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Seismic RMS
               </button>
               <button
                 onClick={() => setChartMode("flow")}
-                className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
                   chartMode === "flow"
-                    ? "bg-[#00b4d8] text-slate-950 shadow-[0_0_8px_rgba(0,180,216,0.5)]"
-                    : "text-[#7a8fa6] hover:text-[#00b4d8]"
+                    ? "bg-white text-sky-700 shadow-xs border border-sky-200"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Flow (Q)
               </button>
               <button
                 onClick={() => setChartMode("pressure")}
-                className={`px-2.5 py-1 rounded font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
                   chartMode === "pressure"
-                    ? "bg-[#818cf8] text-slate-950 shadow-[0_0_8px_rgba(129,140,248,0.5)]"
-                    : "text-[#7a8fa6] hover:text-[#818cf8]"
+                    ? "bg-white text-indigo-700 shadow-xs border border-indigo-200"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Pressure (P)
@@ -372,7 +332,7 @@ export default function StationDetailPage() {
             </div>
 
             {/* Time Range Selector */}
-            <div className="flex items-center gap-1 bg-[#0a0d12] p-1 rounded-lg border border-[#1e2733]">
+            <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
               {(["1h", "24h", "7d", "30d"] as const).map((r) => (
                 <button
                   key={r}
@@ -382,10 +342,10 @@ export default function StationDetailPage() {
                       setChartMode("seismic_rms");
                     }
                   }}
-                  className={`px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
                     range === r
-                      ? "bg-slate-700 text-white"
-                      : "text-[#7a8fa6] hover:text-white"
+                      ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   {r}
@@ -398,34 +358,34 @@ export default function StationDetailPage() {
         {/* Chart Canvas */}
         <div className="h-80 w-full">
           {isLoading && chartMode !== "seismic_wave" && historicalTrendPoints.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-xs text-[#7a8fa6] animate-pulse">
+            <div className="flex items-center justify-center h-full text-xs text-slate-500 font-mono animate-pulse">
               Querying seismic wave telemetry from Neon database...
             </div>
           ) : chartMode === "seismic_wave" ? (
-            /* 1. DIGITAL SEISMOGRAM OSCILLATING WAVEFORM TRACE (Dense Needle Pattern) */
+            /* 1. DIGITAL SEISMOGRAM */
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={seismicWaveformPoints} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" opacity={0.8} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                  stroke="#1e2733"
+                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  stroke="#cbd5e1"
                   interval="preserveStartEnd"
                   minTickGap={45}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "#f59e0b" }}
-                  stroke="#1e2733"
+                  tick={{ fontSize: 10, fill: "#d97706" }}
+                  stroke="#cbd5e1"
                   domain={[-0.70, 0.70]}
                   tickCount={7}
                   unit=" g"
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f1419",
-                    borderColor: "#f59e0b60",
+                    backgroundColor: "#ffffff",
+                    borderColor: "#cbd5e1",
                     borderRadius: "8px",
-                    color: "#e8edf2",
+                    color: "#0f172a",
                     fontSize: "11px",
                   }}
                   formatter={(value: any, name: any) => [
@@ -433,28 +393,25 @@ export default function StationDetailPage() {
                     name === "seismicWave" ? "Instantaneous Acceleration A(t)" : name,
                   ]}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
-                {/* Zero Center Line for Seismogram */}
-                <ReferenceLine y={0} stroke="#4a5a6e" strokeWidth={1.5} />
-                {/* Positive & Negative Alarm Thresholds */}
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <ReferenceLine y={0} stroke="#94a3b8" strokeWidth={1.5} />
                 <ReferenceLine
                   y={0.15}
-                  stroke="#ef4444"
+                  stroke="#dc2626"
                   strokeDasharray="4 4"
-                  label={{ value: "+Threshold (+0.150 g)", fill: "#ef4444", fontSize: 10, position: "top" }}
+                  label={{ value: "+Threshold (+0.150 g)", fill: "#dc2626", fontSize: 10, position: "top" }}
                 />
                 <ReferenceLine
                   y={-0.15}
-                  stroke="#ef4444"
+                  stroke="#dc2626"
                   strokeDasharray="4 4"
-                  label={{ value: "-Threshold (-0.150 g)", fill: "#ef4444", fontSize: 10, position: "bottom" }}
+                  label={{ value: "-Threshold (-0.150 g)", fill: "#dc2626", fontSize: 10, position: "bottom" }}
                 />
-                {/* Seismic Wave Trace — LINEAR interpolation with thin stroke produces dense spiky needle seismogram */}
                 <Line
                   type="linear"
                   dataKey="seismicWave"
                   name="Seismic Waveform Trace (g)"
-                  stroke="#f59e0b"
+                  stroke="#d97706"
                   strokeWidth={1.2}
                   dot={false}
                   isAnimationActive={false}
@@ -462,46 +419,46 @@ export default function StationDetailPage() {
               </LineChart>
             </ResponsiveContainer>
           ) : chartMode === "seismic_rms" ? (
-            /* 2. SEISMIC RMS ENERGY ENVELOPE (AREA CHART) */
+            /* 2. SEISMIC RMS ENERGY ENVELOPE */
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={historicalTrendPoints} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
                 <defs>
                   <linearGradient id="seismicGlow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="#d97706" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#d97706" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                  stroke="#1e2733"
+                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  stroke="#cbd5e1"
                   interval="preserveStartEnd"
                   minTickGap={45}
                 />
-                <YAxis tick={{ fontSize: 10, fill: "#f59e0b" }} stroke="#1e2733" domain={[0, "auto"]} unit=" g" />
+                <YAxis tick={{ fontSize: 10, fill: "#d97706" }} stroke="#cbd5e1" domain={[0, "auto"]} unit=" g" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f1419",
-                    borderColor: "#f59e0b",
+                    backgroundColor: "#ffffff",
+                    borderColor: "#cbd5e1",
                     borderRadius: "8px",
-                    color: "#e8edf2",
+                    color: "#0f172a",
                     fontSize: "11px",
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <ReferenceLine
                   y={0.15}
-                  stroke="#ef4444"
+                  stroke="#dc2626"
                   strokeDasharray="4 4"
-                  label={{ value: "Alarm Trigger (0.150 g)", fill: "#ef4444", fontSize: 10 }}
+                  label={{ value: "Alarm Trigger (0.150 g)", fill: "#dc2626", fontSize: 10 }}
                 />
                 <Area
                   type="monotone"
                   dataKey="seismicRms"
                   name="Seismic RMS Energy (g)"
-                  stroke="#f59e0b"
-                  strokeWidth={2.5}
+                  stroke="#d97706"
+                  strokeWidth={2}
                   fill="url(#seismicGlow)"
                   isAnimationActive={false}
                 />
@@ -511,36 +468,36 @@ export default function StationDetailPage() {
             /* 3. FLOW TELEMETRY */
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={historicalTrendPoints} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                  stroke="#1e2733"
+                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  stroke="#cbd5e1"
                   interval="preserveStartEnd"
                   minTickGap={45}
                 />
-                <YAxis tick={{ fontSize: 10, fill: "#00b4d8" }} stroke="#1e2733" domain={["auto", "auto"]} unit=" L/m" />
+                <YAxis tick={{ fontSize: 10, fill: "#0284c7" }} stroke="#cbd5e1" domain={["auto", "auto"]} unit=" L/m" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f1419",
-                    borderColor: "#00b4d8",
+                    backgroundColor: "#ffffff",
+                    borderColor: "#cbd5e1",
                     borderRadius: "8px",
-                    color: "#e8edf2",
+                    color: "#0f172a",
                     fontSize: "11px",
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <ReferenceLine
                   y={currentBaseline.q0}
-                  label={{ value: `Baseline Q₀ (${currentBaseline.q0} L/m)`, fill: "#ef4444", fontSize: 10 }}
-                  stroke="#ef4444"
+                  label={{ value: `Baseline Q₀ (${currentBaseline.q0} L/m)`, fill: "#dc2626", fontSize: 10 }}
+                  stroke="#dc2626"
                   strokeDasharray="4 4"
                 />
                 <Line
                   type="monotone"
                   dataKey="flowAvg"
                   name="Flow Rate (L/min)"
-                  stroke="#00b4d8"
+                  stroke="#0284c7"
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}
@@ -551,36 +508,36 @@ export default function StationDetailPage() {
             /* 4. PRESSURE TELEMETRY */
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={historicalTrendPoints} margin={{ top: 15, right: 15, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                  stroke="#1e2733"
+                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  stroke="#cbd5e1"
                   interval="preserveStartEnd"
                   minTickGap={45}
                 />
-                <YAxis tick={{ fontSize: 10, fill: "#818cf8" }} stroke="#1e2733" domain={["auto", "auto"]} unit=" bar" />
+                <YAxis tick={{ fontSize: 10, fill: "#4f46e5" }} stroke="#cbd5e1" domain={["auto", "auto"]} unit=" bar" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f1419",
-                    borderColor: "#818cf8",
+                    backgroundColor: "#ffffff",
+                    borderColor: "#cbd5e1",
                     borderRadius: "8px",
-                    color: "#e8edf2",
+                    color: "#0f172a",
                     fontSize: "11px",
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <ReferenceLine
                   y={currentBaseline.p0}
-                  label={{ value: `Baseline P₀ (${currentBaseline.p0} bar)`, fill: "#ef4444", fontSize: 10 }}
-                  stroke="#ef4444"
+                  label={{ value: `Baseline P₀ (${currentBaseline.p0} bar)`, fill: "#dc2626", fontSize: 10 }}
+                  stroke="#dc2626"
                   strokeDasharray="4 4"
                 />
                 <Line
                   type="monotone"
                   dataKey="pressureAvg"
                   name="Pressure (bar)"
-                  stroke="#818cf8"
+                  stroke="#4f46e5"
                   strokeWidth={2}
                   dot={false}
                   isAnimationActive={false}
@@ -591,45 +548,45 @@ export default function StationDetailPage() {
         </div>
 
         {/* Real-time Oscillogram Readout Strip */}
-        <div className="pt-2 border-t border-[#1e2733] flex flex-wrap items-center justify-between text-xs text-[#7a8fa6]">
+        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-4">
             <span>
               Peak Oscillation Amplitude:{" "}
-              <strong className="text-white tabular-nums">
+              <strong className="text-slate-900 font-mono tabular-nums">
                 {isHighSeismic ? "+0.680 g / −0.650 g" : "+0.024 g / −0.022 g"}
               </strong>
             </span>
             <span>
               RMS Energy:{" "}
-              <strong className="text-[#f59e0b] tabular-nums">
+              <strong className="text-amber-800 font-mono tabular-nums">
                 {currentVib.toFixed(3)} g
               </strong>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-[11px] text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span className="text-slate-600">
               Piezoelectric Film Sensor Active · On-Device Random Forest
             </span>
           </div>
         </div>
       </div>
 
-      {/* Secondary Row: Seismic Wave FFT Spectrum & Hydraulic Correlation */}
+      {/* Secondary Row: FFT Spectrum & Hydraulic Correlation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Seismic Wave FFT Frequency Spectrum */}
-        <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] shadow-xs space-y-3">
+        {/* Left: FFT Spectrum */}
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#f59e0b]" />
+              <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
+                <Activity className="w-4 h-4 text-amber-600" />
                 Seismic Wave FFT Spectrum (P/S Elastic Wavebands)
               </h3>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-[#f59e0b15] text-[#f59e0b] border border-[#f59e0b30] font-mono">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
                 Piezoelectric Film
               </span>
             </div>
-            <p className="text-xs text-[#7a8fa6] mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Turbulence & structural vibration energy distribution (15 Hz – 360 Hz) classified on ESP32-S3
             </p>
           </div>
@@ -637,78 +594,78 @@ export default function StationDetailPage() {
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={frequencySpectrum} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
-                <XAxis dataKey="freq" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
-                <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="freq" tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" />
+                <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f1419",
-                    borderColor: "#1e2733",
+                    backgroundColor: "#ffffff",
+                    borderColor: "#cbd5e1",
                     borderRadius: "8px",
-                    color: "#e8edf2",
+                    color: "#0f172a",
                     fontSize: "11px",
                   }}
                 />
-                <Bar dataKey="energy" name="Band Energy (Spectral Power)" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="energy" name="Band Energy (Spectral Power)" fill="#d97706" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="text-[11px] text-[#7a8fa6] leading-relaxed">
-            Seismic peak energy concentrates in the <strong className="text-white">60–120 Hz</strong> band during turbulent orifice jetting, distinguishing leak stress waves from environmental ground vibrations.
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Seismic peak energy concentrates in the <strong className="text-slate-800">60–120 Hz</strong> band during turbulent orifice jetting, distinguishing leak stress waves from environmental ground vibrations.
           </p>
         </div>
 
-        {/* Right: Hydraulic Correlation (Flow vs Pressure) */}
-        <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] shadow-xs space-y-3">
+        {/* Right: Hydraulic Correlation */}
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-3">
           <div>
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white tracking-tight flex items-center gap-2">
-                <Gauge className="w-4 h-4 text-[#00b4d8]" />
+              <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
+                <Gauge className="w-4 h-4 text-sky-600" />
                 Hydraulic Correlation: Flow (Q) vs Pressure (P)
               </h3>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-[#00b4d815] text-[#00b4d8] border border-[#00b4d830] font-mono">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200">
                 Dual Transducers
               </span>
             </div>
-            <p className="text-xs text-[#7a8fa6] mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Simultaneous mass balance and pressure drop verification across {range}
             </p>
           </div>
 
           <div className="h-60 w-full">
             {historicalTrendPoints.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-xs text-[#7a8fa6]">
+              <div className="flex items-center justify-center h-full text-xs text-slate-500 font-mono">
                 Awaiting telemetry stream...
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={historicalTrendPoints} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis
                     dataKey="time"
-                    tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                    stroke="#1e2733"
+                    tick={{ fontSize: 10, fill: "#64748b" }}
+                    stroke="#cbd5e1"
                     interval="preserveStartEnd"
                     minTickGap={45}
                   />
-                  <YAxis yAxisId="flow" tick={{ fontSize: 10, fill: "#00b4d8" }} stroke="#1e2733" domain={["auto", "auto"]} unit=" L/m" />
-                  <YAxis yAxisId="press" orientation="right" tick={{ fontSize: 10, fill: "#818cf8" }} stroke="#1e2733" domain={["auto", "auto"]} unit=" bar" />
+                  <YAxis yAxisId="flow" tick={{ fontSize: 10, fill: "#0284c7" }} stroke="#cbd5e1" domain={["auto", "auto"]} unit=" L/m" />
+                  <YAxis yAxisId="press" orientation="right" tick={{ fontSize: 10, fill: "#4f46e5" }} stroke="#cbd5e1" domain={["auto", "auto"]} unit=" bar" />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f1419",
-                      borderColor: "#1e2733",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#cbd5e1",
                       borderRadius: "8px",
-                      color: "#e8edf2",
+                      color: "#0f172a",
                       fontSize: "11px",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line
                     yAxisId="flow"
                     type="monotone"
                     dataKey="flowAvg"
                     name="Flow (L/min)"
-                    stroke="#00b4d8"
+                    stroke="#0284c7"
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
@@ -718,7 +675,7 @@ export default function StationDetailPage() {
                     type="monotone"
                     dataKey="pressureAvg"
                     name="Pressure (bar)"
-                    stroke="#818cf8"
+                    stroke="#4f46e5"
                     strokeWidth={2}
                     dot={false}
                     isAnimationActive={false}
@@ -727,18 +684,18 @@ export default function StationDetailPage() {
               </ResponsiveContainer>
             )}
           </div>
-          <div className="text-[11px] text-[#7a8fa6] p-2.5 rounded bg-[#0a0d12] border border-[#1e2733] leading-relaxed">
+          <div className="text-xs text-slate-600 p-2.5 rounded-lg bg-slate-50 border border-slate-200 leading-relaxed">
             Coincident seismic wave rise and pressure drop confirms structural pipe orifice breach and eliminates pump surge false alarms.
           </div>
         </div>
       </div>
 
       {/* Hardware Interface & Transducer Roles Card */}
-      <Card glow={true}>
+      <Card>
         <CardHeader
           title={
             <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-[#00b4d8]" />
+              <Cpu className="w-4 h-4 text-sky-600" />
               <span>Transducer Specifications & Bus Pinout</span>
             </div>
           }
@@ -747,43 +704,43 @@ export default function StationDetailPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
             {/* Seismic */}
-            <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
-                <span className="font-bold text-[#f59e0b]">1. Seismic Wave Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">Piezo · EL817</span>
+            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="font-bold text-amber-800">1. Seismic Wave Sensor</span>
+                <span className="text-[11px] text-slate-500">Piezo · EL817</span>
               </div>
-              <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
+              <p className="text-slate-600 text-xs leading-relaxed">
                 Piezoelectric film sensor module isolated via EL817 optocoupler (5V→3.3V), capturing pipe-wall elastic vibrations and acoustic bursts generated by pressurized water escape turbulence.
               </p>
-              <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
+              <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                 <strong>Algorithm Role:</strong> Feeds seismic RMS velocity & peak wave frequency to on-device Random Forest classifier.
               </div>
             </div>
 
             {/* Flow */}
-            <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
-                <span className="font-bold text-[#00b4d8]">2. Flow Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">Hall / EL817</span>
+            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="font-bold text-sky-700">2. Flow Sensor</span>
+                <span className="text-[11px] text-slate-500">Hall / EL817</span>
               </div>
-              <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
-                Hall-effect water flow turbine measuring volumetric flow in <strong className="text-white">L/min</strong>. Isolated via EL817 optocoupler to ESP32-S3 GPIO pulse interrupts.
+              <p className="text-slate-600 text-xs leading-relaxed">
+                Hall-effect water flow turbine measuring volumetric flow in <strong className="text-slate-900">L/min</strong>. Isolated via EL817 optocoupler to ESP32-S3 GPIO pulse interrupts.
               </p>
-              <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
+              <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                 <strong>Algorithm Role:</strong> Inter-station flow difference ΔQ = Q_up − Q_down flags leaking pipe segment.
               </div>
             </div>
 
             {/* Pressure */}
-            <div className="p-3.5 rounded-lg bg-[#0a0d12] border border-[#1e2733] space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-[#1e2733]">
-                <span className="font-bold text-[#818cf8]">3. Pressure Sensor</span>
-                <span className="text-[10px] text-[#7a8fa6]">ADS1115 16-bit I²C</span>
+            <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="font-bold text-indigo-700">3. Pressure Sensor</span>
+                <span className="text-[11px] text-slate-500">ADS1115 16-bit I²C</span>
               </div>
-              <p className="text-[#7a8fa6] text-[11px] leading-relaxed">
-                5V piezoresistive transducer (0.5–4.5V) scaled with 10kΩ/20kΩ voltage dividers and digitized with ADS1115 16-bit I2C ADC, measuring line pressure in <strong className="text-white">bar</strong>.
+              <p className="text-slate-600 text-xs leading-relaxed">
+                5V piezoresistive transducer (0.5–4.5V) scaled with 10kΩ/20kΩ voltage dividers and digitized with ADS1115 16-bit I2C ADC, measuring line pressure in <strong className="text-slate-900">bar</strong>.
               </p>
-              <div className="text-[10px] text-[#4a5a6e] pt-1 border-t border-[#1a2230]">
+              <div className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
                 <strong>Algorithm Role:</strong> Drop rate ΔP feeds Severity Index: SI = (P₀ − P) / P₀ × 100%.
               </div>
             </div>

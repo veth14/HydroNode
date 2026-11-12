@@ -1,8 +1,7 @@
 "use client";
 // src/components/rig/Station.tsx
-// Sensor clamp station module (S1–S6) on the straight PVC pipe.
-// Clean, professional SCADA / P&ID instrument presentation:
-// Displays the 3 physical sensors per station in a compact, high-contrast enclosure:
+// Sensor clamp station module (S1–S6) in Light Mode.
+// Clean, professional SCADA instrument presentation:
 // 1. Flow Sensor (Hall-Effect Pulse via EL817): Q L/min
 // 2. Pressure Sensor (5V Transducer via ADS1115 16-bit I2C ADC): P bar
 // 3. Seismic Sensor (Piezoelectric Film Module via EL817): S g RMS
@@ -32,12 +31,12 @@ export function Station({
   const isElevated = status === "elevated" || samplingMode === "elevated";
 
   const ledColor = isAlert
-    ? "#ef4444"
+    ? "#dc2626"
     : isElevated
-    ? "#f59e0b"
+    ? "#d97706"
     : status === "online"
-    ? "#10b981"
-    : "#4a5a6e";
+    ? "#16a34a"
+    : "#94a3b8";
 
   const flowVal = data?.latestFlow != null ? data.latestFlow.toFixed(1) : "15.0";
   const pressVal = data?.latestPressure != null ? data.latestPressure.toFixed(2) : "5.00";
@@ -46,7 +45,7 @@ export function Station({
   return (
     <g
       transform={`translate(${pos.x}, ${pos.y})`}
-      className="cursor-pointer group select-none font-mono"
+      className="cursor-pointer group select-none"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -58,7 +57,7 @@ export function Station({
         }
       }}
     >
-      {/* Selection Highlight */}
+      {/* Selection Ring */}
       {isSelected && (
         <rect
           x="-32"
@@ -67,90 +66,89 @@ export function Station({
           height="72"
           rx="10"
           fill="none"
-          stroke="#00b4d8"
-          strokeWidth="1.8"
+          stroke="#0284c7"
+          strokeWidth="2"
           strokeDasharray="4 3"
-          className="animate-pulse"
         />
       )}
 
-      {/* Subtle Upper Flange (In-Line Flow Meter Coupling) */}
-      <rect x="-14" y="-40" width="28" height="4" rx="1" fill="#1e293b" stroke="#334155" strokeWidth="0.8" />
-      {/* Subtle Lower Clamp (Piezoelectric Film Clamp Bracket) */}
-      <rect x="-14" y="36" width="28" height="4" rx="1" fill="#1e293b" stroke="#334155" strokeWidth="0.8" />
+      {/* Flange Clamps */}
+      <rect x="-14" y="-38" width="28" height="4" rx="1" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+      <rect x="-14" y="34" width="28" height="4" rx="1" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
 
-      {/* Industrial Collar Enclosure */}
+      {/* Main Station Enclosure */}
       <rect
         x="-28"
         y="-32"
         width="56"
         height="64"
         rx="8"
-        fill="#0a0d12"
-        stroke={isSelected ? "#00b4d8" : isAlert ? "#ef4444" : "#1e2733"}
-        strokeWidth={isSelected || isAlert ? "1.8" : "1.2"}
-        className="transition-colors group-hover:stroke-[#00b4d8]"
+        fill="#ffffff"
+        stroke={isSelected ? "#0284c7" : isAlert ? "#dc2626" : "#cbd5e1"}
+        strokeWidth={isSelected || isAlert ? "2" : "1.2"}
+        className="transition-colors group-hover:stroke-sky-600"
       />
 
-      {/* Top Header Bar with Station Name & Status LED */}
-      <rect x="-28" y="-32" width="56" height="18" rx="7" fill="#121822" />
+      {/* Top Header with Station ID & Status Indicator */}
+      <rect x="-28" y="-32" width="56" height="18" rx="7" fill="#f8fafc" />
+      <line x1="-28" y1="-14" x2="28" y2="-14" stroke="#e2e8f0" strokeWidth="1" />
+
       <text
         x="-14"
         y="-19"
-        fill="#e8edf2"
-        fontSize="10.5"
-        fontWeight="800"
-        letterSpacing="0.5"
+        fill="#0f172a"
+        fontSize="11"
+        fontWeight="bold"
+        fontFamily="sans-serif"
       >
         {id}
       </text>
-
-      {/* Status LED */}
-      {isAlert && (
-        <circle
-          cx="16"
-          cy="-23"
-          r="5"
-          fill="#ef4444"
-          className="animate-ping"
-          opacity="0.8"
-        />
-      )}
       <circle cx="16" cy="-23" r="3" fill={ledColor} />
 
-      {/* 3 Transducer Rows Inside Enclosure */}
-      {/* 1. Flow Sensor (Pulse) -> Cyan */}
-      <g transform="translate(-20, -7)">
-        <rect x="0" y="0" width="40" height="9.5" rx="2" fill="#00b4d812" stroke="#00b4d835" strokeWidth="0.8" />
-        <circle cx="4.5" cy="4.7" r="1.8" fill="#00b4d8" />
-        <text x="9" y="7.5" fill="#7dd3fc" fontSize="6.5" fontWeight="bold">
-          Q {flowVal}
+      {/* Sensor 1: Flow Rate (Hall Pulse via EL817) */}
+      <g transform="translate(-22, -3)">
+        <text
+          x="0"
+          y="0"
+          fill="#0284c7"
+          fontSize="9"
+          fontWeight="600"
+          fontFamily="monospace"
+          className="tabular-nums"
+        >
+          {`Q ${flowVal}`}
         </text>
       </g>
 
-      {/* 2. Pressure Sensor (ADS1115 16-bit I2C) -> Indigo */}
-      <g transform="translate(-20, 5)">
-        <rect x="0" y="0" width="40" height="9.5" rx="2" fill="#818cf812" stroke="#818cf835" strokeWidth="0.8" />
-        <circle cx="4.5" cy="4.7" r="1.8" fill="#818cf8" />
-        <text x="9" y="7.5" fill="#a5b4fc" fontSize="6.5" fontWeight="bold">
-          P {pressVal}
+      {/* Sensor 2: Line Pressure (ADS1115 16-bit I2C ADC) */}
+      <g transform="translate(-22, 11)">
+        <text
+          x="0"
+          y="0"
+          fill="#4f46e5"
+          fontSize="9"
+          fontWeight="600"
+          fontFamily="monospace"
+          className="tabular-nums"
+        >
+          {`P ${pressVal}`}
         </text>
       </g>
 
-      {/* 3. Seismic Sensor (Piezoelectric Film via EL817) -> Amber */}
-      <g transform="translate(-20, 17)">
-        <rect x="0" y="0" width="40" height="9.5" rx="2" fill="#f59e0b12" stroke="#f59e0b35" strokeWidth="0.8" />
-        <circle cx="4.5" cy="4.7" r="1.8" fill="#f59e0b" />
-        <text x="9" y="7.5" fill="#fcd34d" fontSize="6.5" fontWeight="bold">
-          S {vibVal}
+      {/* Sensor 3: Seismic RMS (Piezoelectric Film via EL817) */}
+      <g transform="translate(-22, 25)">
+        <text
+          x="0"
+          y="0"
+          fill="#d97706"
+          fontSize="9"
+          fontWeight="600"
+          fontFamily="monospace"
+          className="tabular-nums"
+        >
+          {`S ${vibVal}`}
         </text>
       </g>
-
-      {/* Corner Fastener Screws */}
-      <circle cx="-22" cy="-28" r="1" fill="#4a5a6e" />
-      <circle cx="22" cy="-28" r="1" fill="#4a5a6e" />
-      <circle cx="-22" cy="26" r="1" fill="#4a5a6e" />
-      <circle cx="22" cy="26" r="1" fill="#4a5a6e" />
     </g>
   );
 }

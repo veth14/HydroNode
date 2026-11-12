@@ -1,12 +1,16 @@
 "use client";
 // src/components/layout/TopBar.tsx
-// Header bar with live batch ticker, sensor link status, and alert count.
+// Header bar with live batch ticker, link status, and alert count in Light Mode.
+// Follows 20 Rules:
+// - High contrast light theme
+// - No dark neon glows
+// - Tabular numbers on timer
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useHydroStore } from "@/store/hydroStore";
 import { formatDistanceToNow } from "@/lib/utils";
-import { Bell, Activity, Database, CheckCircle2 } from "lucide-react";
+import { Bell, Activity, Database, Check } from "lucide-react";
 
 export function TopBar() {
   const [mounted, setMounted] = useState(false);
@@ -27,53 +31,51 @@ export function TopBar() {
   const isLive = mounted && lastBatchTs && Date.now() - lastBatchTs < 60_000;
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3 bg-[#0a0d12]/90 backdrop-blur-md border-b border-[#1e2733] select-none text-xs">
+    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-2.5 bg-white/95 backdrop-blur-md border-b border-slate-200 select-none text-xs">
       {/* Live Ingest Heartbeat */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#0f1419] border border-[#1e2733] text-[#7a8fa6] font-mono">
+        <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-700">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
-              isLive
-                ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"
-                : "bg-slate-500"
+              isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
             }`}
             aria-hidden="true"
           />
-          <span className="text-[#e8edf2] font-semibold">
+          <span className="font-semibold text-slate-900">
             {isLive ? "Telemetry Stream Active" : "Waiting for Batch"}
           </span>
-          <span className="text-[#4a5a6e]">·</span>
-          <span className="tabular-nums text-[#7a8fa6]">{lastUpdated}</span>
+          <span className="text-slate-300">·</span>
+          <span className="tabular-nums font-mono text-slate-500">{lastUpdated}</span>
         </div>
 
-        {/* Polling Interval Badge */}
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[#4a5a6e] font-mono">
-          <Activity className="w-3 h-3 text-[#00b4d8]" />
-          <span>Polling 3s · ESP32 Ingest ~30s</span>
+        {/* Polling Interval */}
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500">
+          <Activity className="w-3.5 h-3.5 text-sky-600" />
+          <span>3s Polling · Ingest ~30s</span>
         </div>
       </div>
 
       {/* Right Action / System Status */}
-      <div className="flex items-center gap-3 font-mono">
-        {/* Neon Postgres Status */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0f1419] border border-[#1e2733] text-[11px] text-[#7a8fa6]">
-          <Database className="w-3 h-3 text-[#00b4d8]" />
+      <div className="flex items-center gap-3">
+        {/* Neon Database Status */}
+        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-50 border border-slate-200 text-slate-600 text-xs">
+          <Database className="w-3.5 h-3.5 text-sky-600" />
           <span>Neon Serverless</span>
-          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+          <Check className="w-3.5 h-3.5 text-emerald-600" />
         </div>
 
         {/* Alerts Bell Link */}
         <Link
           href="/alerts"
           aria-label={`${activeAlerts} active alerts`}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border font-medium transition-colors ${
             activeAlerts > 0
-              ? "bg-red-950/60 border-red-900/60 text-red-300 shadow-[0_0_12px_-2px_rgba(239,68,68,0.4)]"
-              : "bg-[#0f1419] border-[#1e2733] text-[#7a8fa6] hover:text-[#e8edf2] hover:border-[#2a3644]"
+              ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
           }`}
         >
           <Bell className="w-3.5 h-3.5" />
-          <span className="font-semibold tabular-nums">
+          <span className="tabular-nums font-mono font-semibold">
             {activeAlerts > 0 ? `${activeAlerts} Active` : "0 Alerts"}
           </span>
         </Link>

@@ -1,6 +1,6 @@
 "use client";
 // src/components/rig/TestPoint.tsx
-// Manual leak simulation valve on zone pipe segments.
+// Manual leak simulation valve on zone pipe segments in Light Mode.
 
 import type { TestPoint as TestPointType } from "@/config/rig";
 
@@ -37,10 +37,10 @@ export function TestPoint({ testPoint, onClick, isLeaking }: TestPointProps) {
           cy="0"
           r="12"
           fill="none"
-          stroke="#ef4444"
+          stroke="#dc2626"
           strokeWidth="1.2"
           className="animate-ping"
-          opacity="0.75"
+          opacity="0.6"
         />
       )}
 
@@ -51,8 +51,8 @@ export function TestPoint({ testPoint, onClick, isLeaking }: TestPointProps) {
         width="16"
         height="12"
         rx="2"
-        fill="#1e293b"
-        stroke="#475569"
+        fill="#f1f5f9"
+        stroke="#94a3b8"
         strokeWidth="1"
       />
 
@@ -61,9 +61,9 @@ export function TestPoint({ testPoint, onClick, isLeaking }: TestPointProps) {
         cx="0"
         cy="0"
         r="5.5"
-        fill={isLeaking ? "#ef4444" : "#475569"}
-        stroke={isLeaking ? "#fca5a5" : "#94a3b8"}
-        strokeWidth="1"
+        fill={isLeaking ? "#dc2626" : "#ffffff"}
+        stroke={isLeaking ? "#b91c1c" : "#64748b"}
+        strokeWidth="1.2"
         className="transition-colors"
       />
 
@@ -73,16 +73,16 @@ export function TestPoint({ testPoint, onClick, isLeaking }: TestPointProps) {
         y1="0"
         x2="0"
         y2={handleDir * 14}
-        stroke={isLeaking ? "#ef4444" : "#f59e0b"}
+        stroke={isLeaking ? "#dc2626" : "#d97706"}
         strokeWidth="2.5"
         strokeLinecap="round"
-        className="group-hover:stroke-red-400 transition-colors"
+        className="group-hover:stroke-red-600 transition-colors"
       />
       <circle
         cx="0"
         cy={handleDir * 14}
         r="3"
-        fill={isLeaking ? "#ef4444" : "#f59e0b"}
+        fill={isLeaking ? "#dc2626" : "#d97706"}
       />
     </g>
   );

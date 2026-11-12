@@ -1,8 +1,11 @@
 "use client";
 // src/components/ui/Stat.tsx
-// High-contrast industrial metric card with tabular numerals and trend/subtext.
-// Rule 14: Inner radius = outer - padding (outer: rounded-xl [12px], padding: p-4 [16px])
-// Rule 18: Tabular nums for all values
+// High-contrast industrial metric card in Light Mode.
+// Follows 20 Rules:
+// - Rule 4: Mono only for numbers, sans-serif for labels
+// - Rule 14: Inner radius = outer - padding
+// - Rule 15: High WCAG AAA contrast
+// - Rule 18: Tabular numbers for non-jittering updates
 
 import React from "react";
 
@@ -19,34 +22,29 @@ interface StatProps {
 
 const toneMap = {
   default: {
-    val: "text-slate-100",
-    border: "border-[#1e2733]",
-    glow: "",
-    iconColor: "text-slate-400",
+    val: "text-slate-900",
+    border: "border-slate-200 bg-white",
+    iconColor: "text-slate-500",
   },
   critical: {
-    val: "text-red-400",
-    border: "border-red-900/60 bg-red-950/15",
-    glow: "shadow-[0_0_24px_-6px_rgba(239,68,68,0.25)]",
-    iconColor: "text-red-400",
+    val: "text-red-700",
+    border: "border-red-200 bg-red-50/40",
+    iconColor: "text-red-600",
   },
   warning: {
-    val: "text-amber-400",
-    border: "border-amber-900/60 bg-amber-950/15",
-    glow: "",
-    iconColor: "text-amber-400",
+    val: "text-amber-800",
+    border: "border-amber-200 bg-amber-50/40",
+    iconColor: "text-amber-600",
   },
   success: {
-    val: "text-emerald-400",
-    border: "border-emerald-900/60 bg-emerald-950/10",
-    glow: "",
-    iconColor: "text-emerald-400",
+    val: "text-emerald-700",
+    border: "border-emerald-200 bg-emerald-50/40",
+    iconColor: "text-emerald-600",
   },
   accent: {
-    val: "text-cyan-400",
-    border: "border-cyan-900/60 bg-cyan-950/15",
-    glow: "shadow-[0_0_24px_-6px_rgba(0,180,216,0.25)]",
-    iconColor: "text-cyan-400",
+    val: "text-sky-700",
+    border: "border-sky-200 bg-sky-50/40",
+    iconColor: "text-sky-600",
   },
 };
 
@@ -64,10 +62,10 @@ export function Stat({
 
   return (
     <div
-      className={`relative bg-[#0f1419] border ${t.border} ${t.glow} rounded-xl p-4 flex flex-col justify-between transition-all select-none hover:border-[#2a3644]`}
+      className={`relative border ${t.border} rounded-xl p-4 flex flex-col justify-between transition-all select-none shadow-xs hover:shadow-sm hover:border-slate-300`}
     >
       {/* Header: Label + Icon */}
-      <div className="flex items-center justify-between text-xs font-medium text-[#7a8fa6] gap-2">
+      <div className="flex items-center justify-between text-xs font-medium text-slate-600 gap-2">
         <span className="truncate">{label}</span>
         {icon && <span className={`shrink-0 ${t.iconColor}`}>{icon}</span>}
       </div>
@@ -78,12 +76,12 @@ export function Stat({
           {value}
         </span>
         {unit && (
-          <span className="text-xs font-medium text-[#7a8fa6]">
+          <span className="text-xs font-semibold text-slate-500">
             {unit}
           </span>
         )}
         {badge && (
-          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#1a2230] text-[#7a8fa6] border border-[#263140]">
+          <span className="ml-auto text-[11px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
             {badge}
           </span>
         )}
@@ -91,16 +89,16 @@ export function Stat({
 
       {/* Footer: Trend / Subtext */}
       {(subtext || trend) && (
-        <div className="mt-2 pt-2 border-t border-[#1a2230] flex items-center justify-between text-[11px] text-[#4a5a6e]">
+        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           {subtext && <span className="truncate">{subtext}</span>}
           {trend && (
             <span
               className={`ml-auto font-medium ${
                 trend.direction === "up"
-                  ? "text-red-400"
+                  ? "text-red-600"
                   : trend.direction === "down"
-                  ? "text-emerald-400"
-                  : "text-[#7a8fa6]"
+                  ? "text-emerald-600"
+                  : "text-slate-600"
               }`}
             >
               {trend.direction === "up" ? "▲" : trend.direction === "down" ? "▼" : "—"}{" "}

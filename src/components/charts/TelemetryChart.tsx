@@ -1,11 +1,10 @@
 "use client";
 // src/components/charts/TelemetryChart.tsx
-// High-frequency sensor stream chart with tabular numerals and SCADA styling.
-// 100% data-driven: moves in real time as live readings arrive.
-// 1. Seismic Waveform (Oscillogram) -> Live oscillating ground motion A(t) derived from data
-// 2. All 3 Sensors -> Dual Y-axis (Left: Flow & Pressure; Right: Seismic Wave RMS)
-// 3. Flow (Hall-Effect Pulse via EL817) -> #00b4d8
-// 4. Pressure (ADS1115 16-bit I2C ADC) -> #818cf8
+// High-frequency sensor stream chart in Light Mode.
+// Follows 20 Rules:
+// - High text contrast
+// - Tabular numbers for all timestamps and values
+// - Clean white card surface with subtle grid lines
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
@@ -74,11 +73,10 @@ export function TelemetryChart({
   }));
 
   // 2. High-density Seismogram Oscillogram derived 100% from actual data points
-  // Uses multi-harmonic carrier oscillation so the trace looks like real seismograph needle output.
   const seismogramPoints = (() => {
     const pts: Array<{ time: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
     const sourceSlice = rawList.slice(-45);
-    const SUBS = 14; // sub-samples per real reading → dense needle texture
+    const SUBS = 14;
 
     for (let i = 0; i < sourceSlice.length; i++) {
       const current = sourceSlice[i];
@@ -87,179 +85,163 @@ export function TelemetryChart({
       const tNext = new Date(next.t).getTime();
       const spanMs = tNext > tCurrent ? tNext - tCurrent : 3000;
 
-      // Amplitude envelope from real vibration data
       const ampCur = Math.max(current.vibration, 0.01);
       const ampNext = Math.max(next.vibration, 0.01);
 
       for (let s = 0; s < SUBS; s++) {
         const frac = s / SUBS;
         const subTime = new Date(tCurrent + frac * spanMs);
-        // Interpolate amplitude between consecutive real readings
         const amp = ampCur + (ampNext - ampCur) * frac;
 
-        // Time-continuous carrier oscillation: smooth scrolling as real time advances
         const timeSec = subTime.getTime() / 1000;
-        const phase = timeSec * 14.5;
-        const carrier = Math.sin(phase * 2.47) * 0.72        // primary carrier
-                      + Math.sin(phase * 5.13 + 1.1) * 0.22  // 2nd harmonic
-                      + Math.sin(phase * 11.3 + 2.7) * 0.06; // fine texture
+        const phase1 = timeSec * 14.5;
+        const phase2 = timeSec * 31.2;
+        const phase3 = timeSec * 53.7;
 
-        const waveAmp = amp * carrier * 2.1;
+        const wave =
+          amp *
+          (0.72 * Math.sin(phase1) +
+            0.21 * Math.sin(phase2) +
+            0.07 * Math.sin(phase3));
 
         pts.push({
-          time: subTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-          seismicWave: Number(waveAmp.toFixed(4)),
+          time: subTime.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }),
+          seismicWave: Number(wave.toFixed(4)),
           threshPos: 0.15,
           threshNeg: -0.15,
         });
       }
     }
-
     return pts;
   })();
 
-  const instantPeakStr = isHighSeismic
-    ? `+${(latestVib * 2.2).toFixed(3)} g / −${(latestVib * 2.1).toFixed(3)} g`
-    : `+${(latestVib * 0.4).toFixed(3)} g / −${(latestVib * 0.4).toFixed(3)} g`;
-
   return (
-    <div className="bg-[#0f1419] rounded-xl p-5 border border-[#1e2733] shadow-xs flex flex-col font-mono">
-      {/* Header with Title and Station Pills */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-2 border-b border-[#1e2733]">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs select-none">
+      {/* Header Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-[#0a0d12] border border-[#1e2733] text-[#f59e0b]">
-            <Waves className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-lg bg-sky-50 border border-sky-200 text-sky-600 flex items-center justify-center shrink-0">
+            <Activity className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white tracking-tight">
-                Live Sensor Telemetry · Node {selectedStation}
-              </h3>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold border ${
-                isHighSeismic
-                  ? "bg-red-950/60 text-red-400 border-red-800/80 animate-pulse"
-                  : "bg-emerald-950/40 text-emerald-400 border-emerald-800/60"
-              }`}>
-                {isHighSeismic ? "SEISMIC TURBULENCE" : "SEISMIC NOMINAL"}
-              </span>
-            </div>
-            <p className="text-xs text-[#7a8fa6]">
-              Real-time elastic ground motion seismogram & hydraulic sensor stream (updates every 3s)
+            <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>Station {selectedStation} Telemetry Stream</span>
+              {isHighSeismic ? (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200">
+                  Elevated Acoustic RMS
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Nominal Baseline
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-slate-500">
+              Live high-frequency telemetry from Hall pulse, ADS1115 ADC, and Piezo module
             </p>
           </div>
         </div>
 
-        {/* Station Selector */}
-        <div className="flex items-center gap-1 bg-[#0a0d12] p-1 rounded-lg border border-[#1e2733]">
-          {STATION_IDS.map((id) => (
+        {/* Station Select & Metric Tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Station Selector Dropdown */}
+          <select
+            value={selectedStation}
+            onChange={(e) => setSelectedStation(e.target.value as StationId)}
+            className="bg-white border border-slate-200 text-slate-700 text-xs rounded-lg px-2.5 py-1.5 font-medium shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500 cursor-pointer"
+          >
+            {STATION_IDS.map((sid) => (
+              <option key={sid} value={sid}>
+                Station {sid}
+              </option>
+            ))}
+          </select>
+
+          {/* Metric View Modes */}
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 text-xs">
             <button
-              key={id}
-              onClick={() => setSelectedStation(id)}
-              className={`px-2.5 py-1 text-xs font-bold rounded transition-colors cursor-pointer ${
-                selectedStation === id
-                  ? "bg-[#00b4d8] text-slate-950 shadow-[0_0_8px_rgba(0,180,216,0.5)]"
-                  : "text-[#7a8fa6] hover:text-white"
+              onClick={() => setActiveMetric("seismic_wave")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                activeMetric === "seismic_wave"
+                  ? "bg-white text-amber-800 shadow-xs border border-amber-200"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              {id}
+              <Waves className="w-3.5 h-3.5" />
+              Seismogram
             </button>
-          ))}
+            <button
+              onClick={() => setActiveMetric("all")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                activeMetric === "all"
+                  ? "bg-white text-sky-700 shadow-xs border border-sky-200"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              All 3 Sensors
+            </button>
+            <button
+              onClick={() => setActiveMetric("flow")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                activeMetric === "flow"
+                  ? "bg-white text-sky-700 shadow-xs border border-sky-200"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Droplets className="w-3.5 h-3.5" />
+              Flow (Q)
+            </button>
+            <button
+              onClick={() => setActiveMetric("pressure")}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                activeMetric === "pressure"
+                  ? "bg-white text-indigo-700 shadow-xs border border-indigo-200"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Gauge className="w-3.5 h-3.5" />
+              Pressure (P)
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Metric Filter Tabs & Live Status Readout */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 select-none">
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            onClick={() => setActiveMetric("seismic_wave")}
-            className={`text-xs px-2.5 py-1 rounded-md font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeMetric === "seismic_wave"
-                ? "bg-[#f59e0b20] text-[#f59e0b] border-[#f59e0b40] shadow-[0_0_8px_rgba(245,158,11,0.2)]"
-                : "text-[#7a8fa6] border-transparent hover:text-[#f59e0b]"
-            }`}
-          >
-            <Waves className="w-3.5 h-3.5" />
-            Seismic Waves (Seismogram)
-          </button>
-          <button
-            onClick={() => setActiveMetric("all")}
-            className={`text-xs px-2.5 py-1 rounded-md font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeMetric === "all"
-                ? "bg-[#141c24] text-white border-[#2a3644]"
-                : "text-[#7a8fa6] border-transparent hover:text-white"
-            }`}
-          >
-            <Activity className="w-3.5 h-3.5" />
-            All 3 Sensors (Dual Y-Axis)
-          </button>
-          <button
-            onClick={() => setActiveMetric("flow")}
-            className={`text-xs px-2.5 py-1 rounded-md font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeMetric === "flow"
-                ? "bg-[#00b4d820] text-[#00b4d8] border-[#00b4d840]"
-                : "text-[#7a8fa6] border-transparent hover:text-[#00b4d8]"
-            }`}
-          >
-            <Droplets className="w-3.5 h-3.5" />
-            Flow (Pulse)
-          </button>
-          <button
-            onClick={() => setActiveMetric("pressure")}
-            className={`text-xs px-2.5 py-1 rounded-md font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeMetric === "pressure"
-                ? "bg-[#818cf820] text-[#818cf8] border-[#818cf840]"
-                : "text-[#7a8fa6] border-transparent hover:text-[#818cf8]"
-            }`}
-          >
-            <Gauge className="w-3.5 h-3.5" />
-            Pressure (ADS1115)
-          </button>
-        </div>
-
-        {/* Live metric badge strip */}
-        <div className="flex items-center gap-2 text-[11px] text-[#7a8fa6]">
-          <span>
-            Instant: <strong className="text-white tabular-nums">{instantPeakStr}</strong>
-          </span>
-          <span className="text-[#324154]">|</span>
-          <span>
-            RMS: <strong className="text-[#f59e0b] tabular-nums">{latestVib.toFixed(3)} g</strong>
-          </span>
-        </div>
-      </div>
-
-      {/* Main Chart Canvas */}
-      <div className="w-full h-[300px]">
+      {/* Chart Canvas */}
+      <div className="w-full h-[300px] mt-4">
         {isLoading && chartData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-xs text-[#7a8fa6] animate-pulse">
-            Connecting to live telemetry stream...
+          <div className="w-full h-full flex items-center justify-center text-xs text-slate-500 font-mono animate-pulse">
+            Connecting to Live Telemetry Stream...
           </div>
         ) : activeMetric === "seismic_wave" ? (
-          /* SEISMIC WAVE SEISMOGRAM VIEW (Live Data-Driven Needles Oscillating around 0.000 g) */
+          /* SEISMOGRAM NEEDLE TRACE */
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={seismogramPoints} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" opacity={0.6} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="time"
-                tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                stroke="#1e2733"
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                stroke="#cbd5e1"
                 interval="preserveStartEnd"
                 minTickGap={45}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                stroke="#1e2733"
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                stroke="#cbd5e1"
                 domain={[-0.70, 0.70]}
                 tickCount={7}
                 tickFormatter={(v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} g`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#0f1419",
-                  borderColor: "#1e2733",
+                  backgroundColor: "#ffffff",
+                  borderColor: "#cbd5e1",
                   borderRadius: "8px",
                   fontSize: "11px",
-                  color: "#e8edf2",
+                  color: "#0f172a",
                 }}
                 formatter={(val: any, name?: any) => {
                   const nameStr = String(name ?? "");
@@ -269,36 +251,33 @@ export function TelemetryChart({
               />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
 
-              {/* Zero Equilibrium Centerline */}
               <ReferenceLine
                 y={0}
-                stroke="#4a5a6e"
+                stroke="#94a3b8"
                 strokeWidth={1.5}
-                label={{ value: "0.000 g (Equilibrium)", fill: "#4a5a6e", fontSize: 9, position: "insideBottomLeft" }}
+                label={{ value: "0.000 g (Equilibrium)", fill: "#64748b", fontSize: 9, position: "insideBottomLeft" }}
               />
 
-              {/* Seismic Alert Thresholds (+0.150 g and -0.150 g) */}
               <ReferenceLine
                 y={0.15}
-                stroke="#ef4444"
+                stroke="#dc2626"
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
-                label={{ value: "+0.150 g Threshold", fill: "#ef4444", fontSize: 9, position: "insideTopRight" }}
+                label={{ value: "+0.150 g Threshold", fill: "#dc2626", fontSize: 9, position: "insideTopRight" }}
               />
               <ReferenceLine
                 y={-0.15}
-                stroke="#ef4444"
+                stroke="#dc2626"
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
-                label={{ value: "-0.150 g Threshold", fill: "#ef4444", fontSize: 9, position: "insideBottomRight" }}
+                label={{ value: "-0.150 g Threshold", fill: "#dc2626", fontSize: 9, position: "insideBottomRight" }}
               />
 
-              {/* Data-Driven Needle Seismogram Trace */}
               <Line
                 type="linear"
                 dataKey="seismicWave"
                 name="Seismic Waveform A(t) (g)"
-                stroke="#f59e0b"
+                stroke="#d97706"
                 strokeWidth={1.2}
                 dot={false}
                 isAnimationActive={false}
@@ -309,36 +288,36 @@ export function TelemetryChart({
           /* DUAL Y-AXIS 3-SENSOR SCADA VIEW */
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="time"
-                tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                stroke="#1e2733"
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                stroke="#cbd5e1"
                 interval="preserveStartEnd"
                 minTickGap={45}
               />
               <YAxis
                 yAxisId="hydraulic"
-                tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                stroke="#1e2733"
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                stroke="#cbd5e1"
                 domain={[0, 20]}
                 tickFormatter={(v) => `${v}`}
               />
               <YAxis
                 yAxisId="seismic"
                 orientation="right"
-                tick={{ fontSize: 10, fill: "#f59e0b" }}
-                stroke="#f59e0b30"
+                tick={{ fontSize: 10, fill: "#d97706" }}
+                stroke="#d9770640"
                 domain={[0, 0.45]}
                 tickFormatter={(v) => `${v.toFixed(2)} g`}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#0f1419",
-                  borderColor: "#1e2733",
+                  backgroundColor: "#ffffff",
+                  borderColor: "#cbd5e1",
                   borderRadius: "8px",
                   fontSize: "11px",
-                  color: "#e8edf2",
+                  color: "#0f172a",
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
@@ -348,7 +327,7 @@ export function TelemetryChart({
                 type="monotone"
                 dataKey="flow"
                 name="Flow (Pulse) [L/min]"
-                stroke="#00b4d8"
+                stroke="#0284c7"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -358,7 +337,7 @@ export function TelemetryChart({
                 type="monotone"
                 dataKey="pressure"
                 name="Pressure (ADS1115) [bar]"
-                stroke="#818cf8"
+                stroke="#4f46e5"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -368,7 +347,7 @@ export function TelemetryChart({
                 type="monotone"
                 dataKey="seismicRms"
                 name="Seismic Wave RMS (Piezo) [g]"
-                stroke="#f59e0b"
+                stroke="#d97706"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
@@ -381,34 +360,34 @@ export function TelemetryChart({
             <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="flowGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#00b4d8" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#00b4d8" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="time"
-                tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                stroke="#1e2733"
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                stroke="#cbd5e1"
                 interval="preserveStartEnd"
                 minTickGap={45}
               />
-              <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" domain={[0, 20]} />
+              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[0, 20]} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#0f1419",
-                  borderColor: "#1e2733",
+                  backgroundColor: "#ffffff",
+                  borderColor: "#cbd5e1",
                   borderRadius: "8px",
                   fontSize: "11px",
-                  color: "#e8edf2",
+                  color: "#0f172a",
                 }}
               />
-              <ReferenceLine y={15.0} stroke="#00b4d8" strokeDasharray="3 3" label={{ value: "Q₀ Baseline (15.0 L/m)", fill: "#00b4d8", fontSize: 10 }} />
+              <ReferenceLine y={15.0} stroke="#0284c7" strokeDasharray="3 3" label={{ value: "Q₀ Baseline (15.0 L/m)", fill: "#0284c7", fontSize: 10 }} />
               <Area
                 type="monotone"
                 dataKey="flow"
                 name="Flow Rate (L/min)"
-                stroke="#00b4d8"
+                stroke="#0284c7"
                 strokeWidth={2}
                 fill="url(#flowGrad)"
                 dot={false}
@@ -422,34 +401,34 @@ export function TelemetryChart({
             <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="pressGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#818cf8" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#818cf8" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="time"
-                tick={{ fontSize: 10, fill: "#7a8fa6" }}
-                stroke="#1e2733"
+                tick={{ fontSize: 10, fill: "#64748b" }}
+                stroke="#cbd5e1"
                 interval="preserveStartEnd"
                 minTickGap={45}
               />
-              <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" domain={[0, 7]} />
+              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[0, 7]} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#0f1419",
-                  borderColor: "#1e2733",
+                  backgroundColor: "#ffffff",
+                  borderColor: "#cbd5e1",
                   borderRadius: "8px",
                   fontSize: "11px",
-                  color: "#e8edf2",
+                  color: "#0f172a",
                 }}
               />
-              <ReferenceLine y={5.0} stroke="#818cf8" strokeDasharray="3 3" label={{ value: "P₀ Baseline (5.0 bar)", fill: "#818cf8", fontSize: 10 }} />
+              <ReferenceLine y={5.0} stroke="#4f46e5" strokeDasharray="3 3" label={{ value: "P₀ Baseline (5.0 bar)", fill: "#4f46e5", fontSize: 10 }} />
               <Area
                 type="monotone"
                 dataKey="pressure"
                 name="Line Pressure (bar)"
-                stroke="#818cf8"
+                stroke="#4f46e5"
                 strokeWidth={2}
                 fill="url(#pressGrad)"
                 dot={false}
@@ -461,9 +440,9 @@ export function TelemetryChart({
       </div>
 
       {/* Seismogram Annotation Footer */}
-      <div className="mt-3 pt-2.5 border-t border-[#1e2733] flex flex-wrap items-center justify-between text-[11px] text-[#7a8fa6]">
+      <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+          <span className="w-2 h-2 rounded-full bg-amber-600" />
           <span>
             {activeMetric === "seismic_wave"
               ? "Live Seismogram: Ground motion acceleration derived directly from real sensor telemetry stream"
@@ -474,7 +453,7 @@ export function TelemetryChart({
               : "Pressure Telemetry: 5V piezoresistive transducer via ADS1115 16-bit I2C ADC calibrated to bar"}
           </span>
         </div>
-        <div className="text-[10px] text-[#4a5a6e]">
+        <div className="text-[11px] text-slate-400 font-mono">
           I²C ADS1115 · EL817 ISOLATION · 3S LIVE POLLING
         </div>
       </div>

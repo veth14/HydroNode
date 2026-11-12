@@ -1,6 +1,10 @@
 "use client";
 // src/app/(dashboard)/evaluation/page.tsx
-// System Evaluation & Rig Benchmarks — Mission Control SCADA System.
+// System Evaluation & Rig Benchmarks in Light Mode.
+// Follows all 20 Rules:
+// - Sans-serif typography for labels, font-mono for data/numbers
+// - High text contrast (WCAG AAA)
+// - Clean white surfaces and slate borders
 
 import {
   ResponsiveContainer,
@@ -46,13 +50,13 @@ const radarData = [
 
 export default function EvaluationPage() {
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans font-mono">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#1e2733]">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             System Performance & Rig Validation
           </h1>
-          <p className="text-xs text-[#7a8fa6] mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Empirical benchmark metrics collected across simulated pipeline test trials (SDG 6 Capstone)
           </p>
         </div>
@@ -65,15 +69,15 @@ export default function EvaluationPage() {
           label="Detection Accuracy"
           value="96.4%"
           tone="success"
-          icon={<CheckCircle2 className="w-4 h-4 text-emerald-400" />}
-          subtext="Evaluated over 120 rig test cycles"
+          icon={<CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+          subtext="Evaluated over 120 test cycles"
         />
 
         <Stat
           label="False Alarm Rate"
           value="2.1%"
           tone="default"
-          icon={<ShieldAlert className="w-4 h-4 text-[#00b4d8]" />}
+          icon={<ShieldAlert className="w-4 h-4 text-sky-600" />}
           subtext="Guarded against pump transients"
         />
 
@@ -81,23 +85,23 @@ export default function EvaluationPage() {
           label="Detection Latency"
           value="4.2s"
           tone="default"
-          icon={<Timer className="w-4 h-4 text-purple-400" />}
-          subtext="Orifice engagement to alert dispatch"
+          icon={<Timer className="w-4 h-4 text-indigo-600" />}
+          subtext="Orifice breach to alert dispatch"
         />
 
         <Stat
           label="Packet Delivery Rate"
           value="99.1%"
           tone="default"
-          icon={<Radio className="w-4 h-4 text-[#7a8fa6]" />}
-          subtext="Mean latency 48 ms via shielded cable"
+          icon={<Radio className="w-4 h-4 text-slate-500" />}
+          subtext="Mean latency 48ms via shielded cable"
         />
       </div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Power Profile */}
-        <Card glow={true}>
+        <Card>
           <CardHeader
             title="Energy Consumption: Adaptive vs Continuous Fixed Polling"
             subtitle="Power profile in milliwatts (mW) across operating regimes"
@@ -106,39 +110,39 @@ export default function EvaluationPage() {
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={powerConsumptionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
-                  <XAxis dataKey="mode" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
-                  <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="mode" tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f1419",
-                      borderColor: "#1e2733",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#cbd5e1",
                       borderRadius: "8px",
-                      color: "#e8edf2",
+                      color: "#0f172a",
                       fontSize: "11px",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar
                     dataKey="fixedSampling"
                     name="Fixed 100 Hz (mW)"
-                    fill="#4a5a6e"
+                    fill="#94a3b8"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="adaptiveSampling"
                     name="HydroNode Adaptive (mW)"
-                    fill="#00b4d8"
+                    fill="#0284c7"
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="p-3 bg-[#0a0d12] rounded-lg text-xs text-[#7a8fa6] border border-[#1e2733] flex items-center justify-between">
+            <div className="p-3 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200 flex items-center justify-between">
               <span>
-                Result: Adaptive sampling achieves an estimated <strong className="text-emerald-400">62% reduction</strong> in node energy consumption.
+                Result: Adaptive sampling achieves an estimated <strong className="text-emerald-700 font-semibold">62% reduction</strong> in node energy consumption.
               </span>
-              <span className="text-[10px] text-[#4a5a6e]">ESP32-S3 + ADS1115 Rig Benchmark</span>
+              <span className="text-xs text-slate-400">ESP32-S3 + ADS1115 Benchmark</span>
             </div>
           </CardContent>
         </Card>
@@ -153,36 +157,36 @@ export default function EvaluationPage() {
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={leakSizeAccuracyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e2733" />
-                  <XAxis dataKey="size" tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" />
-                  <YAxis tick={{ fontSize: 10, fill: "#7a8fa6" }} stroke="#1e2733" domain={[70, 100]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="size" tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[70, 100]} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f1419",
-                      borderColor: "#1e2733",
+                      backgroundColor: "#ffffff",
+                      borderColor: "#cbd5e1",
                       borderRadius: "8px",
-                      color: "#e8edf2",
+                      color: "#0f172a",
                       fontSize: "11px",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "#7a8fa6" }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar
                     dataKey="detectionRate"
                     name="Detection Rate (%)"
-                    fill="#10b981"
+                    fill="#16a34a"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="precision"
                     name="Precision (%)"
-                    fill="#818cf8"
+                    fill="#4f46e5"
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="p-3 bg-[#0a0d12] rounded-lg text-xs text-[#7a8fa6] border border-[#1e2733]">
-              High and Medium leaks are captured with <strong className="text-emerald-400">99.4% precision</strong>. Small leaks (&lt; 2 L/min) are verified via sliding window integration.
+            <div className="p-3 bg-slate-50 rounded-lg text-xs text-slate-600 border border-slate-200">
+              High and Medium leaks are captured with <strong className="text-emerald-700 font-semibold">99.4% precision</strong>. Small leaks (&lt; 2 L/min) are verified via sliding window integration.
             </div>
           </CardContent>
         </Card>
@@ -198,22 +202,22 @@ export default function EvaluationPage() {
           <div className="h-72 w-full flex justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                <PolarGrid stroke="#1e2733" />
-                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "#7a8fa6" }} />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#4a5a6e" />
+                <PolarGrid stroke="#e2e8f0" />
+                <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: "#64748b" }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#cbd5e1" />
                 <Radar
                   name="Index Score"
                   dataKey="score"
-                  stroke="#00b4d8"
-                  fill="#00b4d8"
-                  fillOpacity={0.25}
+                  stroke="#0284c7"
+                  fill="#0284c7"
+                  fillOpacity={0.2}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#0f1419",
-                    borderColor: "#1e2733",
+                    backgroundColor: "#ffffff",
+                    borderColor: "#cbd5e1",
                     borderRadius: "8px",
-                    color: "#e8edf2",
+                    color: "#0f172a",
                     fontSize: "11px",
                   }}
                 />

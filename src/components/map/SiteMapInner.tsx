@@ -1,10 +1,9 @@
 "use client";
 // src/components/map/SiteMapInner.tsx
-// Leaflet + OpenStreetMap component loaded client-side only.
+// Leaflet + OpenStreetMap component in Light Mode.
 // Split into two separate effects to prevent reload loop:
-//   Effect 1 (empty deps) — initialises the Leaflet map instance exactly once.
-//   Effect 2 ([stations, alerts, injectedLeaks]) — updates polyline colours and
-//   marker popup content on the already-mounted map; never tears down the map.
+//   Effect 1 (empty deps) — initialises the Leaflet map instance once.
+//   Effect 2 ([stations, alerts, injectedLeaks]) — updates layer styles and popups in place.
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
@@ -22,36 +21,26 @@ export default function SiteMapInner() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
-  // Stable refs to Leaflet layer objects — updated in Effect 2 without
-  // destroying / re-creating the map.
   const polylineRefsRef = useRef<Map<number, L.Polyline>>(new Map());
   const markerRefsRef = useRef<Map<StationId, L.Marker>>(new Map());
 
-  // Store subscriptions — these will trigger Effect 2 on change.
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
   const injectedLeaks = useHydroStore((s) => s.injectedLeaks);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Effect 1: Initialise the Leaflet map ONCE — no data deps, no teardown
-  //           until the component fully unmounts.
-  // ─────────────────────────────────────────────────────────────────────────
+  // Effect 1: Initialise Leaflet map once on mount
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    // Initialise Map centered on Caloocan City, Philippines
     const map = L.map(mapContainerRef.current).setView(SITE_CENTER, 17);
     mapInstanceRef.current = map;
 
-    // OpenStreetMap Tile Layer
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(map);
 
-    // Create zone polylines with placeholder colour — Effect 2 will set the
-    // correct colour based on live data immediately after.
     ZONES.forEach((zone) => {
       const coordA = STATION_LATLNG[zone.stationA];
       const coordB = STATION_LATLNG[zone.stationB];
@@ -62,28 +51,27 @@ export default function SiteMapInner() {
         opacity: 0.85,
       }).addTo(map);
 
-      polyline.bindPopup(""); // content set in Effect 2
+      polyline.bindPopup("");
       polylineRefsRef.current.set(zone.id, polyline);
     });
 
-    // Create station markers — popup content set in Effect 2.
     STATION_IDS.forEach((sid) => {
       const coords = STATION_LATLNG[sid];
 
       const markerHtml = `
         <div style="
-          background-color: #0f172a;
-          color: #38bdf8;
-          border: 2px solid #38bdf8;
+          background-color: #ffffff;
+          color: #0284c7;
+          border: 2px solid #0284c7;
           border-radius: 50%;
           width: 28px;
           height: 28px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-weight: bold;
+          font-weight: 700;
           font-size: 11px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         ">
           ${sid}
         </div>
@@ -97,7 +85,7 @@ export default function SiteMapInner() {
       });
 
       const marker = L.marker(coords, { icon: customIcon }).addTo(map);
-      marker.bindPopup(""); // content set in Effect 2
+      marker.bindPopup("");
       markerRefsRef.current.set(sid, marker);
     });
 
@@ -107,20 +95,15 @@ export default function SiteMapInner() {
       polylineRefsRef.current.clear();
       markerRefsRef.current.clear();
     };
-  }, []); // ← empty: runs once on mount, cleans up on unmount only
+  }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Effect 2: Update existing layers whenever live data changes.
-  //           NEVER re-creates the map; only mutates polyline styles and
-  //           popup HTML on the already-mounted Leaflet instances.
-  // ─────────────────────────────────────────────────────────────────────────
+  // Effect 2: Update existing layers without unmounting
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
     const activeAlerts = alerts.filter((a) => a.status === "active");
 
-    // Update zone polylines
     ZONES.forEach((zone) => {
       const polyline = polylineRefsRef.current.get(zone.id);
       if (!polyline) return;
@@ -131,9 +114,9 @@ export default function SiteMapInner() {
 
       const color =
         alert?.severity === "high" || isSimulatedLeak
-          ? "#ef4444"
+          ? "#dc2626"
           : alert?.severity === "medium"
-          ? "#f59e0b"
+          ? "#d97706"
           : "#0284c7";
 
       polyline.setStyle({
@@ -154,7 +137,6 @@ export default function SiteMapInner() {
       `);
     });
 
-    // Update station marker popups
     STATION_IDS.forEach((sid) => {
       const marker = markerRefsRef.current.get(sid);
       if (!marker) return;
@@ -182,12 +164,12 @@ export default function SiteMapInner() {
         </div>
       `);
     });
-  }, [stations, alerts, injectedLeaks]); // ← data deps only; map is never re-created
+  }, [stations, alerts, injectedLeaks]);
 
   return (
     <div
       ref={mapContainerRef}
-      className="w-full h-[550px] rounded-xl overflow-hidden shadow-inner border border-[#1e2733] bg-[#0a0d12]"
+      className="w-full h-[550px] rounded-xl overflow-hidden shadow-xs border border-slate-200 bg-slate-50"
     />
   );
 }

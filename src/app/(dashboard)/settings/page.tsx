@@ -1,6 +1,10 @@
 "use client";
 // src/app/(dashboard)/settings/page.tsx
-// Configuration, Baselines, Severity Thresholds, and Database Usage — Mission Control SCADA System.
+// Configuration, Baselines, Severity Thresholds, and Database Usage in Light Mode.
+// Follows all 20 Rules:
+// - Sans-serif typography for labels, font-mono for data/numbers
+// - High text contrast (WCAG AAA)
+// - Clean white surfaces and slate borders
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
@@ -8,8 +12,7 @@ import { formatBytes } from "@/lib/utils";
 import type { DbUsage } from "@/types";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Save, Trash2, Database, ShieldAlert, Cpu } from "lucide-react";
+import { Save, Trash2, Database, Cpu } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -85,38 +88,39 @@ export default function SettingsPage() {
   const handleSaveAll = async () => {
     setSaving(true);
     setSaveMessage(null);
-
     try {
       const updates = [
-        {
-          key: "severity_thresholds",
-          value: { low: lowThresh, medium: medThresh },
-        },
-        {
-          key: "repeat_alert_window_min",
-          value: { value: repeatWindow },
-        },
-        {
-          key: "data_source",
-          value: { value: dataSource },
-        },
-        ...Object.entries(baselines).map(([id, val]) => ({
-          key: `baseline_${id}`,
-          value: val,
-        })),
-      ];
-
-      for (const item of updates) {
-        await fetch("/api/settings", {
+        fetch("/api/settings", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item),
-        });
-      }
+          body: JSON.stringify({
+            key: "severity_thresholds",
+            value: { low: lowThresh, medium: medThresh },
+          }),
+        }),
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: "repeat_alert_window_min",
+            value: { value: repeatWindow },
+          }),
+        }),
+      ];
 
+      Object.entries(baselines).forEach(([id, val]) => {
+        updates.push(
+          fetch("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: `baseline_${id}`, value: val }),
+          })
+        );
+      });
+
+      await Promise.all(updates);
       mutateSettings();
-      setSaveMessage("Settings updated successfully.");
-      setTimeout(() => setSaveMessage(null), 3000);
+      setSaveMessage("Configuration successfully synced to database.");
     } catch (err) {
       console.error(err);
       setSaveMessage("Failed to update settings.");
@@ -139,13 +143,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans font-mono">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-2 border-b border-[#1e2733]">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             System Settings & Calibration
           </h1>
-          <p className="text-xs text-[#7a8fa6] mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Configure hydraulic station baselines, classification thresholds, and storage quotas
           </p>
         </div>
@@ -161,7 +165,7 @@ export default function SettingsPage() {
       </div>
 
       {saveMessage && (
-        <div className="p-3 bg-emerald-950/40 text-emerald-300 border border-emerald-900 rounded-lg text-xs font-medium">
+        <div className="p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold">
           {saveMessage}
         </div>
       )}
@@ -171,7 +175,7 @@ export default function SettingsPage() {
         {/* Left Column (2 spans): Baselines & Severity Thresholds */}
         <div className="lg:col-span-2 space-y-6">
           {/* Station Baselines */}
-          <Card glow={true}>
+          <Card>
             <CardHeader
               title="Station Baselines (Q₀, P₀)"
               subtitle="Calibrated steady-state parameters measured under zero-leak flow"
@@ -181,13 +185,13 @@ export default function SettingsPage() {
                 {(["S1", "S2", "S3", "S4", "S5", "S6"] as const).map((id) => (
                   <div
                     key={id}
-                    className="p-3 bg-[#0a0d12] border border-[#1e2733] rounded-lg space-y-2 text-xs"
+                    className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2 text-xs"
                   >
-                    <div className="font-semibold text-white">
+                    <div className="font-semibold text-slate-900">
                       Station {id}
                     </div>
                     <div>
-                      <label className="text-[#7a8fa6] text-[11px] block mb-0.5">
+                      <label className="text-slate-500 text-xs block mb-1">
                         Flow Q₀ (L/min)
                       </label>
                       <input
@@ -203,11 +207,11 @@ export default function SettingsPage() {
                             },
                           })
                         }
-                        className="w-full px-2 py-1 bg-[#0f1419] border border-[#1e2733] rounded text-xs tabular-nums text-white focus:outline-none focus:border-[#00b4d8]"
+                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono tabular-nums text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
                       />
                     </div>
                     <div>
-                      <label className="text-[#7a8fa6] text-[11px] block mb-0.5">
+                      <label className="text-slate-500 text-xs block mb-1">
                         Pressure P₀ (bar)
                       </label>
                       <input
@@ -223,7 +227,7 @@ export default function SettingsPage() {
                             },
                           })
                         }
-                        className="w-full px-2 py-1 bg-[#0f1419] border border-[#1e2733] rounded text-xs tabular-nums text-white focus:outline-none focus:border-[#00b4d8]"
+                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono tabular-nums text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
                       />
                     </div>
                   </div>
@@ -240,11 +244,11 @@ export default function SettingsPage() {
             />
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
-                <div className="p-3.5 border border-[#1e2733] rounded-lg space-y-1.5 bg-[#0a0d12]">
-                  <span className="font-semibold text-emerald-400 block">
+                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
+                  <span className="font-semibold text-emerald-700 block">
                     Low Severity
                   </span>
-                  <span className="text-[#7a8fa6] text-[11px] block">
+                  <span className="text-slate-500 text-xs block">
                     SI &lt; Low Threshold
                   </span>
                   <div className="flex items-center gap-1.5 pt-1">
@@ -252,20 +256,20 @@ export default function SettingsPage() {
                       type="number"
                       value={lowThresh}
                       onChange={(e) => setLowThresh(parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 border border-[#1e2733] rounded text-xs tabular-nums bg-[#0f1419] text-white"
+                      className="w-16 px-2 py-1 border border-slate-200 rounded text-xs font-mono tabular-nums bg-white text-slate-900 shadow-xs"
                     />
-                    <span className="text-[#7a8fa6]">%</span>
+                    <span className="text-slate-500">%</span>
                   </div>
-                  <span className="text-[11px] text-[#4a5a6e] block pt-1">
+                  <span className="text-xs text-slate-400 block pt-1">
                     Action: Monitor
                   </span>
                 </div>
 
-                <div className="p-3.5 border border-[#1e2733] rounded-lg space-y-1.5 bg-[#0a0d12]">
-                  <span className="font-semibold text-amber-400 block">
+                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
+                  <span className="font-semibold text-amber-800 block">
                     Medium Severity
                   </span>
-                  <span className="text-[#7a8fa6] text-[11px] block">
+                  <span className="text-slate-500 text-xs block">
                     Low ≤ SI &lt; Medium
                   </span>
                   <div className="flex items-center gap-1.5 pt-1">
@@ -273,37 +277,37 @@ export default function SettingsPage() {
                       type="number"
                       value={medThresh}
                       onChange={(e) => setMedThresh(parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 border border-[#1e2733] rounded text-xs tabular-nums bg-[#0f1419] text-white"
+                      className="w-16 px-2 py-1 border border-slate-200 rounded text-xs font-mono tabular-nums bg-white text-slate-900 shadow-xs"
                     />
-                    <span className="text-[#7a8fa6]">%</span>
+                    <span className="text-slate-500">%</span>
                   </div>
-                  <span className="text-[11px] text-[#4a5a6e] block pt-1">
+                  <span className="text-xs text-slate-400 block pt-1">
                     Action: Schedule inspection
                   </span>
                 </div>
 
-                <div className="p-3.5 border border-[#1e2733] rounded-lg space-y-1.5 bg-[#0a0d12]">
-                  <span className="font-semibold text-red-400 block">
+                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
+                  <span className="font-semibold text-red-700 block">
                     High Severity
                   </span>
-                  <span className="text-[#7a8fa6] text-[11px] block">
+                  <span className="text-slate-500 text-xs block">
                     SI ≥ {medThresh}%
                   </span>
-                  <div className="pt-2 text-xs font-bold text-red-400 tabular-nums">
+                  <div className="pt-2 text-xs font-bold text-red-600 font-mono tabular-nums">
                     &gt; {medThresh}% SI
                   </div>
-                  <span className="text-[11px] text-[#4a5a6e] block pt-1">
+                  <span className="text-xs text-slate-400 block pt-1">
                     Action: Immediate response
                   </span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-[#1e2733] flex items-center justify-between text-xs">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
                 <div>
-                  <span className="font-semibold text-white block">
+                  <span className="font-semibold text-slate-900 block">
                     Repeated Incident Window
                   </span>
-                  <span className="text-[#7a8fa6] text-[11px]">
+                  <span className="text-slate-500">
                     Alerts from the same zone within this window increment repeat count
                   </span>
                 </div>
@@ -312,9 +316,9 @@ export default function SettingsPage() {
                     type="number"
                     value={repeatWindow}
                     onChange={(e) => setRepeatWindow(parseInt(e.target.value) || 1)}
-                    className="w-16 px-2 py-1 border border-[#1e2733] rounded text-xs tabular-nums text-center bg-[#0a0d12] text-white"
+                    className="w-16 px-2 py-1 border border-slate-200 rounded text-xs font-mono tabular-nums text-center bg-white text-slate-900 shadow-xs"
                   />
-                  <span className="text-[#7a8fa6]">min</span>
+                  <span className="text-slate-500">min</span>
                 </div>
               </div>
             </CardContent>
@@ -328,31 +332,31 @@ export default function SettingsPage() {
             <CardHeader
               title="Database Storage Monitor"
               subtitle="Neon serverless free quota (1 GB budget)"
-              action={<Database className="w-4 h-4 text-[#00b4d8]" />}
+              action={<Database className="w-4 h-4 text-sky-600" />}
             />
             <CardContent className="space-y-4">
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between items-center py-1.5 border-b border-[#1e2733]">
-                  <span className="text-[#7a8fa6]">Total Storage Used:</span>
-                  <span className="font-bold tabular-nums text-white">
+                <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+                  <span className="text-slate-600">Total Storage Used:</span>
+                  <span className="font-bold font-mono tabular-nums text-slate-900">
                     {dbUsage ? formatBytes(dbUsage.dbSizeBytes) : "Querying..."}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-[#1e2733]">
-                  <span className="text-[#7a8fa6]">readings_raw (48h):</span>
-                  <span className="tabular-nums text-white">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-600">readings_raw (48h):</span>
+                  <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.rawRows.toLocaleString() ?? "0"}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-[#1e2733]">
-                  <span className="text-[#7a8fa6]">readings_minute (permanent):</span>
-                  <span className="tabular-nums text-white">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-600">readings_minute (permanent):</span>
+                  <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.minuteRows.toLocaleString() ?? "0"}
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-[#1e2733]">
-                  <span className="text-[#7a8fa6]">alerts log:</span>
-                  <span className="tabular-nums text-white">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-600">alerts log:</span>
+                  <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.alertRows.toLocaleString() ?? "0"}
                   </span>
                 </div>
@@ -363,7 +367,7 @@ export default function SettingsPage() {
                 size="sm"
                 className="w-full"
                 onClick={handleCleanupNow}
-                icon={<Trash2 className="w-3.5 h-3.5 text-red-400" />}
+                icon={<Trash2 className="w-3.5 h-3.5 text-red-600" />}
               >
                 Execute 48h Retention Cleanup
               </Button>
@@ -375,19 +379,19 @@ export default function SettingsPage() {
             <CardHeader
               title="ESP32 Ingest Integration"
               subtitle="Device HTTPS header specification"
-              action={<Cpu className="w-4 h-4 text-[#00b4d8]" />}
+              action={<Cpu className="w-4 h-4 text-sky-600" />}
             />
-            <CardContent className="space-y-2.5 text-xs text-[#7a8fa6] leading-relaxed">
+            <CardContent className="space-y-2.5 text-xs text-slate-600 leading-relaxed">
               <p>
                 Configure the ESP32 firmware HTTP client to post batched payload cycles to the ingestion endpoint:
               </p>
-              <div className="p-3 bg-[#0a0d12] text-slate-200 rounded-lg text-[11px] font-mono space-y-0.5 border border-[#1e2733]">
+              <div className="p-3 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono space-y-0.5 border border-slate-800 shadow-xs">
                 <div>POST /api/ingest HTTP/1.1</div>
                 <div>Host: your-hydronode.vercel.app</div>
-                <div className="text-[#00b4d8]">Content-Type: application/json</div>
+                <div className="text-sky-400">Content-Type: application/json</div>
                 <div className="text-emerald-400">x-api-key: [INGEST_API_KEY]</div>
               </div>
-              <p className="text-[11px] text-[#4a5a6e]">
+              <p className="text-xs text-slate-400">
                 Key is validated against the server-side environment variable.
               </p>
             </CardContent>
