@@ -7,6 +7,7 @@
 // - White Schedule-40 PVC pipe with clear flow direction
 
 import { useState, useRef, useEffect } from "react";
+import type { LiveStation, LiveAlert } from "@/types";
 import {
   STATIONS,
   ZONES,
@@ -30,6 +31,11 @@ interface RigMapProps {
   onInjectLeak?: (tp: TestPointType) => void;
   selectedStationId?: StationId | null;
   selectedZoneId?: ZoneId | null;
+  // Playback overrides (Time Machine)
+  isPlaybackMode?: boolean;
+  playbackStations?: LiveStation[];
+  playbackAlerts?: LiveAlert[];
+  playbackInjectedLeaks?: ZoneId[];
 }
 
 export function RigMap({
@@ -38,6 +44,10 @@ export function RigMap({
   onInjectLeak,
   selectedStationId,
   selectedZoneId,
+  isPlaybackMode = false,
+  playbackStations,
+  playbackAlerts,
+  playbackInjectedLeaks,
 }: RigMapProps) {
   const [mounted, setMounted] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -51,16 +61,23 @@ export function RigMap({
   const [showVibration, setShowVibration] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
 
-  // Store data
-  const stations = useHydroStore((s) => s.stations);
-  const alerts = useHydroStore((s) => s.alerts);
-  const injectedLeaks = useHydroStore((s) => s.injectedLeaks);
+  // Store data or Playback overrides
+  const storeStations = useHydroStore((s) => s.stations);
+  const storeAlerts = useHydroStore((s) => s.alerts);
+  const storeInjectedLeaks = useHydroStore((s) => s.injectedLeaks);
+
+  const stations = isPlaybackMode && playbackStations ? playbackStations : storeStations;
+  const rawAlerts = isPlaybackMode && playbackAlerts ? playbackAlerts : storeAlerts;
+  const injectedLeaks =
+    isPlaybackMode && playbackInjectedLeaks !== undefined
+      ? playbackInjectedLeaks
+      : storeInjectedLeaks;
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const activeAlerts = alerts.filter((a) => a.status === "active");
+  const activeAlerts = rawAlerts.filter((a) => a.status === "active");
 
   // Merge DB alerts with any live injected leaks from simulation panel/valves
   const displayedAlerts = [...activeAlerts];

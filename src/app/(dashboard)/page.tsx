@@ -10,9 +10,11 @@
 // - "Active Pipeline Zones" table with pastel rounded-square icons, tabular nums, and fluted footer
 // - "Sensor Transducer Pods & Actuators" 4-card carousel with miniature graphics and hardware tags
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { RigMap } from "@/components/rig/RigMap";
+import { RigTimeMachine } from "@/components/rig/RigTimeMachine";
+import type { PlaybackFrame } from "@/lib/incidentPlayback";
 import { TelemetryChart } from "@/components/charts/TelemetryChart";
 import { Stat } from "@/components/ui/Stat";
 import { Badge } from "@/components/ui/Badge";
@@ -41,6 +43,7 @@ import {
   Waves,
   MoreHorizontal,
   ExternalLink,
+  History,
 } from "lucide-react";
 
 export default function NetworkOverviewPage() {
@@ -51,6 +54,15 @@ export default function NetworkOverviewPage() {
 
   const [selectedZone, setSelectedZone] = useState<ZoneId | null>(null);
   const [selectedStation, setSelectedStation] = useState<StationId>("S1");
+
+  // Historic Incident Playback (Time Machine)
+  const [isPlaybackMode, setIsPlaybackMode] = useState<boolean>(false);
+  const [playbackScenarioId, setPlaybackScenarioId] = useState<string>("zone-2-burst");
+  const [playbackFrame, setPlaybackFrame] = useState<PlaybackFrame | null>(null);
+
+  const handleFrameUpdate = useCallback((frame: PlaybackFrame) => {
+    setPlaybackFrame(frame);
+  }, []);
 
   const activeAlerts = alerts.filter((a) => a.status === "active");
 
@@ -201,16 +213,44 @@ export default function NetworkOverviewPage() {
         <CardHeader
           title={
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isPlaybackMode ? "bg-amber-500 animate-ping" : "bg-sky-500 animate-pulse"
+                }`}
+              />
               <span>Pipeline Rig Canvas</span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 ml-1">
-                ESP32-S3 Edge Controller
-              </span>
+              {isPlaybackMode ? (
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 ml-1">
+                  TIME MACHINE REPLAY
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 ml-1">
+                  ESP32-S3 Edge Controller
+                </span>
+              )}
             </div>
           }
-          subtitle="Real-time physical test rig schematic · 6 sensor stations across 5 monitored pipeline zones"
+          subtitle={
+            isPlaybackMode
+              ? "Replaying recorded incident telemetry · Physical wavefront propagation across S1–S6 Tri-Sensor Bus"
+              : "Real-time physical test rig schematic · 6 sensor stations across 5 monitored pipeline zones"
+          }
           action={
             <div className="flex items-center gap-1.5">
+              <Button
+                variant={isPlaybackMode ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setIsPlaybackMode((prev) => !prev)}
+                icon={
+                  <History
+                    className={`w-3.5 h-3.5 ${
+                      isPlaybackMode ? "text-amber-400" : "text-amber-600"
+                    }`}
+                  />
+                }
+              >
+                {isPlaybackMode ? "Exit Replay" : "Time Machine"}
+              </Button>
               <div className="hidden sm:flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
                 {STATION_IDS.map((sid) => (
                   <button
@@ -234,13 +274,26 @@ export default function NetworkOverviewPage() {
             </div>
           }
         />
-        <div className="relative p-2 sm:p-4 bg-slate-50/50">
+        <div className="relative p-2 sm:p-4 bg-slate-50/50 space-y-4">
+          {/* Time Machine Playback Console */}
+          {isPlaybackMode && (
+            <RigTimeMachine
+              initialScenarioId={playbackScenarioId}
+              onFrameUpdate={handleFrameUpdate}
+              onExit={() => setIsPlaybackMode(false)}
+            />
+          )}
+
           <RigMap
             selectedStationId={selectedStation}
             selectedZoneId={selectedZone}
             onSelectStation={(id) => setSelectedStation(id)}
             onSelectZone={(id) => setSelectedZone(id)}
             onInjectLeak={handleTestPointClick}
+            isPlaybackMode={isPlaybackMode}
+            playbackStations={playbackFrame?.stations}
+            playbackAlerts={playbackFrame?.alerts}
+            playbackInjectedLeaks={playbackFrame?.injectedLeaks}
           />
 
           {/* Selected Zone Side Drawer */}
@@ -313,6 +366,25 @@ export default function NetworkOverviewPage() {
                     No acoustic or flow deviations flagged in this zone segment.
                   </div>
                 )}
+
+                {/* Replay in Time Machine Action */}
+                <button
+                  onClick={() => {
+                    const scenarioMap: Record<number, string> = {
+                      1: "zone-1-burst",
+                      2: "zone-2-burst",
+                      3: "zone-3-surge",
+                      4: "zone-4-valve",
+                      5: "zone-2-burst",
+                    };
+                    setPlaybackScenarioId(scenarioMap[selectedZoneData.id] ?? "zone-2-burst");
+                    setIsPlaybackMode(true);
+                  }}
+                  className="w-full mt-2 py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  <History className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Replay Zone {selectedZoneData.id} in Time Machine</span>
+                </button>
 
                 <div className="pt-2 text-[11px] text-slate-400 leading-normal border-t border-slate-100">
                   Localizes pipe segment between sensor stations via flow loss delta & acoustic emission.
@@ -430,7 +502,27 @@ export default function NetworkOverviewPage() {
 
                     {/* Action */}
                     <td className="py-3 px-5 text-right">
-                      <div className="flex items-center justify-end gap-2 text-slate-500">
+                      <div className="flex items-center justify-end gap-1.5 text-slate-500">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const scenarioMap: Record<number, string> = {
+                              1: "zone-1-burst",
+                              2: "zone-2-burst",
+                              3: "zone-3-surge",
+                              4: "zone-4-valve",
+                              5: "zone-2-burst",
+                            };
+                            setPlaybackScenarioId(scenarioMap[zone.id] ?? "zone-2-burst");
+                            setIsPlaybackMode(true);
+                            window.scrollTo({ top: 220, behavior: "smooth" });
+                          }}
+                          className="px-2 py-1 text-[11px] font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 transition cursor-pointer inline-flex items-center gap-1"
+                          title={`Replay Zone ${zone.id} Incident in Time Machine`}
+                        >
+                          <History className="w-3 h-3 text-amber-700" />
+                          <span>Replay</span>
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
