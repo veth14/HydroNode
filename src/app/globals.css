@@ -135,6 +135,40 @@ html, body {
   100% { background-position:  200% 0; }
 }
 
+/* ─── Leak Effect Animations ─── */
+@keyframes leak-spray-0  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate(-18px,-22px);opacity:0} }
+@keyframes leak-spray-1  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 0px,-26px);opacity:0} }
+@keyframes leak-spray-2  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 18px,-22px);opacity:0} }
+@keyframes leak-spray-3  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 26px,-10px);opacity:0} }
+@keyframes leak-spray-4  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 26px, 10px);opacity:0} }
+@keyframes leak-spray-5  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 18px, 22px);opacity:0} }
+@keyframes leak-spray-6  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate(-18px, 22px);opacity:0} }
+@keyframes leak-spray-7  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate(-26px, 10px);opacity:0} }
+
+@keyframes leak-ripple {
+  0%   { r: 2;  opacity: 0.65; }
+  100% { r: 22; opacity: 0;    }
+}
+@keyframes leak-drip {
+  0%   { transform: translateY(0);   opacity: 0.80; }
+  80%  { opacity: 0.55; }
+  100% { transform: translateY(30px); opacity: 0;   }
+}
+@keyframes leak-puddle {
+  0%   { rx: 0; ry: 0; opacity: 0; }
+  30%  { opacity: 0.5; }
+  100% { rx: 14; ry: 5; opacity: 0.35; }
+}
+@keyframes leak-band-pulse {
+  0%, 100% { opacity: 0.10; }
+  50%       { opacity: 0.28; }
+}
+@keyframes leak-mist {
+  0%   { transform: translate(0,0) scale(0.3); opacity: 0.5; }
+  60%  { opacity: 0.25; }
+  100% { transform: translate(var(--mx,4px), var(--my,-14px)) scale(1.4); opacity: 0; }
+}
+
 .animate-flow        { animation: waterFlow 1.8s linear infinite; }
 .animate-pulse-ring  { animation: pulseRing 1.4s ease-out infinite; }
 .animate-fade-in     { animation: fadeSlideIn 0.2s ease-out both; }
@@ -151,7 +185,10 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-flow, .animate-ping, .animate-pulse, .animate-spin,
-  .animate-shimmer, .animate-fade-up {
+  .animate-shimmer, .animate-fade-up,
+  [style*="leak-spray"], [style*="leak-ripple"],
+  [style*="leak-drip"], [style*="leak-puddle"],
+  [style*="leak-band-pulse"], [style*="leak-mist"] {
     animation: none !important;
   }
 }
