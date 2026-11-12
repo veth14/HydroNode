@@ -254,36 +254,36 @@ export default function StationDetailPage() {
 
       {/* Main Feature: Seismic Wave Seismogram & Telemetry Visualizer */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-premium space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-900 tracking-tight whitespace-nowrap">
                 {chartMode === "seismic_wave"
-                  ? `Station ${stationId} — Live Seismic Wave Seismogram (Ground & Pipe Acceleration)`
+                  ? `Station ${stationId} — Live Seismic Waveform Trace`
                   : chartMode === "seismic_rms"
-                  ? `Station ${stationId} — Seismic RMS Energy Envelope vs Alarm Threshold`
+                  ? `Station ${stationId} — Seismic RMS Energy Envelope`
                   : chartMode === "flow"
-                  ? `Station ${stationId} — Flow Rate Telemetry vs Baseline Q₀`
-                  : `Station ${stationId} — Line Pressure Telemetry vs Baseline P₀`}
+                  ? `Station ${stationId} — Volumetric Flow Rate (Q)`
+                  : `Station ${stationId} — Line Head Pressure (P)`}
               </h3>
               {isHighSeismic && (
-                <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 font-bold whitespace-nowrap">
                   TURBULENT WAVE DETECTED
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5 truncate max-w-2xl">
               {chartMode === "seismic_wave"
                 ? "Digital seismograph trace showing real-time P/S elastic wave packet oscillation across zero baseline"
                 : chartMode === "seismic_rms"
                 ? "Smoothed RMS energy magnitude (g) compared to 0.150 g trigger threshold"
                 : chartMode === "flow"
-                ? "Pulse turbine volumetric flow rate in L/min"
-                : "5V transducer via ADS1115 16-bit I2C ADC in bar"}
+                ? `Pulse turbine volumetric flow rate compared to baseline Q₀ (${currentBaseline.q0} L/min)`
+                : `5V transducer via ADS1115 16-bit I²C ADC compared to baseline P₀ (${currentBaseline.p0} bar)`}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {/* Mode Selector Tabs */}
             <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 text-xs">
               <button
