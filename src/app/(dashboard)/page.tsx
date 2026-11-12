@@ -357,14 +357,18 @@ export default function NetworkOverviewPage() {
                 const stB = stations.find((s) => s.id === zone.stationB);
                 const isSelected = selectedZone === zone.id;
                 const iconStyle = zoneIconStyles[idx % zoneIconStyles.length];
+                const hasAlert = Boolean(alert);
+                const rowBorderClass = isSelected
+                  ? "border-l-4 border-l-sky-500 bg-sky-50/50"
+                  : hasAlert
+                  ? "border-l-4 border-l-red-500 bg-red-50/30"
+                  : "border-l-4 border-l-transparent hover:border-l-slate-300 hover:bg-slate-50/80";
 
                 return (
                   <tr
                     key={zone.id}
                     onClick={() => setSelectedZone(isSelected ? null : zone.id)}
-                    className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
-                      isSelected ? "bg-sky-50/50" : ""
-                    }`}
+                    className={`${rowBorderClass} transition-all cursor-pointer`}
                   >
                     {/* Zone Name with Pastel Square Icon */}
                     <td className="py-3 px-5">
@@ -426,30 +430,27 @@ export default function NetworkOverviewPage() {
 
                     {/* Action */}
                     <td className="py-3 px-5 text-right">
-                      <div className="flex items-center justify-end gap-3 text-slate-500">
+                      <div className="flex items-center justify-end gap-2 text-slate-500">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedZone(zone.id);
+                            setSelectedZone(isSelected ? null : zone.id);
                           }}
-                          className="hover:text-slate-900 font-medium transition-colors cursor-pointer"
+                          className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
+                            isSelected
+                              ? "bg-sky-600 text-white shadow-2xs"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                          }`}
                         >
-                          View
+                          {isSelected ? "Close" : "View"}
                         </button>
                         <Link
                           href={`/stations/${zone.stationA}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="hover:text-slate-900 font-medium transition-colors"
+                          className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition inline-flex items-center gap-1"
                         >
-                          Inspect
+                          Inspect <ChevronRight className="w-3 h-3 text-slate-400" />
                         </Link>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="hover:text-slate-900 p-1 rounded-md transition-colors cursor-pointer"
-                          aria-label="More options"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -488,8 +489,8 @@ export default function NetworkOverviewPage() {
             <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
                 {/* Miniature Visual Container */}
-                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-sky-600">
+                <div className="bg-gradient-to-br from-sky-50 to-sky-100/60 border border-sky-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-sky-200/80 shadow-2xs flex items-center justify-center text-sky-600">
                     <Droplets className="w-6 h-6 stroke-[1.75]" />
                   </div>
                   <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -536,8 +537,8 @@ export default function NetworkOverviewPage() {
             <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
                 {/* Miniature Visual Container */}
-                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-indigo-600">
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/60 border border-indigo-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-indigo-200/80 shadow-2xs flex items-center justify-center text-indigo-600">
                     <Gauge className="w-6 h-6 stroke-[1.75]" />
                   </div>
                   <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -584,8 +585,8 @@ export default function NetworkOverviewPage() {
             <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
                 {/* Miniature Visual Container */}
-                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-amber-600">
+                <div className="bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-amber-200/80 shadow-2xs flex items-center justify-center text-amber-600">
                     <Activity className="w-6 h-6 stroke-[1.75]" />
                   </div>
                   <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -632,8 +633,8 @@ export default function NetworkOverviewPage() {
             <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
                 {/* Miniature Visual Container */}
-                <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200/80 shadow-2xs flex items-center justify-center text-slate-800">
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/60 border border-emerald-100 rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-emerald-200/80 shadow-2xs flex items-center justify-center text-emerald-700">
                     <Cpu className="w-6 h-6 stroke-[1.75]" />
                   </div>
                   <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -706,8 +707,8 @@ export default function NetworkOverviewPage() {
           />
           <CardContent className="space-y-3.5">
             {/* Flow Transducer */}
-            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-sky-50/40 via-white to-white border border-sky-100/90 border-l-4 border-l-sky-500 shadow-2xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-sky-500" />
                   <span className="text-xs font-bold text-slate-900">Flow Transducer</span>
@@ -721,15 +722,15 @@ export default function NetworkOverviewPage() {
                   {activeStation?.latestFlow != null ? activeStation.latestFlow.toFixed(2) : "--"}
                   <span className="text-xs font-normal text-slate-500 ml-1">L/min</span>
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 font-mono tabular-nums">
                   Δ {flowDelta.toFixed(2)} L/m
                 </span>
               </div>
             </div>
 
             {/* Pressure Transducer */}
-            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50/40 via-white to-white border border-indigo-100/90 border-l-4 border-l-indigo-500 shadow-2xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-indigo-500" />
                   <span className="text-xs font-bold text-slate-900">Pressure Transducer</span>
@@ -743,15 +744,15 @@ export default function NetworkOverviewPage() {
                   {activeStation?.latestPressure != null ? activeStation.latestPressure.toFixed(2) : "--"}
                   <span className="text-xs font-normal text-slate-500 ml-1">bar</span>
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 font-mono tabular-nums">
                   P₀ = 5.00 bar
                 </span>
               </div>
             </div>
 
             {/* Seismic Sensor */}
-            <div className="p-3.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60">
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-50/40 via-white to-white border border-amber-100/90 border-l-4 border-l-amber-500 shadow-2xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
                   <span className="text-xs font-bold text-slate-900">Seismic Wave Sensor</span>
@@ -765,7 +766,7 @@ export default function NetworkOverviewPage() {
                   {activeStation?.latestVibration != null ? activeStation.latestVibration.toFixed(3) : "--"}
                   <span className="text-xs font-normal text-slate-500 ml-1">g RMS</span>
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 font-mono tabular-nums">
                   60–240 Hz
                 </span>
               </div>

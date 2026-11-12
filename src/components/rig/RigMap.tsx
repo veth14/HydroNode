@@ -127,7 +127,7 @@ export function RigMap({
   }
 
   return (
-    <div className="relative w-full bg-white rounded-xl overflow-hidden shadow-xs border border-slate-200 select-none flex flex-col">
+    <div className="relative w-full bg-white rounded-2xl overflow-hidden shadow-premium border border-slate-200/80 select-none flex flex-col">
       {/* SVG Rig Canvas */}
       <svg
         viewBox="0 0 1200 720"
