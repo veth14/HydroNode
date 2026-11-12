@@ -118,7 +118,7 @@ export default function SiteMapInner() {
               ? stationData.latestPressure.toFixed(2) + " bar"
               : "--"
           }</strong></span><br/>
-          <span>Seismic Wave: <strong>${
+          <span>Seismic RMS: <strong>${
             stationData?.latestVibration != null
               ? stationData.latestVibration.toFixed(3) + " g"
               : "--"
@@ -136,7 +136,7 @@ export default function SiteMapInner() {
   return (
     <div
       ref={mapContainerRef}
-      className="w-full h-[550px] rounded-xl overflow-hidden shadow-inner border border-slate-300"
+      className="w-full h-[550px] rounded-xl overflow-hidden shadow-inner border border-[#1e2733] bg-[#0a0d12]"
     />
   );
 }
