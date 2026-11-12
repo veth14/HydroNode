@@ -10,11 +10,9 @@
 // - "Active Pipeline Zones" table with pastel rounded-square icons, tabular nums, and fluted footer
 // - "Sensor Transducer Pods & Actuators" 4-card carousel with miniature graphics and hardware tags
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { RigMap } from "@/components/rig/RigMap";
-import { RigTimeMachine } from "@/components/rig/RigTimeMachine";
-import type { PlaybackFrame } from "@/lib/incidentPlayback";
+import { RigCanvas } from "@/components/rig/RigCanvas";
 import { TelemetryChart } from "@/components/charts/TelemetryChart";
 import { Stat } from "@/components/ui/Stat";
 import { Badge } from "@/components/ui/Badge";
@@ -58,11 +56,6 @@ export default function NetworkOverviewPage() {
   // Historic Incident Playback (Time Machine)
   const [isPlaybackMode, setIsPlaybackMode] = useState<boolean>(false);
   const [playbackScenarioId, setPlaybackScenarioId] = useState<string>("zone-2-burst");
-  const [playbackFrame, setPlaybackFrame] = useState<PlaybackFrame | null>(null);
-
-  const handleFrameUpdate = useCallback((frame: PlaybackFrame) => {
-    setPlaybackFrame(frame);
-  }, []);
 
   const activeAlerts = alerts.filter((a) => a.status === "active");
 
@@ -274,26 +267,16 @@ export default function NetworkOverviewPage() {
             </div>
           }
         />
-        <div className="relative p-2 sm:p-4 bg-slate-50/50 space-y-4">
-          {/* Time Machine Playback Console */}
-          {isPlaybackMode && (
-            <RigTimeMachine
-              initialScenarioId={playbackScenarioId}
-              onFrameUpdate={handleFrameUpdate}
-              onExit={() => setIsPlaybackMode(false)}
-            />
-          )}
-
-          <RigMap
+        <div className="relative p-2 sm:p-4 bg-slate-50/50">
+          <RigCanvas
             selectedStationId={selectedStation}
             selectedZoneId={selectedZone}
             onSelectStation={(id) => setSelectedStation(id)}
             onSelectZone={(id) => setSelectedZone(id)}
             onInjectLeak={handleTestPointClick}
             isPlaybackMode={isPlaybackMode}
-            playbackStations={playbackFrame?.stations}
-            playbackAlerts={playbackFrame?.alerts}
-            playbackInjectedLeaks={playbackFrame?.injectedLeaks}
+            playbackScenarioId={playbackScenarioId}
+            onExitPlayback={() => setIsPlaybackMode(false)}
           />
 
           {/* Selected Zone Side Drawer */}

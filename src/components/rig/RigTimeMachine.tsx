@@ -3,7 +3,7 @@
 // Interactive Historic Incident Playback Controller (Time Machine) for HydroNode SCADA.
 // Allows operators to replay pipeline bursts frame-by-frame across the physical test rig.
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Play,
   Pause,
@@ -45,49 +45,47 @@ export function RigTimeMachine({
   const scenario =
     PRESET_INCIDENTS.find((s) => s.id === selectedScenarioId) ?? PRESET_INCIDENTS[0];
 
-  const currentSecondsRef = useRef(currentSeconds);
-  currentSecondsRef.current = currentSeconds;
-
-  const isPlayingRef = useRef(isPlaying);
-  isPlayingRef.current = isPlaying;
-
   const speedRef = useRef(speedMultiplier);
   speedRef.current = speedMultiplier;
 
-  // Compute active frame
-  const currentFrame = calculatePlaybackFrame(scenario, currentSeconds);
+  // Compute active frame with useMemo
+  const currentFrame = useMemo(() => {
+    return calculatePlaybackFrame(scenario, currentSeconds);
+  }, [scenario, currentSeconds]);
 
-  // Notify parent of frame updates
+  // Notify parent only when time or scenario actually advances
+  const lastEmittedT = useRef<number>(-1);
+  const lastScenarioId = useRef<string>("");
+
   useEffect(() => {
-    onFrameUpdate(currentFrame);
-  }, [currentFrame, onFrameUpdate]);
+    if (
+      lastScenarioId.current !== selectedScenarioId ||
+      Math.abs(lastEmittedT.current - currentSeconds) >= 0.04
+    ) {
+      lastEmittedT.current = currentSeconds;
+      lastScenarioId.current = selectedScenarioId;
+      onFrameUpdate(currentFrame);
+    }
+  }, [currentSeconds, selectedScenarioId, currentFrame, onFrameUpdate]);
 
-  // RequestAnimationFrame or Interval ticker for smooth playback
+  // Clean 20 FPS ticker (50ms interval) for smooth, gentle updates
   useEffect(() => {
-    let lastTimestamp = performance.now();
-    let animationId: number;
+    if (!isPlaying) return;
 
-    const tick = (now: number) => {
-      const deltaSec = (now - lastTimestamp) / 1000;
-      lastTimestamp = now;
+    const intervalMs = 50;
+    const interval = setInterval(() => {
+      setCurrentSeconds((prev) => {
+        const next = prev + (intervalMs / 1000) * speedRef.current;
+        if (next >= scenario.durationSeconds) {
+          setIsPlaying(false);
+          return scenario.durationSeconds;
+        }
+        return next;
+      });
+    }, intervalMs);
 
-      if (isPlayingRef.current) {
-        setCurrentSeconds((prev) => {
-          const next = prev + deltaSec * speedRef.current;
-          if (next >= scenario.durationSeconds) {
-            setIsPlaying(false);
-            return scenario.durationSeconds;
-          }
-          return next;
-        });
-      }
-
-      animationId = requestAnimationFrame(tick);
-    };
-
-    animationId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animationId);
-  }, [scenario.durationSeconds]);
+    return () => clearInterval(interval);
+  }, [isPlaying, scenario.durationSeconds]);
 
   const handleSeek = (newSeconds: number) => {
     setCurrentSeconds(Math.max(0, Math.min(newSeconds, scenario.durationSeconds)));
@@ -413,3 +411,4 @@ export function RigTimeMachine({
     </div>
   );
 }
+

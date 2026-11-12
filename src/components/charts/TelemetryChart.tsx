@@ -6,7 +6,7 @@
 // - Tabular numbers for all timestamps and values
 // - Clean white card surface with subtle grid lines
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useSWR from "swr";
 import {
   ResponsiveContainer,
@@ -44,10 +44,10 @@ export function TelemetryChart({
 
   // Keep synced with parent selection
   useEffect(() => {
-    if (initialStation) {
+    if (initialStation && initialStation !== selectedStation) {
       setSelectedStation(initialStation);
     }
-  }, [initialStation]);
+  }, [initialStation, selectedStation]);
 
   const { data, isLoading } = useSWR<RawReadingPoint[]>(
     `/api/readings?stationId=${selectedStation}&raw=true&range=1h`,
@@ -61,19 +61,21 @@ export function TelemetryChart({
   const isHighSeismic = latestVib > 0.15;
 
   // 1. Standard telemetry data points for All 3 Sensors, Flow, and Pressure
-  const chartData = rawList.slice(-45).map((d) => ({
-    time: new Date(d.t).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-    flow: Number(d.flow.toFixed(2)),
-    pressure: Number(d.pressure.toFixed(2)),
-    seismicRms: Number(d.vibration.toFixed(3)),
-  }));
+  const chartData = useMemo(() => {
+    return rawList.slice(-45).map((d) => ({
+      time: new Date(d.t).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      flow: Number(d.flow.toFixed(2)),
+      pressure: Number(d.pressure.toFixed(2)),
+      seismicRms: Number(d.vibration.toFixed(3)),
+    }));
+  }, [rawList]);
 
   // 2. High-density Seismogram Oscillogram derived 100% from actual data points
-  const seismogramPoints = (() => {
+  const seismogramPoints = useMemo(() => {
     const pts: Array<{ time: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
     const sourceSlice = rawList.slice(-45);
     const SUBS = 14;
@@ -117,7 +119,7 @@ export function TelemetryChart({
       }
     }
     return pts;
-  })();
+  }, [rawList]);
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-premium select-none">
