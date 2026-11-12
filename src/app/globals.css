@@ -136,6 +136,18 @@ html, body {
 }
 
 /* ─── Leak Effect Animations ─── */
+/* Entrance: the whole group scales up from 0 and fades in from the orifice */
+@keyframes leak-enter {
+  0%   { transform: scale(0.1); opacity: 0;   }
+  40%  { opacity: 1; }
+  70%  { transform: scale(1.06); }
+  100% { transform: scale(1);   opacity: 1;   }
+}
+/* Callout card slides in after a short delay */
+@keyframes leak-card-in {
+  0%   { transform: translateY(10px); opacity: 0; }
+  100% { transform: translateY(0);    opacity: 1; }
+}
 @keyframes leak-spray-0  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate(-18px,-22px);opacity:0} }
 @keyframes leak-spray-1  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 0px,-26px);opacity:0} }
 @keyframes leak-spray-2  { 0%{transform:translate(0,0);opacity:0.85} 100%{transform:translate( 18px,-22px);opacity:0} }
@@ -188,7 +200,8 @@ html, body {
   .animate-shimmer, .animate-fade-up,
   [style*="leak-spray"], [style*="leak-ripple"],
   [style*="leak-drip"], [style*="leak-puddle"],
-  [style*="leak-band-pulse"], [style*="leak-mist"] {
+  [style*="leak-band-pulse"], [style*="leak-mist"],
+  [style*="leak-enter"], [style*="leak-card-in"] {
     animation: none !important;
   }
 }

@@ -80,7 +80,15 @@ export function LeakEffect({ alert }: LeakEffectProps) {
   const dripDir = anchor.isTop ? 1 : -1;
 
   return (
-    <g id={`leak-alarm-${alert.id}`} className="select-none">
+    <g
+      id={`leak-alarm-${alert.id}`}
+      className="select-none"
+      style={{
+        /* Entrance: scale up + fade in from the orifice anchor point */
+        animation: "leak-enter 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        transformOrigin: `${anchor.x}px ${anchor.y}px`,
+      }}
+    >
 
       {/* ── 1. ZONE BAND: pulsing opacity highlight ─────────────────────── */}
       {pipePath && (
@@ -213,7 +221,12 @@ export function LeakEffect({ alert }: LeakEffectProps) {
       </g>
 
       {/* ── 8. TELEMETRY CALLOUT CARD ────────────────────────────────────── */}
-      <g transform={`translate(${anchor.x - 85}, ${bannerY})`}>
+      <g
+        transform={`translate(${anchor.x - 85}, ${bannerY})`}
+        style={{
+          animation: "leak-card-in 0.4s ease-out 0.5s both",
+        }}
+      >
         {/* Card background */}
         <rect
           x="0" y="0" width="170" height="42"
