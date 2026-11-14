@@ -18,16 +18,27 @@ import {
   Radio,
   FlaskConical,
   Activity,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+import { isAlertSoundMuted, toggleAlertSoundMuted, playAlertSound } from "@/lib/sound";
 
 export function TopBar() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const alerts = useHydroStore((s) => s.alerts);
   const activeAlerts = alerts.filter((a) => a.status === "active").length;
 
   useEffect(() => {
     setMounted(true);
+    setIsMuted(isAlertSoundMuted());
+    const handleMuteChange = (e: Event) => {
+      const custom = e as CustomEvent<boolean>;
+      setIsMuted(custom.detail);
+    };
+    window.addEventListener("hydronode_audio_muted_change", handleMuteChange);
+    return () => window.removeEventListener("hydronode_audio_muted_change", handleMuteChange);
   }, []);
 
   const getPageTitle = () => {
@@ -80,6 +91,27 @@ export function TopBar() {
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>Stream Live</span>
         </div>
+
+        {/* Audible Siren Toggle */}
+        <button
+          type="button"
+          onClick={() => {
+            const next = toggleAlertSoundMuted();
+            setIsMuted(next);
+          }}
+          title={isMuted ? "Audible Alarm Muted (Click to enable)" : "Audible Alarm Active (/alert.mp3)"}
+          className={`relative p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:shadow-subtle ${
+            activeAlerts > 0
+              ? isMuted
+                ? "bg-slate-50 border-slate-200 text-slate-400"
+                : "bg-red-50 border-red-200 text-red-600 animate-pulse"
+              : isMuted
+              ? "bg-slate-50 border-slate-200 text-slate-400"
+              : "bg-white hover:bg-slate-50 border-slate-200/90 text-slate-600"
+          }`}
+        >
+          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
 
         {/* Notification Bell */}
         <Link

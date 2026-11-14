@@ -24,7 +24,10 @@ import {
   Terminal,
   Power,
   Sliders,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
+import { playAlertSound } from "@/lib/sound";
 
 export default function SimulationPage() {
   const dataSource = useHydroStore((s) => s.dataSource);
@@ -584,6 +587,24 @@ export default function SimulationPage() {
                 >
                   Reset Pipeline
                 </Button>
+              </div>
+
+              {/* Audible Siren Alert Indicator */}
+              <div className="flex items-center justify-between pt-2 text-xs text-slate-500 border-t border-slate-100">
+                <div className="flex items-center gap-1.5 text-slate-600">
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Audible Siren: <strong className="text-slate-800">/alert.mp3</strong> (Plays on leak detection)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    playAlertSound({ force: true });
+                    addLog("Audible Siren test trigger: playing /alert.mp3");
+                  }}
+                  className="text-xs text-sky-700 hover:text-sky-900 font-semibold underline cursor-pointer"
+                >
+                  Test Alarm Sound
+                </button>
               </div>
             </CardContent>
           </Card>
