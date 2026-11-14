@@ -346,7 +346,7 @@ export default function SimulationPage() {
               {/* Dynamic Centrifugal Pump Chamber Visual */}
               <div className="p-3.5 rounded-xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700/80 shadow-inner flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  {/* Dynamic Spinning Impeller Casing */}
+                  {/* Dynamic Pump Impeller Casing */}
                   <div className="relative w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                     <div
                       className="w-8 h-8 rounded-full border border-sky-400/40 flex items-center justify-center transition-all"
@@ -363,7 +363,7 @@ export default function SimulationPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-white tracking-wide">
-                        JT-750 / JT-800D Centrifugal Turbine
+                        JT-750 / JT-800D Centrifugal Pump
                       </span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
@@ -372,7 +372,7 @@ export default function SimulationPage() {
                             : "bg-slate-700 text-slate-400"
                         }`}
                       >
-                        {pumpOn && pumpPwm > 0 ? "Turbine Spinning" : "Static / Stopped"}
+                        {pumpOn && pumpPwm > 0 ? "Pump Running" : "Static / Stopped"}
                       </span>
                     </div>
                     <div className="text-[11px] font-mono tabular-nums text-slate-300 mt-0.5 flex flex-wrap items-center gap-2">
