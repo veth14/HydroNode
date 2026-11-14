@@ -64,6 +64,21 @@ export default function AlertsPage() {
     }
   };
 
+  const handleResolveAll = async () => {
+    setIsUpdating(true);
+    try {
+      const res = await fetch("/api/alerts", { method: "DELETE" });
+      if (res.ok) {
+        mutate();
+        setSelectedAlert(null);
+      }
+    } catch (e) {
+      console.error("Failed to resolve all alerts:", e);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const flowComparisonData = selectedAlert
     ? [
         { name: "Upstream (Q_in)", flow: 15.0 },
@@ -133,8 +148,19 @@ export default function AlertsPage() {
           </select>
         </div>
 
-        <div className="ml-auto text-slate-500 font-mono tabular-nums">
-          Showing {alerts?.length ?? 0} record{alerts?.length !== 1 ? "s" : ""}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-slate-500 font-mono tabular-nums">
+            Showing {alerts?.length ?? 0} record{alerts?.length !== 1 ? "s" : ""}
+          </span>
+          <Button
+            size="sm"
+            variant="secondary"
+            loading={isUpdating}
+            onClick={handleResolveAll}
+            icon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+          >
+            Resolve All Active
+          </Button>
         </div>
       </div>
 

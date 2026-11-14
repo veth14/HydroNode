@@ -37,13 +37,42 @@ export default function SimulationPage() {
   const [activeZone, setActiveZone] = useState<ZoneId>(2);
   const [magnitude, setMagnitude] = useState<"small" | "medium" | "large">("medium");
   const [isSending, setIsSending] = useState(false);
-  const [pumpOn, setPumpOn] = useState(true);
-  const [pumpPwm, setPumpPwm] = useState(190); // ~75% duty cycle (BOM standard)
+  const [pumpOn, setPumpOn] = useState(false);
+  const [pumpPwm, setPumpPwm] = useState(0); // 0% duty cycle standby default
   const [pidAutoBalance, setPidAutoBalance] = useState(true);
 
   // Dynamic physical sensor jitter (micro-fluctuations like real Hall & ADS1115 transducers)
   const [jitterFlow, setJitterFlow] = useState(0);
   const [jitterPressure, setJitterPressure] = useState(0);
+
+  // Load persisted pump settings from localStorage on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("hydronode_pump_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.pumpOn === "boolean") setPumpOn(parsed.pumpOn);
+        if (typeof parsed.pumpPwm === "number") setPumpPwm(parsed.pumpPwm);
+        if (typeof parsed.pidAutoBalance === "boolean") setPidAutoBalance(parsed.pidAutoBalance);
+      }
+    } catch (e) {
+      console.error("Failed to load pump settings from localStorage", e);
+    }
+  }, []);
+
+  const savePumpSettings = (nextOn: boolean, nextPwm: number, nextPid = pidAutoBalance) => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(
+          "hydronode_pump_settings",
+          JSON.stringify({ pumpOn: nextOn, pumpPwm: nextPwm, pidAutoBalance: nextPid })
+        );
+      } catch (e) {
+        console.error("Failed to save pump settings", e);
+      }
+    }
+  };
 
   useEffect(() => {
     if (!pumpOn || pumpPwm === 0) {
@@ -72,22 +101,23 @@ export default function SimulationPage() {
   const handleTogglePump = () => {
     const nextState = !pumpOn;
     setPumpOn(nextState);
+    let nextPwm = pumpPwm;
     if (nextState && pumpPwm === 0) {
-      setPumpPwm(191);
+      nextPwm = 190;
+      setPumpPwm(190);
       addLog("Water Pump: ON (Restored to Nominal 75% PWM via LR7843 MOSFET)");
     } else {
       const pct = nextState ? Math.round((pumpPwm / 255) * 100) : 0;
       addLog(`Water Pump: ${nextState ? `ON (${pct}% PWM Active)` : "OFF (0% Duty Cycle via LR7843 MOSFET)"}`);
     }
+    savePumpSettings(nextState, nextPwm);
   };
 
   const handlePwmChange = (val: number) => {
     setPumpPwm(val);
-    if (val > 0 && !pumpOn) {
-      setPumpOn(true);
-    } else if (val === 0 && pumpOn) {
-      setPumpOn(false);
-    }
+    const nextOn = val > 0;
+    setPumpOn(nextOn);
+    savePumpSettings(nextOn, val);
     const pct = Math.round((val / 255) * 100);
     addLog(`Pump PWM adjusted to: ${val}/255 (${pct}% Duty Cycle). Target Flow: ${(8 + (val / 255) * 4).toFixed(1)} LPM`);
   };
@@ -163,10 +193,22 @@ export default function SimulationPage() {
 
   const handleReset = async () => {
     setIsSending(true);
+    // 1. Cut pump to 0% OFF (safe standby)
+    setPumpOn(false);
+    setPumpPwm(0);
+    savePumpSettings(false, 0);
+
+    // 2. Clear client leaks and active alerts in Zustand store
     clearAllLeaks();
-    addLog("Pipeline reset: clearing all simulated orifice breaches...");
+    useHydroStore.getState().setAlerts([]);
+    addLog("Pipeline reset: water pump cut off (0% PWM Standby)...");
 
     try {
+      // 3. Clear/resolve active alerts in Neon DB and normalize stations/zones
+      await fetch("/api/alerts", { method: "DELETE" });
+      addLog("Active alerts marked resolved and physical station pods normalized.");
+
+      // 4. Send clean baseline telemetry batch
       const res = await fetch("/api/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,7 +218,7 @@ export default function SimulationPage() {
         addLog("Nominal baseline flow and pressure restored across all stations.");
       }
     } catch (err: unknown) {
-      addLog(`Error: ${String(err)}`);
+      addLog(`Error during reset: ${String(err)}`);
     } finally {
       setIsSending(false);
     }
@@ -201,6 +243,7 @@ export default function SimulationPage() {
       onClick: () => {
         setPumpOn(false);
         setPumpPwm(0);
+        savePumpSettings(false, 0);
         addLog("Pump Cutoff: 0% Duty Cycle (MOSFET Pin LOW)");
       },
     },
@@ -219,7 +262,7 @@ export default function SimulationPage() {
       active: pumpOn && (currentPct === 75 || pumpPwm === 190 || pumpPwm === 191),
       onClick: () => {
         setPumpOn(true);
-        handlePwmChange(191);
+        handlePwmChange(190);
       },
     },
     {
@@ -334,6 +377,7 @@ export default function SimulationPage() {
                     onClick={() => {
                       const next = !pidAutoBalance;
                       setPidAutoBalance(next);
+                      savePumpSettings(pumpOn, pumpPwm, next);
                       addLog(`PID Automatic Pressure Balancing: ${next ? "ENABLED" : "DISABLED"}`);
                     }}
                     className="text-xs text-left text-sky-700 hover:text-sky-800 underline cursor-pointer mt-1"
