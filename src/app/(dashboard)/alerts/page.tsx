@@ -7,7 +7,7 @@
 // - Clean white surfaces and slate borders
 // - Crisp action buttons
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +22,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { CheckCircle2, AlertTriangle, X, Filter, Activity, Droplets } from "lucide-react";
+import { setAlarmActive } from "@/lib/sound";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -69,6 +70,7 @@ export default function AlertsPage() {
     try {
       const res = await fetch("/api/alerts", { method: "DELETE" });
       if (res.ok) {
+        setAlarmActive(false);
         mutate();
         setSelectedAlert(null);
       }
@@ -78,6 +80,13 @@ export default function AlertsPage() {
       setIsUpdating(false);
     }
   };
+
+  // Keep alarm active state in sync with live active alerts
+  useEffect(() => {
+    if (!alerts) return;
+    const hasActive = alerts.some((a) => a.status === "active");
+    setAlarmActive(hasActive);
+  }, [alerts]);
 
   const flowComparisonData = selectedAlert
     ? [

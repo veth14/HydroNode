@@ -3,7 +3,7 @@
 // All live sensor data flows through here.
 
 import { create } from "zustand";
-import { playAlertSound, stopAlertSound } from "@/lib/sound";
+import { setAlarmActive, playAlertSound, stopAlertSound } from "@/lib/sound";
 import type {
   LiveStation,
   LiveZone,
@@ -77,7 +77,7 @@ export const useHydroStore = create<HydroState>((set) => ({
   setActiveLeaks: (activeLeaks) => set({ activeLeaks }),
   setSimulationActive: (simulationActive) => set({ simulationActive }),
   injectLeak: (zoneId) => {
-    playAlertSound();
+    setAlarmActive(true);
     set((s) => ({
       injectedLeaks: s.injectedLeaks.includes(zoneId)
         ? s.injectedLeaks
@@ -85,9 +85,15 @@ export const useHydroStore = create<HydroState>((set) => ({
     }));
   },
   clearLeak: (zoneId) =>
-    set((s) => ({ injectedLeaks: s.injectedLeaks.filter((z) => z !== zoneId) })),
+    set((s) => {
+      const remaining = s.injectedLeaks.filter((z) => z !== zoneId);
+      if (remaining.length === 0 && s.alerts.every((a) => a.status !== "active")) {
+        setAlarmActive(false);
+      }
+      return { injectedLeaks: remaining };
+    }),
   clearAllLeaks: () => {
-    stopAlertSound();
+    setAlarmActive(false);
     set({ injectedLeaks: [] });
   },
 }));

@@ -1,12 +1,13 @@
 // src/lib/sound.ts
-// Centralized SCADA Audible Alarm Manager for HydroNode.
-// Plays /alert.mp3 on leak detection and simulation events.
+// Industrial SCADA Audible Alarm Siren Manager for HydroNode.
+// Plays /alert.mp3 on active leak conditions and handles browser autoplay policies reliably.
 
 let audioInstance: HTMLAudioElement | null = null;
 let isMutedState = false;
-let isAudioUnlocked = false;
+let isAlarmActiveState = false;
+let pendingAlarmPlayback = false;
 
-// Initialize mute state from localStorage if available
+// Initialize mute state from localStorage
 if (typeof window !== "undefined") {
   try {
     isMutedState = localStorage.getItem("hydronode_audio_muted") === "true";
@@ -16,38 +17,80 @@ if (typeof window !== "undefined") {
 }
 
 function getAudio(): HTMLAudioElement {
-  if (!audioInstance) {
+  if (!audioInstance && typeof window !== "undefined") {
     audioInstance = new Audio("/alert.mp3");
     audioInstance.preload = "auto";
-    // Fallback if case sensitivity varies on some servers
+    audioInstance.loop = true; // Continuous alarm siren until leak resolved or muted
+    audioInstance.volume = 0.9;
+
     audioInstance.onerror = () => {
       if (audioInstance && audioInstance.src.endsWith("/alert.mp3")) {
         audioInstance.src = "/ALERT.mp3";
       }
     };
   }
-  return audioInstance;
+  return audioInstance!;
+}
+
+// Global user gesture listener: if an alarm was blocked by browser autoplay,
+// start it the very instant the operator clicks anywhere on the document.
+if (typeof window !== "undefined") {
+  const handleUserGesture = () => {
+    if (pendingAlarmPlayback && isAlarmActiveState && !isMutedState) {
+      pendingAlarmPlayback = false;
+      const audio = getAudio();
+      audio.currentTime = 0;
+      audio.play().catch((err) => {
+        console.warn("User gesture play failed:", err);
+      });
+    }
+  };
+
+  window.addEventListener("pointerdown", handleUserGesture, { passive: true });
+  window.addEventListener("click", handleUserGesture, { passive: true });
+  window.addEventListener("keydown", handleUserGesture, { passive: true });
 }
 
 /**
- * Pre-unlocks audio context upon the first user interaction (click, keypress, tap).
- * Prevents browser "play() failed because the user didn't interact with the document first".
+ * Activate or deactivate the SCADA leak alarm siren.
+ * When active=true, /alert.mp3 will play (and loop) until active=false or muted.
+ * If blocked by browser autoplay, it will immediately sound upon the first click anywhere.
  */
-export function unlockAudio() {
-  if (isAudioUnlocked || typeof window === "undefined") return;
-  const audio = getAudio();
-  audio.volume = 0.01;
-  const p = audio.play();
-  if (p !== undefined) {
-    p.then(() => {
-      audio.pause();
+export function setAlarmActive(active: boolean) {
+  if (typeof window === "undefined") return;
+  isAlarmActiveState = active;
+
+  if (active) {
+    if (isMutedState) return;
+    try {
+      const audio = getAudio();
       audio.currentTime = 0;
+      audio.loop = true;
       audio.volume = 0.9;
-      isAudioUnlocked = true;
-    }).catch(() => {
-      // Ignored until real interaction occurs
-    });
+      const p = audio.play();
+      if (p !== undefined) {
+        p.then(() => {
+          pendingAlarmPlayback = false;
+        }).catch((err) => {
+          // Autoplay policy prevented playback until user gesture
+          pendingAlarmPlayback = true;
+          console.warn("Alarm siren armed — waiting for operator click to sound:", err.message);
+        });
+      }
+    } catch (e) {
+      pendingAlarmPlayback = true;
+    }
+  } else {
+    pendingAlarmPlayback = false;
+    stopAlertSound();
   }
+}
+
+/**
+ * Returns true if an audible alarm is currently flagged active.
+ */
+export function isAlarmActive(): boolean {
+  return isAlarmActiveState;
 }
 
 /**
@@ -66,19 +109,25 @@ export function toggleAlertSoundMuted(): boolean {
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem("hydronode_audio_muted", isMutedState ? "true" : "false");
-      window.dispatchEvent(new CustomEvent("hydronode_audio_muted_change", { detail: isMutedState }));
+      window.dispatchEvent(
+        new CustomEvent("hydronode_audio_muted_change", { detail: isMutedState })
+      );
     } catch (e) {
       console.error(e);
     }
   }
+
   if (isMutedState) {
     stopAlertSound();
+  } else if (isAlarmActiveState) {
+    setAlarmActive(true);
   }
+
   return isMutedState;
 }
 
 /**
- * Immediately stop the audible alarm if playing.
+ * Immediately stop and rewind the audible alarm.
  */
 export function stopAlertSound() {
   if (audioInstance) {
@@ -88,24 +137,32 @@ export function stopAlertSound() {
 }
 
 /**
- * Play the /alert.mp3 audible alarm.
- * @param force If true, plays even if muted (e.g. for "Test Sound" button)
+ * Pre-unlock audio context on user interaction.
+ */
+export function unlockAudio() {
+  if (typeof window === "undefined") return;
+  const audio = getAudio();
+  if (isAlarmActiveState && !isMutedState) {
+    setAlarmActive(true);
+  }
+}
+
+/**
+ * Play a one-shot burst of /alert.mp3 (e.g. for "Test Sound" button).
  */
 export function playAlertSound(options?: { force?: boolean }): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
-
-  if (!options?.force && isMutedState) {
-    return Promise.resolve();
-  }
+  if (!options?.force && isMutedState) return Promise.resolve();
 
   try {
     const audio = getAudio();
     audio.currentTime = 0;
+    audio.loop = false; // single test playback
     audio.volume = 0.9;
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       return playPromise.catch((err) => {
-        console.warn("Audio playback delayed by browser policy until operator interacts with dashboard:", err);
+        console.warn("Audio playback delayed by browser policy:", err);
       });
     }
   } catch (err) {

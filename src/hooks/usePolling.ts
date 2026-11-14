@@ -4,9 +4,9 @@
 // Plays /alert.mp3 audible siren on active leak detection.
 
 import useSWR from "swr";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useHydroStore } from "@/store/hydroStore";
-import { playAlertSound, unlockAudio } from "@/lib/sound";
+import { setAlarmActive, unlockAudio } from "@/lib/sound";
 import type { LiveStation, LiveZone, LiveAlert, KpiData } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -22,12 +22,12 @@ export function usePolling() {
     if (typeof window === "undefined") return;
     const handleInteract = () => {
       unlockAudio();
-      window.removeEventListener("click", handleInteract);
-      window.removeEventListener("keydown", handleInteract);
     };
-    window.addEventListener("click", handleInteract, { once: true });
-    window.addEventListener("keydown", handleInteract, { once: true });
+    window.addEventListener("pointerdown", handleInteract, { passive: true });
+    window.addEventListener("click", handleInteract, { passive: true });
+    window.addEventListener("keydown", handleInteract, { passive: true });
     return () => {
+      window.removeEventListener("pointerdown", handleInteract);
       window.removeEventListener("click", handleInteract);
       window.removeEventListener("keydown", handleInteract);
     };
@@ -55,29 +55,13 @@ export function usePolling() {
     }
   }, [stations, setStations, markBatchReceived]);
 
-  // Keep track of active alert IDs to detect newly arrived alerts
-  const seenActiveAlertIds = useRef<Set<number>>(new Set());
-  const lastSoundPlayedAt = useRef<number>(0);
-
   useEffect(() => {
     if (alerts) {
       setAlerts(alerts);
       const activeAlerts = alerts.filter((a) => a.status === "active");
-
-      // Check if any active alert is new
-      const hasNewAlert = activeAlerts.some((a) => !seenActiveAlertIds.current.has(a.id));
-      const now = Date.now();
-
-      // If a brand new alert arrived OR an active alert exists and hasn't chimed in the last 20 seconds
-      if (activeAlerts.length > 0) {
-        if (hasNewAlert || now - lastSoundPlayedAt.current > 20000) {
-          playAlertSound();
-          lastSoundPlayedAt.current = now;
-        }
-      }
-
-      // Update seen set
-      seenActiveAlertIds.current = new Set(activeAlerts.map((a) => a.id));
+      const injectedLeaks = useHydroStore.getState().injectedLeaks;
+      const hasAnyLeak = activeAlerts.length > 0 || injectedLeaks.length > 0;
+      setAlarmActive(hasAnyLeak);
     }
   }, [alerts, setAlerts]);
 

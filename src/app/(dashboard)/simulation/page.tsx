@@ -27,7 +27,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { playAlertSound } from "@/lib/sound";
+import { playAlertSound, setAlarmActive } from "@/lib/sound";
 
 export default function SimulationPage() {
   const dataSource = useHydroStore((s) => s.dataSource);
@@ -141,6 +141,7 @@ export default function SimulationPage() {
 
   const handleInjectLeak = async () => {
     setIsSending(true);
+    setAlarmActive(true);
     injectLeak(activeZone);
     addLog(`Injecting ${magnitude.toUpperCase()} leak into Zone ${activeZone}...`);
 
@@ -196,6 +197,9 @@ export default function SimulationPage() {
 
   const handleReset = async () => {
     setIsSending(true);
+    // 0. Silence audible alarm
+    setAlarmActive(false);
+
     // 1. Cut pump to 0% OFF (safe standby)
     setPumpOn(false);
     setPumpPwm(0);
