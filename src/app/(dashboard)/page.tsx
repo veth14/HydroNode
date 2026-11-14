@@ -125,25 +125,29 @@ export default function NetworkOverviewPage() {
         {/* Decorative dot grid top-right */}
         <div className="absolute right-0 top-0 w-48 h-full pattern-dots opacity-30 pointer-events-none" />
 
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 SCADA LIVE
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-200">
+                <Calendar className="w-3 h-3 text-slate-400" />
+                <span>{formattedDate}</span>
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Welcome Back, Operator!
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-slate-500">
               Autonomous pipeline integrity monitor & acoustic leak localization powered by ESP32-S3.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {/* Architecture Topology Switcher */}
-            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-2xs">
               <button
                 onClick={() => {
                   setArchitectureMode("4x3");
@@ -151,28 +155,25 @@ export default function NetworkOverviewPage() {
                   if (selectedZone && selectedZone > 3) setSelectedZone(null);
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  isOptionB ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  isOptionB
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
                 title="Option B: 4 Stations with Flow + Pressure + Vibration (12 Transducers, 3 Zones)"
               >
-                Option B (4×3 Tri-Modal)
+                Option B (4×3)
               </button>
               <button
                 onClick={() => setArchitectureMode("6x2")}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  !isOptionB ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  !isOptionB
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
                 title="Option A: 6 Stations with Flow + Pressure (12 Transducers, 5 Zones)"
               >
-                Option A (6×2 Bi-Modal)
+                Option A (6×2)
               </button>
-            </div>
-
-            {/* Date pill badge */}
-            <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-medium text-slate-600
-              shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>{formattedDate}</span>
             </div>
 
             {/* Dark Charcoal Primary CTA */}
