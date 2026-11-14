@@ -7,7 +7,7 @@
 // - Clean white surfaces and slate borders
 // - Clear CTA emphasis
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useHydroStore } from "@/store/hydroStore";
 import type { ZoneId } from "@/config/rig";
 import { ZONES } from "@/config/rig";
@@ -40,6 +40,24 @@ export default function SimulationPage() {
   const [pumpOn, setPumpOn] = useState(true);
   const [pumpPwm, setPumpPwm] = useState(190); // ~75% duty cycle (BOM standard)
   const [pidAutoBalance, setPidAutoBalance] = useState(true);
+
+  // Dynamic physical sensor jitter (micro-fluctuations like real Hall & ADS1115 transducers)
+  const [jitterFlow, setJitterFlow] = useState(0);
+  const [jitterPressure, setJitterPressure] = useState(0);
+
+  useEffect(() => {
+    if (!pumpOn || pumpPwm === 0) {
+      setJitterFlow(0);
+      setJitterPressure(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setJitterFlow((Math.random() - 0.5) * 0.14);
+      setJitterPressure((Math.random() - 0.5) * 0.04);
+    }, 550);
+    return () => clearInterval(interval);
+  }, [pumpOn, pumpPwm]);
+
   const [logs, setLogs] = useState<string[]>([
     "Rig simulation service connected. Ready to generate test cycles.",
   ]);
@@ -165,6 +183,15 @@ export default function SimulationPage() {
   };
 
   const currentPct = !pumpOn ? 0 : Math.round((pumpPwm / 255) * 100);
+  const pumpRpm = pumpOn && pumpPwm > 0 ? Math.round((pumpPwm / 255) * 2850) : 0;
+  const pumpPowerWatts = pumpOn && pumpPwm > 0 ? ((pumpPwm / 255) * 43.2).toFixed(1) : "0.0";
+  const spinSpeedSeconds = pumpOn && pumpPwm > 0 ? (1.5 - (pumpPwm / 255) * 1.15).toFixed(2) : "0";
+
+  const rawFlow = 8 + (pumpPwm / 255) * 4;
+  const displayFlow = pumpOn && pumpPwm > 0 ? (rawFlow + jitterFlow).toFixed(2) : "0.00";
+
+  const rawPressure = 2.5 + (pumpPwm / 255) * 2.5;
+  const displayPressure = pumpOn && pumpPwm > 0 ? (rawPressure + jitterPressure).toFixed(2) : "0.00";
 
   const presets = [
     {
@@ -283,7 +310,7 @@ export default function SimulationPage() {
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500">Target Flow Rate</div>
                   <div className="text-xl font-bold font-mono tabular-nums text-sky-700 mt-0.5">
-                    {pumpOn && pumpPwm > 0 ? (8 + (pumpPwm / 255) * 4).toFixed(1) : "0.0"} <span className="text-xs font-normal text-slate-500">LPM</span>
+                    {displayFlow} <span className="text-xs font-normal text-slate-500">LPM</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1">Native 1/2&quot; BSP/NPT Loop</div>
                 </div>
@@ -291,7 +318,7 @@ export default function SimulationPage() {
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500">Supply Head Pressure</div>
                   <div className="text-xl font-bold font-mono tabular-nums text-indigo-700 mt-0.5">
-                    {pumpOn && pumpPwm > 0 ? (2.5 + (pumpPwm / 255) * 2.5).toFixed(2) : "0.00"} <span className="text-xs font-normal text-slate-500">bar</span>
+                    {displayPressure} <span className="text-xs font-normal text-slate-500">bar</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1">5–7m Head Capability</div>
                 </div>
@@ -313,6 +340,63 @@ export default function SimulationPage() {
                   >
                     Toggle Closed-Loop Auto
                   </button>
+                </div>
+              </div>
+
+              {/* Dynamic Centrifugal Pump Chamber Visual */}
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white border border-slate-700/80 shadow-inner flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {/* Dynamic Spinning Impeller Casing */}
+                  <div className="relative w-12 h-12 rounded-xl bg-slate-950 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                    <div
+                      className="w-8 h-8 rounded-full border border-sky-400/40 flex items-center justify-center transition-all"
+                      style={{
+                        animation: pumpOn && pumpPwm > 0 ? `spin ${spinSpeedSeconds}s linear infinite` : "none",
+                      }}
+                    >
+                      <div className="w-1 h-7 bg-sky-400 rounded-full" />
+                      <div className="w-7 h-1 bg-sky-400 rounded-full absolute" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-white shadow-xs absolute" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white tracking-wide">
+                        JT-800D Centrifugal Turbine
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                          pumpOn && pumpPwm > 0
+                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse"
+                            : "bg-slate-700 text-slate-400"
+                        }`}
+                      >
+                        {pumpOn && pumpPwm > 0 ? "Turbine Spinning" : "Static / Stopped"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono tabular-nums text-slate-300 mt-0.5 flex flex-wrap items-center gap-2">
+                      <span>RPM: <strong className="text-sky-400">{pumpRpm.toLocaleString()}</strong></span>
+                      <span>·</span>
+                      <span>Power: <strong className="text-amber-400">{pumpPowerWatts} W</strong></span>
+                      <span>·</span>
+                      <span>Velocity: <strong className="text-emerald-400">{pumpOn && pumpPwm > 0 ? `${(1.2 + (pumpPwm / 255) * 1.6).toFixed(1)} m/s` : "0.0 m/s"}</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic Fluid Speed Bar */}
+                <div className="w-full sm:w-44 space-y-1">
+                  <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                    <span>Duty Cycle:</span>
+                    <span className="text-sky-400 font-bold">{currentPct}%</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-700 p-0.5">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-sky-500 via-indigo-500 to-emerald-400 transition-all duration-300"
+                      style={{ width: `${currentPct}%` }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -524,12 +608,18 @@ export default function SimulationPage() {
                   {injectedLeaks.map((zid) => (
                     <div
                       key={zid}
-                      className="flex items-center justify-between p-2.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-700 font-semibold"
+                      className="flex items-center justify-between p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-semibold shadow-2xs animate-fade-in"
                     >
-                      <span>Zone {zid} Orifice Engaged</span>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />
+                        <div>
+                          <span className="block font-bold">Zone {zid} Orifice Engaged</span>
+                          <span className="text-[10px] text-red-500 font-mono">Simulated Breach Active</span>
+                        </div>
+                      </div>
                       <button
                         onClick={() => clearLeak(zid)}
-                        className="text-red-600 hover:text-red-800 font-bold p-1 cursor-pointer"
+                        className="text-red-500 hover:text-red-800 p-1 rounded-md hover:bg-red-100 transition-colors cursor-pointer"
                         title="Remove leak"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

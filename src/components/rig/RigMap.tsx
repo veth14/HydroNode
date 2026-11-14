@@ -235,22 +235,42 @@ export function RigMap({
             <circle
               cx="14"
               cy="0"
-              r="14"
+              r="16"
               fill="#ffffff"
               stroke="#0284c7"
-              strokeWidth="2"
+              strokeWidth="2.5"
             />
-            <polygon points="10,-6 20,0 10,6" fill="#0284c7" />
+            {/* Dynamic Spinning Impeller */}
+            <g
+              style={{
+                transformOrigin: "14px 0px",
+                animation: "spin 0.8s linear infinite",
+              }}
+            >
+              <line x1="14" y1="-11" x2="14" y2="11" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="3" y1="0" x2="25" y2="0" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="14" cy="0" r="4.5" fill="#0369a1" />
+            </g>
             <text
               x="14"
-              y="-18"
+              y="-20"
               fill="#0284c7"
-              fontSize="8"
+              fontSize="8.5"
               textAnchor="middle"
               fontWeight="bold"
               fontFamily="sans-serif"
             >
               PUMP
+            </text>
+            <text
+              x="14"
+              y="26"
+              fill="#64748b"
+              fontSize="7"
+              textAnchor="middle"
+              fontFamily="monospace"
+            >
+              2,130 RPM
             </text>
           </g>
 
