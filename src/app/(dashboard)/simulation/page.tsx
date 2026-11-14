@@ -297,7 +297,7 @@ export default function SimulationPage() {
                   <span>Water Pump & PWM Pressure Control</span>
                 </div>
               }
-              subtitle="24V Brushless Centrifugal Pump (JT-800D) paired with LR7843 MOSFET PWM Driver"
+              subtitle="12V/24V DC Brushless Centrifugal Pump (JT-750 / JT-800D) paired with LR7843 MOSFET PWM Driver"
               action={
                 <Badge variant={pumpOn && pumpPwm > 0 ? "success" : "neutral"} dot size="sm">
                   {pumpOn && pumpPwm > 0 ? `RUNNING (${currentPct}% PWM)` : "STOPPED (0% PWM)"}
@@ -363,7 +363,7 @@ export default function SimulationPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-white tracking-wide">
-                        JT-800D Centrifugal Turbine
+                        JT-750 / JT-800D Centrifugal Turbine
                       </span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
@@ -454,9 +454,9 @@ export default function SimulationPage() {
               {/* Hardware Vibration Isolation Note */}
               <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
                 <span>
-                  Plumbing: 4–6&quot; flexible silicone coupling isolates centrifugal motor hum from rigid 1/2&quot; PVC loop.
+                  Plumbing: 1/2&quot; BSP/NPT threads · Qmax 400–1000 L/H · Hmax 1–5m · Silicone coupling isolates motor hum from PVC loop.
                 </span>
-                <span className="text-sky-700 font-semibold">Clean Piezo Readings</span>
+                <span className="text-sky-700 font-semibold">IP68 Submersible / Inline</span>
               </div>
             </CardContent>
           </Card>

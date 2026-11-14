@@ -740,7 +740,7 @@ export default function NetworkOverviewPage() {
               </div>
             </div>
 
-            {/* Pod 4: JT-800D Circulation Pump */}
+            {/* Pod 4: JT-750 / JT-800D Circulation Pump */}
             <div className="rounded-2xl border border-slate-200/90 p-4 bg-white hover:border-slate-300 hover:shadow-subtle transition-all flex flex-col justify-between">
               <div>
                 {/* Miniature Visual Container */}
@@ -755,13 +755,13 @@ export default function NetworkOverviewPage() {
 
                 <div className="mt-3.5">
                   <h4 className="text-sm font-bold text-slate-900 tracking-tight">
-                    JT-800D Circulation Pump
+                    12V/24V Brushless Pump
                   </h4>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    24V DC Brushless · LR7843 MOSFET
+                    JT-750 / JT-800D · LR7843 MOSFET
                   </p>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Rig prime feed · PWM throttle
+                    400–1000 L/H · 1/2&quot; BSP/NPT
                   </p>
                 </div>
               </div>
@@ -770,7 +770,7 @@ export default function NetworkOverviewPage() {
               <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
                 <div className="flex items-center -space-x-1">
                   <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 border border-white text-[9px] font-bold flex items-center justify-center">
-                    24V
+                    12/24V
                   </span>
                   <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 border border-white text-[9px] font-bold flex items-center justify-center">
                     PWM
@@ -779,7 +779,7 @@ export default function NetworkOverviewPage() {
                     MOS
                   </span>
                   <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 border border-white text-[9px] font-bold flex items-center justify-center">
-                    +1
+                    IP68
                   </span>
                 </div>
                 <span className="text-[11px] font-medium text-slate-400 font-mono tabular-nums">
