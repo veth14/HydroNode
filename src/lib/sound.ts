@@ -138,12 +138,27 @@ export function stopAlertSound() {
 
 /**
  * Pre-unlock audio context on user interaction.
+ * Call this inside a click/pointer handler to satisfy the browser autoplay gate.
+ * If alarm is already armed but pending, it will fire immediately.
  */
 export function unlockAudio() {
   if (typeof window === "undefined") return;
+  // Silently create the audio element so the browser registers user intent
   const audio = getAudio();
-  if (isAlarmActiveState && !isMutedState) {
-    setAlarmActive(true);
+  // If we were blocked before and alarm is still active, start now
+  if (pendingAlarmPlayback && isAlarmActiveState && !isMutedState) {
+    pendingAlarmPlayback = false;
+    audio.currentTime = 0;
+    audio.loop = true;
+    audio.play().catch((err) => {
+      console.warn("unlockAudio play failed:", err);
+      pendingAlarmPlayback = true;
+    });
+  } else if (isAlarmActiveState && !isMutedState) {
+    // Try to resume a paused alarm (e.g. tab was backgrounded)
+    if (audio.paused) {
+      audio.play().catch(() => {});
+    }
   }
 }
 

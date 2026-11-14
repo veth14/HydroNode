@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { useHydroStore } from "@/store/hydroStore";
 import { statusColor } from "@/lib/utils";
-import { setAlarmActive } from "@/lib/sound";
+import { setAlarmActive, unlockAudio } from "@/lib/sound";
 import type { StationId, ZoneId, TestPoint as TestPointType } from "@/config/rig";
 import { ZONES, STATION_IDS } from "@/config/rig";
 import {
@@ -71,6 +71,7 @@ export default function NetworkOverviewPage() {
   const activeAlerts = alerts.filter((a) => a.status === "active");
 
   const handleTestPointClick = async (tp: TestPointType) => {
+    unlockAudio();
     setAlarmActive(true);
     injectLeak(tp.zoneId);
     try {

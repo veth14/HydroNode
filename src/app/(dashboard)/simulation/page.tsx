@@ -27,7 +27,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { playAlertSound, setAlarmActive } from "@/lib/sound";
+import { playAlertSound, setAlarmActive, unlockAudio } from "@/lib/sound";
 
 export default function SimulationPage() {
   const dataSource = useHydroStore((s) => s.dataSource);
@@ -141,6 +141,8 @@ export default function SimulationPage() {
 
   const handleInjectLeak = async () => {
     setIsSending(true);
+    // Unlock audio FIRST — synchronously within user gesture context — then arm alarm
+    unlockAudio();
     setAlarmActive(true);
     injectLeak(activeZone);
     addLog(`Injecting ${magnitude.toUpperCase()} leak into Zone ${activeZone}...`);
