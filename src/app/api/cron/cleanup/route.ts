@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  // Retention: default 24 hours (caps raw storage under 30 MB on Neon)
+  const hours = Number(req.nextUrl.searchParams.get("hours")) || 24;
+  const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const result = await db
     .delete(readingsRaw)
@@ -32,6 +34,7 @@ export async function GET(req: NextRequest) {
     ok: true,
     deleted: result.rowCount ?? "unknown",
     cutoff: cutoff.toISOString(),
+    retentionHours: hours,
   });
 }
 

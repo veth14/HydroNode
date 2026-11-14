@@ -131,12 +131,12 @@ export default function SettingsPage() {
 
   const handleCleanupNow = async () => {
     try {
-      const res = await fetch("/api/cron/cleanup", {
+      const res = await fetch("/api/cron/cleanup?hours=24", {
         headers: { "x-cron-secret": "hydronode_cron_secret_2026" },
       });
-      await res.json();
+      const data = await res.json();
       mutateDbUsage();
-      alert("Retention cleanup complete: pruned raw readings older than 48h.");
+      alert(`Retention cleanup complete: pruned ${data.deleted ?? 0} raw readings older than 24h.`);
     } catch (err) {
       console.error(err);
     }
@@ -369,7 +369,7 @@ export default function SettingsPage() {
                 onClick={handleCleanupNow}
                 icon={<Trash2 className="w-3.5 h-3.5 text-red-600" />}
               >
-                Execute 48h Retention Cleanup
+                Execute 24h Retention Cleanup
               </Button>
             </CardContent>
           </Card>

@@ -78,10 +78,10 @@ export function generateBatch(
     }
   }
 
-  // Generate ~35 readings per station (≈210 total)
-  const SAMPLES = 35;
+  // Generate 1-minute batch: 30 samples per station spaced across 60 seconds (2.0s cadence)
+  const SAMPLES = 30;
   for (let i = 0; i < SAMPLES; i++) {
-    const t = new Date(now.getTime() - (SAMPLES - i) * 850).toISOString();
+    const t = new Date(now.getTime() - (SAMPLES - i) * 2000).toISOString();
     for (const id of STATION_IDS) {
       readings.push({
         stationId: id,
