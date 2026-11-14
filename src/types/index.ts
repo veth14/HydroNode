@@ -9,6 +9,7 @@ export type SamplingMode = "normal" | "elevated";
 export type Severity = "low" | "medium" | "high";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 export type DataSource = "simulated" | "live";
+export type ArchitectureMode = "4x3" | "6x2"; // Option B: 4 stations × 3 sensors | Option A: 6 stations × 2 sensors
 
 export interface SeverityThresholds {
   low: number;

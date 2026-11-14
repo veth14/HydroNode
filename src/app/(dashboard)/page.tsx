@@ -49,6 +49,8 @@ export default function NetworkOverviewPage() {
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
   const injectLeak = useHydroStore((s) => s.injectLeak);
+  const architectureMode = useHydroStore((s) => s.architectureMode);
+  const setArchitectureMode = useHydroStore((s) => s.setArchitectureMode);
 
   const [selectedZone, setSelectedZone] = useState<ZoneId | null>(null);
   const [selectedStation, setSelectedStation] = useState<StationId>("S1");
@@ -56,6 +58,14 @@ export default function NetworkOverviewPage() {
   // Historic Incident Playback (Time Machine)
   const [isPlaybackMode, setIsPlaybackMode] = useState<boolean>(false);
   const [playbackScenarioId, setPlaybackScenarioId] = useState<string>("zone-2-burst");
+
+  const isOptionB = architectureMode === "4x3";
+  const activeStationIds = isOptionB
+    ? (["S1", "S2", "S3", "S4"] as StationId[])
+    : STATION_IDS;
+  const activeZones = isOptionB ? ZONES.slice(0, 3) : ZONES;
+  const totalZonesCount = isOptionB ? 3 : 5;
+  const totalTransducersCount = 12; // 4x3 = 12, or 6x2 = 12
 
   const activeAlerts = alerts.filter((a) => a.status === "active");
 
@@ -131,7 +141,33 @@ export default function NetworkOverviewPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Architecture Topology Switcher */}
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200/80 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <button
+                onClick={() => {
+                  setArchitectureMode("4x3");
+                  if (selectedStation === "S5" || selectedStation === "S6") setSelectedStation("S1");
+                  if (selectedZone && selectedZone > 3) setSelectedZone(null);
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  isOptionB ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="Option B: 4 Stations with Flow + Pressure + Vibration (12 Transducers, 3 Zones)"
+              >
+                Option B (4×3 Tri-Modal)
+              </button>
+              <button
+                onClick={() => setArchitectureMode("6x2")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  !isOptionB ? "bg-slate-900 text-white shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="Option A: 6 Stations with Flow + Pressure (12 Transducers, 5 Zones)"
+              >
+                Option A (6×2 Bi-Modal)
+              </button>
+            </div>
+
             {/* Date pill badge */}
             <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-medium text-slate-600
               shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
@@ -162,13 +198,13 @@ export default function NetworkOverviewPage() {
           icon={<AlertTriangle className="w-4 h-4" />}
           trend={{
             direction: (kpi?.activeAlerts ?? 0) > 0 ? "up" : "flat",
-            label: (kpi?.activeAlerts ?? 0) > 0 ? "Immediate triage required" : "All 5 zones nominal",
+            label: (kpi?.activeAlerts ?? 0) > 0 ? "Immediate triage required" : `All ${totalZonesCount} zones nominal`,
           }}
         />
 
         <Stat
           label="Network Integrity"
-          value={`${kpi?.zonesHealthy ?? 5} / ${kpi?.zonesTotal ?? 5}`}
+          value={`${Math.min(totalZonesCount, kpi?.zonesHealthy ?? totalZonesCount)} / ${totalZonesCount}`}
           tone="success"
           icon={<ShieldCheck className="w-4 h-4" />}
           trend={{
@@ -179,12 +215,12 @@ export default function NetworkOverviewPage() {
 
         <Stat
           label="Active Stations"
-          value={`${kpi?.stationsOnline ?? 6} / ${kpi?.stationsTotal ?? 6}`}
+          value={`${Math.min(activeStationIds.length, kpi?.stationsOnline ?? activeStationIds.length)} / ${activeStationIds.length}`}
           tone="default"
           icon={<Radio className="w-4 h-4" />}
           trend={{
             direction: "up",
-            label: "18 physical transducers online",
+            label: `${totalTransducersCount} physical transducers online (${isOptionB ? "4×3 Tri-Modal" : "6×2 Bi-Modal"})`,
           }}
         />
 
@@ -225,8 +261,8 @@ export default function NetworkOverviewPage() {
           }
           subtitle={
             isPlaybackMode
-              ? "Replaying recorded incident telemetry · Physical wavefront propagation across S1–S6 Tri-Sensor Bus"
-              : "Real-time physical test rig schematic · 6 sensor stations across 5 monitored pipeline zones"
+              ? `Replaying recorded incident telemetry · Wavefront propagation across ${isOptionB ? "S1–S4 Tri-Sensor Bus" : "S1–S6 Bus"}`
+              : `Real-time physical test rig schematic · ${activeStationIds.length} sensor stations across ${totalZonesCount} monitored pipeline zones (${isOptionB ? "Option B: 4×3 Tri-Modal" : "Option A: 6×2 Bi-Modal"})`
           }
           action={
             <div className="flex items-center gap-1.5">
@@ -245,7 +281,7 @@ export default function NetworkOverviewPage() {
                 {isPlaybackMode ? "Exit Replay" : "Time Machine"}
               </Button>
               <div className="hidden sm:flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
-                {STATION_IDS.map((sid) => (
+                {activeStationIds.map((sid) => (
                   <button
                     key={sid}
                     onClick={() => setSelectedStation(sid)}
@@ -382,7 +418,7 @@ export default function NetworkOverviewPage() {
       <Card hasFlutedFooter>
         <CardHeader
           title="Active Pipeline Zones"
-          subtitle="Real-time acoustic & pressure telemetry across 5 physical pipe segments"
+          subtitle={`Real-time acoustic & pressure telemetry across ${totalZonesCount} physical pipe segments (${isOptionB ? "Option B: 3 Zones Monitored" : "Option A: 5 Zones Monitored"})`}
           action={
             <Link
               href="/alerts"
@@ -406,7 +442,7 @@ export default function NetworkOverviewPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {ZONES.map((zone, idx) => {
+              {activeZones.map((zone, idx) => {
                 const alert = activeAlerts.find((a) => a.zoneId === zone.id);
                 const stA = stations.find((s) => s.id === zone.stationA);
                 const stB = stations.find((s) => s.id === zone.stationB);

@@ -12,6 +12,7 @@ import type {
   ZoneId,
   Severity,
   DataSource,
+  ArchitectureMode,
 } from "@/types";
 
 interface LeakEffect {
@@ -31,6 +32,7 @@ interface HydroState {
   kpi: KpiData | null;
   lastBatchTs: number | null; // epoch ms of last received batch
   dataSource: DataSource;
+  architectureMode: ArchitectureMode;
   activeLeaks: LeakEffect[];
 
   // Simulation control
@@ -44,6 +46,7 @@ interface HydroState {
   setKpi: (kpi: KpiData) => void;
   markBatchReceived: () => void;
   setDataSource: (ds: DataSource) => void;
+  setArchitectureMode: (mode: ArchitectureMode) => void;
   setActiveLeaks: (leaks: LeakEffect[]) => void;
   setSimulationActive: (active: boolean) => void;
   injectLeak: (zoneId: ZoneId) => void;
@@ -58,6 +61,7 @@ export const useHydroStore = create<HydroState>((set) => ({
   kpi: null,
   lastBatchTs: null,
   dataSource: "simulated",
+  architectureMode: "4x3", // Default to Option B (4 Stations × 3 Sensors = 12 Transducers)
   activeLeaks: [],
   simulationActive: false,
   injectedLeaks: [],
@@ -68,6 +72,7 @@ export const useHydroStore = create<HydroState>((set) => ({
   setKpi: (kpi) => set({ kpi }),
   markBatchReceived: () => set({ lastBatchTs: Date.now() }),
   setDataSource: (dataSource) => set({ dataSource }),
+  setArchitectureMode: (architectureMode) => set({ architectureMode }),
   setActiveLeaks: (activeLeaks) => set({ activeLeaks }),
   setSimulationActive: (simulationActive) => set({ simulationActive }),
   injectLeak: (zoneId) =>

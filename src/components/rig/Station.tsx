@@ -8,6 +8,7 @@
 
 import type { StationId, StationPos } from "@/config/rig";
 import type { LiveStation } from "@/types";
+import { useHydroStore } from "@/store/hydroStore";
 
 interface StationProps {
   id: StationId;
@@ -24,13 +25,18 @@ export function Station({
   isSelected,
   onClick,
 }: StationProps) {
+  const architectureMode = useHydroStore((s) => s.architectureMode);
+  const isDormant = architectureMode === "4x3" && (id === "S5" || id === "S6");
+
   const status = data?.status ?? "online";
   const samplingMode = data?.samplingMode ?? "normal";
 
-  const isAlert = status === "alert";
-  const isElevated = status === "elevated" || samplingMode === "elevated";
+  const isAlert = !isDormant && status === "alert";
+  const isElevated = !isDormant && (status === "elevated" || samplingMode === "elevated");
 
-  const ledColor = isAlert
+  const ledColor = isDormant
+    ? "#cbd5e1"
+    : isAlert
     ? "#dc2626"
     : isElevated
     ? "#d97706"
@@ -45,7 +51,7 @@ export function Station({
   return (
     <g
       transform={`translate(${pos.x}, ${pos.y})`}
-      className="cursor-pointer group select-none"
+      className={`cursor-pointer group select-none transition-opacity ${isDormant ? "opacity-35" : "opacity-100"}`}
       onClick={onClick}
       role="button"
       tabIndex={0}

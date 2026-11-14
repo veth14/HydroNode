@@ -5,6 +5,7 @@
 
 import type { ZoneMeta } from "@/config/rig";
 import type { Severity } from "@/types";
+import { useHydroStore } from "@/store/hydroStore";
 
 interface ZoneBandProps {
   zone: ZoneMeta;
@@ -21,9 +22,12 @@ export function ZoneBand({
   showLabels = true,
   onClick,
 }: ZoneBandProps) {
+  const architectureMode = useHydroStore((s) => s.architectureMode);
+  const isDormant = architectureMode === "4x3" && (zone.id === 4 || zone.id === 5);
+
   const { bandRect, labelPos, id } = zone;
 
-  const isAlert = severity === "high" || severity === "medium";
+  const isAlert = !isDormant && (severity === "high" || severity === "medium");
 
   const fillColor =
     severity === "high"
@@ -46,7 +50,7 @@ export function ZoneBand({
   return (
     <g
       id={`zone-band-${id}`}
-      className="cursor-pointer select-none group"
+      className={`cursor-pointer select-none group transition-opacity ${isDormant ? "opacity-30 pointer-events-none" : "opacity-100"}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -95,7 +99,7 @@ export function ZoneBand({
             letterSpacing="0.5"
             fontFamily="sans-serif"
           >
-            {`ZONE ${id}`}
+            {isDormant ? `ZONE ${id} (EXP)` : `ZONE ${id}`}
           </text>
         </g>
       )}
