@@ -54,11 +54,22 @@ export default function SimulationPage() {
   const handleTogglePump = () => {
     const nextState = !pumpOn;
     setPumpOn(nextState);
-    addLog(`Water Pump: ${nextState ? "ON (PWM Active)" : "OFF (0% Duty Cycle via LR7843 MOSFET)"}`);
+    if (nextState && pumpPwm === 0) {
+      setPumpPwm(191);
+      addLog("Water Pump: ON (Restored to Nominal 75% PWM via LR7843 MOSFET)");
+    } else {
+      const pct = nextState ? Math.round((pumpPwm / 255) * 100) : 0;
+      addLog(`Water Pump: ${nextState ? `ON (${pct}% PWM Active)` : "OFF (0% Duty Cycle via LR7843 MOSFET)"}`);
+    }
   };
 
   const handlePwmChange = (val: number) => {
     setPumpPwm(val);
+    if (val > 0 && !pumpOn) {
+      setPumpOn(true);
+    } else if (val === 0 && pumpOn) {
+      setPumpOn(false);
+    }
     const pct = Math.round((val / 255) * 100);
     addLog(`Pump PWM adjusted to: ${val}/255 (${pct}% Duty Cycle). Target Flow: ${(8 + (val / 255) * 4).toFixed(1)} LPM`);
   };
@@ -153,6 +164,48 @@ export default function SimulationPage() {
     }
   };
 
+  const currentPct = !pumpOn ? 0 : Math.round((pumpPwm / 255) * 100);
+
+  const presets = [
+    {
+      id: "off",
+      label: "OFF (0%)",
+      active: !pumpOn || pumpPwm === 0,
+      onClick: () => {
+        setPumpOn(false);
+        setPumpPwm(0);
+        addLog("Pump Cutoff: 0% Duty Cycle (MOSFET Pin LOW)");
+      },
+    },
+    {
+      id: "low",
+      label: "Low (50%)",
+      active: pumpOn && (currentPct === 50 || pumpPwm === 128),
+      onClick: () => {
+        setPumpOn(true);
+        handlePwmChange(128);
+      },
+    },
+    {
+      id: "nominal",
+      label: "Nominal (75%)",
+      active: pumpOn && (currentPct === 75 || pumpPwm === 190 || pumpPwm === 191),
+      onClick: () => {
+        setPumpOn(true);
+        handlePwmChange(191);
+      },
+    },
+    {
+      id: "max",
+      label: "Max (100%)",
+      active: pumpOn && (currentPct === 100 || pumpPwm === 255),
+      onClick: () => {
+        setPumpOn(true);
+        handlePwmChange(255);
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
       <div className="pb-4 border-b border-slate-200">
@@ -219,8 +272,8 @@ export default function SimulationPage() {
               }
               subtitle="24V Brushless Centrifugal Pump (JT-800D) paired with LR7843 MOSFET PWM Driver"
               action={
-                <Badge variant={pumpOn ? "success" : "neutral"} dot size="sm">
-                  {pumpOn ? `RUNNING (${Math.round((pumpPwm / 255) * 100)}% PWM)` : "STOPPED"}
+                <Badge variant={pumpOn && pumpPwm > 0 ? "success" : "neutral"} dot size="sm">
+                  {pumpOn && pumpPwm > 0 ? `RUNNING (${currentPct}% PWM)` : "STOPPED (0% PWM)"}
                 </Badge>
               }
             />
@@ -230,7 +283,7 @@ export default function SimulationPage() {
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500">Target Flow Rate</div>
                   <div className="text-xl font-bold font-mono tabular-nums text-sky-700 mt-0.5">
-                    {pumpOn ? (8 + (pumpPwm / 255) * 4).toFixed(1) : "0.0"} <span className="text-xs font-normal text-slate-500">LPM</span>
+                    {pumpOn && pumpPwm > 0 ? (8 + (pumpPwm / 255) * 4).toFixed(1) : "0.0"} <span className="text-xs font-normal text-slate-500">LPM</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1">Native 1/2&quot; BSP/NPT Loop</div>
                 </div>
@@ -238,7 +291,7 @@ export default function SimulationPage() {
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="text-xs text-slate-500">Supply Head Pressure</div>
                   <div className="text-xl font-bold font-mono tabular-nums text-indigo-700 mt-0.5">
-                    {pumpOn ? (2.5 + (pumpPwm / 255) * 2.5).toFixed(2) : "0.00"} <span className="text-xs font-normal text-slate-500">bar</span>
+                    {pumpOn && pumpPwm > 0 ? (2.5 + (pumpPwm / 255) * 2.5).toFixed(2) : "0.00"} <span className="text-xs font-normal text-slate-500">bar</span>
                   </div>
                   <div className="text-[11px] text-slate-400 mt-1">5–7m Head Capability</div>
                 </div>
@@ -271,7 +324,7 @@ export default function SimulationPage() {
                     ESP32-S3 PWM Signal (`ledcWrite`):
                   </span>
                   <span className="font-mono text-sky-700 font-bold tabular-nums">
-                    {pumpPwm} / 255 ({Math.round((pumpPwm / 255) * 100)}% Duty Cycle)
+                    {pumpOn ? pumpPwm : 0} / 255 ({currentPct}% Duty Cycle)
                   </span>
                 </div>
 
@@ -279,7 +332,7 @@ export default function SimulationPage() {
                   type="range"
                   min="0"
                   max="255"
-                  value={pumpPwm}
+                  value={pumpOn ? pumpPwm : 0}
                   onChange={(e) => handlePwmChange(Number(e.target.value))}
                   className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
                 />
@@ -287,52 +340,29 @@ export default function SimulationPage() {
                 {/* Quick Presets */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
                   <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => {
-                        setPumpOn(false);
-                        setPumpPwm(0);
-                        addLog("Pump Cutoff: 0% Duty Cycle (MOSFET Pin LOW)");
-                      }}
-                      className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer shadow-xs"
-                    >
-                      OFF (0%)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPumpOn(true);
-                        handlePwmChange(128);
-                      }}
-                      className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer shadow-xs"
-                    >
-                      Low (50%)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPumpOn(true);
-                        handlePwmChange(190);
-                      }}
-                      className="px-2.5 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-700 font-semibold cursor-pointer shadow-xs"
-                    >
-                      Nominal (75%)
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPumpOn(true);
-                        handlePwmChange(255);
-                      }}
-                      className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-600 hover:text-slate-900 cursor-pointer shadow-xs"
-                    >
-                      Max (100%)
-                    </button>
+                    {presets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={preset.onClick}
+                        className={`px-3 py-1 rounded-md text-xs transition-all cursor-pointer ${
+                          preset.active
+                            ? "bg-sky-50 border border-sky-300 text-sky-700 font-bold shadow-xs ring-1 ring-sky-400/30"
+                            : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs font-medium"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
                   </div>
 
                   <Button
                     size="sm"
-                    variant={pumpOn ? "destructive" : "primary"}
+                    variant={pumpOn && pumpPwm > 0 ? "destructive" : "primary"}
                     onClick={handleTogglePump}
                     icon={<Power className="w-3.5 h-3.5" />}
                   >
-                    {pumpOn ? "Stop Pump (Cut Power)" : "Start Pump"}
+                    {pumpOn && pumpPwm > 0 ? "Stop Pump (Cut Power)" : "Start Pump"}
                   </Button>
                 </div>
               </div>
