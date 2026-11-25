@@ -1,6 +1,7 @@
 "use client";
 // src/components/ui/Badge.tsx
-// Refined soft pill status badges in FlowAI / Premium SaaS style.
+// Metro Pacific Water × HydroNode — Branded Status Badges
+// Primary accent: #0076A0 / #019FD7 (ocean blue), #A6CE38 (lime green)
 
 import React from "react";
 
@@ -20,30 +21,44 @@ interface BadgeProps {
   className?: string;
 }
 
-const variantStyles: Record<BadgeVariant, { container: string; dot: string }> = {
+const variantStyles: Record<BadgeVariant, React.CSSProperties & { dot: React.CSSProperties }> = {
   critical: {
-    container: "bg-red-50 text-red-700 border-red-200/80",
-    dot: "bg-red-600",
+    background: "#fef2f2",
+    color: "#b91c1c",
+    border: "1px solid rgba(252,165,165,0.8)",
+    dot: { background: "#dc2626" },
   },
   warning: {
-    container: "bg-amber-50 text-amber-800 border-amber-200/80",
-    dot: "bg-amber-600",
+    background: "#fefce8",
+    color: "#a16207",
+    border: "1px solid rgba(253,230,138,0.8)",
+    dot: { background: "#ca8a04" },
   },
   success: {
-    container: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-    dot: "bg-emerald-600",
+    background: "#f0fdf4",
+    color: "#15803d",
+    border: "1px solid rgba(134,239,172,0.8)",
+    dot: { background: "#22c55e" },
   },
+  // MPW ocean blue for "info"
   info: {
-    container: "bg-blue-50 text-blue-700 border-blue-200/80",
-    dot: "bg-blue-600",
+    background: "#DFF5FF",
+    color: "#0076A0",
+    border: "1px solid rgba(171,224,249,0.8)",
+    dot: { background: "#019FD7" },
   },
+  // MPW ocean blue for "accent" (primary brand color)
   accent: {
-    container: "bg-sky-50 text-sky-700 border-sky-200/80",
-    dot: "bg-sky-600",
+    background: "#DFF5FF",
+    color: "#0076A0",
+    border: "1px solid #ABE0F9",
+    dot: { background: "#019FD7" },
   },
   neutral: {
-    container: "bg-slate-100 text-slate-700 border-slate-200/80",
-    dot: "bg-slate-400",
+    background: "#f1f5f9",
+    color: "#475569",
+    border: "1px solid rgba(226,232,240,0.8)",
+    dot: { background: "#94a3b8" },
   },
 };
 
@@ -54,7 +69,7 @@ export function Badge({
   dot = false,
   className = "",
 }: BadgeProps) {
-  const styles = variantStyles[variant];
+  const { dot: dotStyle, ...containerStyle } = variantStyles[variant];
   const sizeClasses =
     size === "sm"
       ? "px-2 py-0.5 text-[10px] gap-1"
@@ -62,9 +77,15 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center font-medium rounded-full border select-none transition-colors ${styles.container} ${sizeClasses} ${className}`}
+      className={`inline-flex items-center font-medium rounded-full select-none ${sizeClasses} ${className}`}
+      style={containerStyle}
     >
-      {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${styles.dot}`} />}
+      {dot && (
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={dotStyle}
+        />
+      )}
       {children}
     </span>
   );

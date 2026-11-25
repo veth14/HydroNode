@@ -1,29 +1,45 @@
 @import "tailwindcss";
 
-/* ─── HydroNode Design Tokens ─── */
+/* ─── HydroNode × Metro Pacific Water Design Tokens ─── */
+/* Brand palette sourced from metropacificwater.com          */
+/* Primary: #0076A0 (deep ocean blue)                       */
+/* Accent:  #00A3DD / #019FD7 (sky blue)                   */
+/* Green:   #A6CE38 (sustainability lime)                   */
+/* Dark:    #1F3A63 (deep navy)                             */
 :root {
-  --surface-canvas:        #eef1f5;
+  /* Canvas & surfaces */
+  --surface-canvas:        #EEF6FA;
   --surface-card:          #ffffff;
-  --surface-subtle:        #f4f6f9;
-  --surface-border:        #e2e6ec;
-  --surface-border-subtle: #edf0f4;
+  --surface-subtle:        #F4FAFD;
+  --surface-border:        #C8E5F2;
+  --surface-border-subtle: #DFF5FF;
 
-  --text-primary:   #0f172a;
-  --text-secondary: #475569;
-  --text-muted:     #94a3b8;
-  --text-light:     #cbd5e1;
+  /* Typography */
+  --text-primary:   #0C2340;
+  --text-secondary: #2D5A7A;
+  --text-muted:     #818F99;
+  --text-light:     #ABE0F9;
 
-  --accent-dark:    #0f172a;
-  --accent-primary: #0284c7;
-  --accent-soft:    #e0f2fe;
+  /* Brand primary – MPW Ocean Blue */
+  --accent-dark:    #1F3A63;
+  --accent-primary: #0076A0;
+  --accent-mid:     #019FD7;
+  --accent-bright:  #00A3DD;
+  --accent-soft:    #DFF5FF;
 
-  --success:      #10b981;
-  --success-bg:   #ecfdf5;
-  --success-text: #047857;
+  /* MPW Sustainability Green accent */
+  --brand-green:      #A6CE38;
+  --brand-green-bg:   #F3FFD1;
+  --brand-green-text: #4a7a00;
 
-  --warning:      #f59e0b;
-  --warning-bg:   #fffbeb;
-  --warning-text: #b45309;
+  /* Status */
+  --success:      #22c55e;
+  --success-bg:   #f0fdf4;
+  --success-text: #15803d;
+
+  --warning:      #eab308;
+  --warning-bg:   #fefce8;
+  --warning-text: #a16207;
 
   --danger:      #ef4444;
   --danger-bg:   #fef2f2;
@@ -40,6 +56,17 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── MPW Brand utility classes ─── */
+.mpw-gradient-primary {
+  background: linear-gradient(135deg, #0076A0 0%, #019FD7 60%, #00A3DD 100%);
+}
+.mpw-gradient-dark {
+  background: linear-gradient(135deg, #1F3A63 0%, #0076A0 100%);
+}
+.mpw-gradient-fresh {
+  background: linear-gradient(135deg, #019FD7 0%, #A6CE38 100%);
 }
 
 /* Subtle Scrollbar */
@@ -76,7 +103,7 @@ html, body {
 
 /* ─── Canvas dot grid texture (like Figma / Linear canvas) ─── */
 .canvas-grid {
-  background-image: radial-gradient(circle, #c8cdd7 1px, transparent 1px);
+  background-image: radial-gradient(circle, #C8E5F2 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -84,8 +111,8 @@ html, body {
 .pattern-fluted {
   background: repeating-linear-gradient(
     90deg,
-    #d1d5db 0,
-    #d1d5db 1px,
+    #C8E5F2 0,
+    #C8E5F2 1px,
     transparent 1px,
     transparent 6px
   );
@@ -93,7 +120,7 @@ html, body {
 
 /* ─── Old dots pattern (kept for compat) ─── */
 .pattern-dots {
-  background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+  background-image: radial-gradient(#ABE0F9 1.2px, transparent 1.2px);
   background-size: 8px 8px;
 }
 
@@ -110,7 +137,7 @@ html, body {
   width: 3px;
   height: 60%;
   border-radius: 0 2px 2px 0;
-  background: #0f172a;
+  background: #0076A0;
 }
 
 /* ─── Keyframe animations ─── */

@@ -1,6 +1,7 @@
 "use client";
 // src/components/ui/Card.tsx
-// Premium Card with richer shadow layering, fluted footer, and inset highlight.
+// Metro Pacific Water × HydroNode — Branded Card Component
+// Subtle MPW ocean-blue border tint; clean white surface
 
 import React from "react";
 
@@ -13,15 +14,24 @@ interface CardProps {
 export function Card({ children, className = "", hasFlutedFooter = false }: CardProps) {
   return (
     <div
-      className={`relative bg-white border border-slate-200/80 rounded-2xl overflow-hidden transition-all duration-200
-        shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05),0_8px_24px_rgba(0,0,0,0.04)]
-        ${className}`}
+      className={`relative bg-white rounded-2xl overflow-hidden transition-all duration-200 ${className}`}
+      style={{
+        border: "1px solid #DFF5FF",
+        boxShadow:
+          "0 1px 2px rgba(0,118,160,0.04), 0 4px 12px rgba(0,118,160,0.05), 0 8px 24px rgba(0,118,160,0.04)",
+      }}
     >
-      {/* Inset top highlight line */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent pointer-events-none" />
+      {/* Inset top highlight — MPW blue tint */}
+      <div
+        className="absolute inset-x-0 top-0 h-px pointer-events-none"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(1,159,215,0.3), transparent)",
+        }}
+      />
       {children}
       {hasFlutedFooter && (
-        <div className="h-4 w-full pattern-fluted border-t border-slate-100 opacity-50" />
+        <div className="h-4 w-full pattern-fluted border-t opacity-50" style={{ borderColor: "#DFF5FF" }} />
       )}
     </div>
   );
@@ -40,14 +50,15 @@ export function CardHeader({
 }) {
   return (
     <div
-      className={`flex items-start justify-between gap-4 px-5 pt-5 pb-4 border-b border-slate-100 ${className}`}
+      className={`flex items-start justify-between gap-4 px-5 pt-5 pb-4 ${className}`}
+      style={{ borderBottom: "1px solid #DFF5FF" }}
     >
       <div className="space-y-0.5 min-w-0">
-        <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
+        <h3 className="text-sm font-semibold tracking-tight" style={{ color: "#0C2340" }}>
           {title}
         </h3>
         {subtitle && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs" style={{ color: "#819FD7" }}>
             {subtitle}
           </p>
         )}

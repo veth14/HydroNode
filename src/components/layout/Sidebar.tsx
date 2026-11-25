@@ -1,6 +1,7 @@
 "use client";
 // src/components/layout/Sidebar.tsx
-// Premium sidebar with richer depth, left-border active indicator, and status colors.
+// Metro Pacific Water × HydroNode SCADA — Premium Sidebar
+// Brand: #0076A0 (deep ocean blue), #019FD7 (sky blue), #A6CE38 (lime green)
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -76,25 +77,40 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="flex flex-col w-64 shrink-0 h-screen bg-white text-slate-700 select-none
-      border-r border-slate-200/80
-      shadow-[1px_0_0_rgba(0,0,0,0.03),2px_0_8px_rgba(0,0,0,0.03)]">
-
-      {/* Brand Header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+    <aside
+      className="flex flex-col w-64 shrink-0 h-screen bg-white select-none"
+      style={{
+        borderRight: "1px solid #C8E5F2",
+        boxShadow: "1px 0 0 rgba(0,118,160,0.08), 2px 0 8px rgba(0,118,160,0.06)",
+      }}
+    >
+      {/* Brand Header — Metro Pacific Water */}
+      <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid #DFF5FF" }}>
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
-            <Droplets className="w-4 h-4 text-sky-400" />
+          {/* MPW brand mark — gradient ocean blue */}
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{
+              background: "linear-gradient(135deg, #0076A0 0%, #019FD7 100%)",
+              boxShadow: "0 2px 8px rgba(0,118,160,0.35)",
+            }}
+          >
+            <Droplets className="w-4 h-4 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-sm tracking-tight text-slate-900">HydroNode</span>
-              <span className="text-[9px] font-bold text-white bg-slate-800 px-1.5 py-0.5 rounded tracking-wider">
+              <span className="font-bold text-sm tracking-tight" style={{ color: "#0C2340" }}>
+                HydroNode
+              </span>
+              <span
+                className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded tracking-wider"
+                style={{ background: "#0076A0" }}
+              >
                 AI
               </span>
             </div>
-            <div className="text-[10px] text-slate-400 font-medium leading-none mt-0.5">
-              IoT Acoustic & Pressure Rig
+            <div className="text-[10px] font-medium leading-none mt-0.5" style={{ color: "#819FD7" }}>
+              Metro Pacific Water
             </div>
           </div>
         </Link>
@@ -104,41 +120,62 @@ export function Sidebar() {
       <div className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {NAV_SECTIONS.map((section) => (
           <div key={section.title} className="space-y-0.5">
-            <div className="px-3 pb-2 text-[10px] font-semibold tracking-widest text-slate-400 uppercase">
+            <div
+              className="px-3 pb-2 text-[10px] font-semibold tracking-widest uppercase"
+              style={{ color: "#819FD7" }}
+            >
               {section.title}
             </div>
             {section.items.map(({ href, label, icon: Icon, badge, badgeTone }) => {
               const isActive =
-                href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(href);
+                href === "/" ? pathname === "/" : pathname.startsWith(href);
 
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 ${
+                  className="relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150"
+                  style={
                     isActive
-                      ? "bg-slate-900 text-white shadow-[0_2px_8px_rgba(15,23,42,0.2)]"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
+                      ? {
+                          background: "linear-gradient(135deg, #0076A0 0%, #019FD7 100%)",
+                          color: "#ffffff",
+                          boxShadow: "0 2px 8px rgba(0,118,160,0.3)",
+                        }
+                      : { color: "#2D5A7A" }
+                  }
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.background = "#EEF6FA";
+                      (e.currentTarget as HTMLElement).style.color = "#0076A0";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.background = "";
+                      (e.currentTarget as HTMLElement).style.color = "#2D5A7A";
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-2.5 truncate">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                    <span style={{ color: isActive ? "#ffffff" : "#019FD7" }}>
+                      <Icon className="w-4 h-4 shrink-0" />
+                    </span>
                     <span className="truncate">{label}</span>
                   </div>
 
                   {badge && (
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                      style={
                         isActive
-                          ? "bg-white/20 text-white"
+                          ? { background: "rgba(255,255,255,0.2)", color: "#ffffff" }
                           : badgeTone === "critical"
-                          ? "bg-red-50 text-red-600 border border-red-200"
+                          ? { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" }
                           : badgeTone === "accent"
-                          ? "bg-sky-50 text-sky-700 border border-sky-200"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
+                          ? { background: "#DFF5FF", color: "#0076A0", border: "1px solid #ABE0F9" }
+                          : { background: "#f1f5f9", color: "#475569" }
+                      }
                     >
                       {badge}
                     </span>
@@ -151,34 +188,46 @@ export function Sidebar() {
       </div>
 
       {/* Hardware Telemetry Card */}
-      <div className="mx-3 mb-3 rounded-2xl border border-slate-200/80 overflow-hidden
-        shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
-        {/* Colored top bar */}
-        <div className="h-0.5 bg-gradient-to-r from-sky-500 to-emerald-500" />
-        <div className="p-3 space-y-2.5 text-xs bg-slate-50/60">
+      <div
+        className="mx-3 mb-3 rounded-2xl overflow-hidden"
+        style={{
+          border: "1px solid #C8E5F2",
+          boxShadow: "0 1px 3px rgba(0,118,160,0.08), 0 4px 12px rgba(0,118,160,0.06)",
+        }}
+      >
+        {/* MPW brand gradient bar */}
+        <div
+          className="h-0.5"
+          style={{ background: "linear-gradient(90deg, #0076A0, #019FD7, #A6CE38)" }}
+        />
+        <div className="p-3 space-y-2.5 text-xs" style={{ background: "#F4FAFD" }}>
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5 text-sky-600" />
+            <span className="font-semibold flex items-center gap-1.5" style={{ color: "#0C2340" }}>
+              <Cpu className="w-3.5 h-3.5" style={{ color: "#019FD7" }} />
               ESP32-S3 Master
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-emerald-700">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               ONLINE
             </span>
           </div>
-          <div className="text-[11px] text-slate-500 leading-tight">
+          <div className="text-[11px] leading-tight" style={{ color: "#2D5A7A" }}>
             18 Sensors (6× F·P·S) · 2AWG Multi-conductor
           </div>
-          {/* Progress bar */}
           <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-slate-400">
+            <div className="flex justify-between text-[10px]" style={{ color: "#818F99" }}>
               <span>Telemetry Throughput</span>
-              <span className="font-mono tabular-nums font-semibold text-slate-600">94%</span>
+              <span className="font-mono tabular-nums font-semibold" style={{ color: "#2D5A7A" }}>
+                94%
+              </span>
             </div>
-            <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "#DFF5FF" }}>
               <div
-                className="h-full rounded-full bg-gradient-to-r from-sky-500 to-sky-400"
-                style={{ width: "94%" }}
+                className="h-full rounded-full"
+                style={{
+                  width: "94%",
+                  background: "linear-gradient(90deg, #0076A0, #019FD7)",
+                }}
               />
             </div>
           </div>
@@ -186,18 +235,30 @@ export function Sidebar() {
       </div>
 
       {/* Operator Profile Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs">
+      <div
+        className="flex items-center justify-between px-4 py-3 text-xs"
+        style={{ borderTop: "1px solid #DFF5FF" }}
+      >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-xs shrink-0
-            shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
+          <div
+            className="w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shrink-0"
+            style={{
+              background: "linear-gradient(135deg, #0076A0, #019FD7)",
+              boxShadow: "0 2px 8px rgba(0,118,160,0.3)",
+            }}
+          >
             OP
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-slate-900 truncate">SCADA Operator</div>
-            <div className="text-[10px] text-slate-400 truncate">admin@hydronode.io</div>
+            <div className="font-semibold truncate" style={{ color: "#0C2340" }}>
+              SCADA Operator
+            </div>
+            <div className="text-[10px] truncate" style={{ color: "#818F99" }}>
+              admin@metropacificwater.com
+            </div>
           </div>
         </div>
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+        <ChevronDown className="w-4 h-4 shrink-0" style={{ color: "#818F99" }} />
       </div>
     </aside>
   );

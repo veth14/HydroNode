@@ -1,10 +1,7 @@
 "use client";
 // src/components/layout/TopBar.tsx
-// Ultra-Premium Top Navigation Header matching FlowAI reference image.
-// - Breadcrumb indicator on the left
-// - Integrated search pill input
-// - "Ask AI" triage shortcut
-// - Notification bell button with active alert indicator
+// Metro Pacific Water × HydroNode SCADA — Premium Top Navigation
+// Brand: #0076A0 (deep ocean blue), #019FD7 (sky blue), #A6CE38 (lime green)
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -15,13 +12,10 @@ import {
   Sparkles,
   Bell,
   LayoutDashboard,
-  Radio,
-  FlaskConical,
-  Activity,
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { isAlertSoundMuted, toggleAlertSoundMuted, playAlertSound } from "@/lib/sound";
+import { isAlertSoundMuted, toggleAlertSoundMuted } from "@/lib/sound";
 
 export function TopBar() {
   const pathname = usePathname();
@@ -54,41 +48,84 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between px-6 py-3.5 select-none
-      bg-white/90 backdrop-blur-xl border-b border-slate-200/60
-      shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]">
+    <header
+      className="sticky top-0 z-30 flex items-center justify-between px-6 py-3.5 select-none"
+      style={{
+        background: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        borderBottom: "1px solid #DFF5FF",
+        boxShadow: "0 1px 0 rgba(0,118,160,0.06), 0 4px 16px rgba(0,118,160,0.04)",
+      }}
+    >
       {/* Left: Current Page Breadcrumb */}
-      <div className="flex items-center gap-2 text-slate-700">
-        <LayoutDashboard className="w-4 h-4 text-slate-400" />
-        <span className="font-semibold text-sm text-slate-900 tracking-tight">
+      <div className="flex items-center gap-2">
+        <LayoutDashboard className="w-4 h-4" style={{ color: "#019FD7" }} />
+        <span className="font-semibold text-sm tracking-tight" style={{ color: "#0C2340" }}>
           {getPageTitle()}
         </span>
       </div>
 
-      {/* Right Actions: Search + Ask AI + Notifications */}
+      {/* Right Actions */}
       <div className="flex items-center gap-3">
         {/* Search Bar */}
         <div className="relative hidden md:block">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search
+            className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: "#819FD7" }}
+          />
           <input
             type="text"
             placeholder="Search telemetry, stations, alerts..."
-            className="w-64 pl-8 pr-3 py-1.5 text-xs bg-slate-50 hover:bg-white focus:bg-white border border-slate-200/90 rounded-xl text-slate-800 placeholder-slate-400 transition-all focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 shadow-2xs"
+            className="w-64 pl-8 pr-3 py-1.5 text-xs rounded-xl transition-all focus:outline-none focus:ring-2"
+            style={{
+              background: "#F4FAFD",
+              border: "1px solid #C8E5F2",
+              color: "#0C2340",
+              "--tw-ring-color": "#019FD7",
+            } as React.CSSProperties}
+            onFocus={(e) => {
+              e.currentTarget.style.background = "#ffffff";
+              e.currentTarget.style.borderColor = "#019FD7";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.background = "#F4FAFD";
+              e.currentTarget.style.borderColor = "#C8E5F2";
+            }}
           />
         </div>
 
         {/* Ask AI Triage Button */}
         <Link
           href="/analysis"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl text-xs font-medium text-slate-700 transition-all shadow-2xs hover:shadow-subtle"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all"
+          style={{
+            background: "#ffffff",
+            border: "1px solid #C8E5F2",
+            color: "#0076A0",
+            boxShadow: "0 1px 2px rgba(0,118,160,0.08)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "#F4FAFD";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "#ffffff";
+          }}
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <Sparkles className="w-3.5 h-3.5" style={{ color: "#A6CE38" }} />
           <span>Ask AI</span>
         </Link>
 
         {/* Live Stream Status Indicator */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-xl text-xs font-medium">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <div
+          className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl"
+          style={{
+            background: "#F3FFD1",
+            color: "#4a7a00",
+            border: "1px solid #A6CE38",
+          }}
+        >
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#A6CE38" }} />
           <span>Stream Live</span>
         </div>
 
@@ -100,15 +137,22 @@ export function TopBar() {
             setIsMuted(next);
           }}
           title={isMuted ? "Audible Alarm Muted (Click to enable)" : "Audible Alarm Active (/alert.mp3)"}
-          className={`relative p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:shadow-subtle ${
-            activeAlerts > 0
-              ? isMuted
-                ? "bg-slate-50 border-slate-200 text-slate-400"
-                : "bg-red-50 border-red-200 text-red-600 animate-pulse"
-              : isMuted
-              ? "bg-slate-50 border-slate-200 text-slate-400"
-              : "bg-white hover:bg-slate-50 border-slate-200/90 text-slate-600"
-          }`}
+          className="relative p-2 rounded-xl transition-all cursor-pointer"
+          style={
+            activeAlerts > 0 && !isMuted
+              ? {
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  color: "#dc2626",
+                  animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
+                }
+              : {
+                  background: "#ffffff",
+                  border: "1px solid #C8E5F2",
+                  color: isMuted ? "#818F99" : "#019FD7",
+                  boxShadow: "0 1px 2px rgba(0,118,160,0.08)",
+                }
+          }
         >
           {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
         </button>
@@ -117,7 +161,19 @@ export function TopBar() {
         <Link
           href="/alerts"
           aria-label={`${activeAlerts} active alerts`}
-          className="relative p-2 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-xl text-slate-600 transition-all shadow-2xs hover:shadow-subtle cursor-pointer"
+          className="relative p-2 rounded-xl transition-all cursor-pointer"
+          style={{
+            background: "#ffffff",
+            border: "1px solid #C8E5F2",
+            color: "#0076A0",
+            boxShadow: "0 1px 2px rgba(0,118,160,0.08)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "#F4FAFD";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "#ffffff";
+          }}
         >
           <Bell className="w-4 h-4" />
           {activeAlerts > 0 && (
