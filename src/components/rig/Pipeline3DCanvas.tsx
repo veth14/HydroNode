@@ -352,11 +352,9 @@ function HologramProjection({
           />
         </mesh>
 
-        {/* 3D perspective CSS3D hologram panel locked onto the fan top edge */}
+        {/* Screen-space hologram HUD card — no CSS3D transform so text stays pixel-perfect at all zoom levels */}
         <Html
-          transform
           center
-          distanceFactor={4}
           position={[0, 1.04, 0]}
           pointerEvents={isSelected ? "auto" : "none"}
           zIndexRange={[100, 0]}
@@ -376,6 +374,12 @@ function HologramProjection({
               cursor: isSelected ? "pointer" : "default",
               userSelect: "none",
               fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+              WebkitFontSmoothing: "antialiased" as const,
+              MozOsxFontSmoothing: "grayscale" as const,
+              textRendering: "optimizeLegibility" as const,
+              transform: "translateZ(0)",
+              willChange: "transform",
+              backfaceVisibility: "hidden" as const,
             }}
           >
             <div
@@ -852,9 +856,9 @@ export function Pipeline3DCanvas({
       <CanvasErrorBoundary>
         <Canvas
           shadows
-          dpr={[1, 2]}
+          dpr={[1, 3]}
           camera={{ position: [0, 7.2, 8.8], fov: 40, near: 0.1, far: 100 }}
-          gl={{ antialias: true, alpha: true }}
+          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
           onPointerMissed={clearPinnedStation}
         >
           {/* Bright studio lighting */}
