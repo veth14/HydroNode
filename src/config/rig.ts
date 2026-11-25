@@ -26,44 +26,51 @@ export const ZONES: ZoneMeta[] = [
 export interface Sensor3DNode {
   stationId: StationId;
   zoneId: ZoneId;
-  /** Floating card anchor right above the sensor pair in normalized GLB world space */
+  /** Emitter pad anchor right on top of the blue PVC pipe centerline (midpoint between Flow & Pressure) */
   labelPos: [number, number, number];
-  /** Pipe-level pin position at the white flow sensor */
+  /** Pipe centerline X coordinate for this serpentine leg */
+  pipeX: number;
+  /** Top-surface pin position centered on the white turbine flow sensor cap */
   flowPos: [number, number, number];
-  /** Pipe-level pin position at the metallic/black pressure transducer */
+  /** Top-surface pin position centered on the black pressure transducer body */
   pressurePos: [number, number, number];
 }
 
 // Exact Three.js world positions derived from public/pipeline.glb vertices:
 // Model centered at origin, bottom at y=0, rotated +90 deg around Y, scaled to 11 units wide (scale=7.891).
+// Blue PVC pipe crown y = 0.268; white flow cap top y = 0.387; black pressure top y = 0.259.
 export const SENSOR_3D_NODES: Record<StationId, Sensor3DNode> = {
   S1: {
     stationId: "S1",
     zoneId: 1,
-    labelPos: [-3.05, 0.95, 0.53],
-    flowPos: [-3.28, 0.22, 1.4],
-    pressurePos: [-2.82, 0.2, -0.34],
+    pipeX: -3.393,
+    labelPos: [-3.393, 0.27, 0.561],
+    flowPos: [-3.417, 0.42, 1.46],
+    pressurePos: [-2.671, 0.268, -0.339],
   },
   S2: {
     stationId: "S2",
     zoneId: 2,
-    labelPos: [-1.12, 0.95, -0.18],
-    flowPos: [-1.35, 0.22, -1.13],
-    pressurePos: [-0.88, 0.2, 0.77],
+    pipeX: -1.46,
+    labelPos: [-1.46, 0.27, -0.15],
+    flowPos: [-1.484, 0.42, -1.065],
+    pressurePos: [-0.738, 0.268, 0.766],
   },
   S3: {
     stationId: "S3",
     zoneId: 3,
-    labelPos: [0.82, 0.95, 0.53],
-    flowPos: [0.58, 0.22, 1.4],
-    pressurePos: [1.05, 0.2, -0.34],
+    pipeX: 0.473,
+    labelPos: [0.473, 0.27, 0.561],
+    flowPos: [0.45, 0.42, 1.46],
+    pressurePos: [1.196, 0.268, -0.339],
   },
   S4: {
     stationId: "S4",
     zoneId: 4,
-    labelPos: [2.75, 0.95, -0.18],
-    flowPos: [2.52, 0.22, -1.13],
-    pressurePos: [2.98, 0.2, 0.77],
+    pipeX: 2.407,
+    labelPos: [2.407, 0.27, -0.15],
+    flowPos: [2.383, 0.42, -1.065],
+    pressurePos: [3.129, 0.268, 0.766],
   },
 };
 

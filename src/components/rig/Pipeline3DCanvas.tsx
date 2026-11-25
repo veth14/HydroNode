@@ -25,6 +25,7 @@ import {
   Lightformer,
   Html,
   ContactShadows,
+  Line,
 } from "@react-three/drei";
 import {
   LineMaterial,
@@ -133,7 +134,7 @@ function RigBaseboard() {
 }
 
 // ─── Hologram Telemetry Theme & Geometry Constants ───────────────────────────
-const noRaycast = () => {};
+const noRaycast = () => { };
 
 type NodeStatus = "normal" | "alert" | "warning";
 
@@ -501,7 +502,7 @@ function HoloBeamAndRays({
     <>
       <primitive object={rayObject.mesh} />
       <mesh ref={coneRef} frustumCulled={false} raycast={noRaycast}>
-        <cylinderGeometry args={[0.145, 0.068, 1, 28, 1, true]} />
+        <cylinderGeometry args={[0.135, 0.052, 1, 28, 1, true]} />
         <meshBasicMaterial
           color={coneColor}
           transparent
@@ -543,32 +544,32 @@ function HologramProjection({
 
   return (
     <group position={anchorPos}>
-      {/* Concentric glowing holographic emitter rings on pipe crown */}
+      {/* Concentric glowing holographic emitter rings seated flush on pipe crown */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast}>
-        <circleGeometry args={[0.085, 32]} />
+        <circleGeometry args={[0.048, 32]} />
         <meshBasicMaterial
           color={theme.ringInner}
           transparent
-          opacity={0.7}
+          opacity={0.8}
           depthWrite={false}
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]} raycast={noRaycast}>
-        <ringGeometry args={[0.145, 0.168, 48]} />
+        <ringGeometry args={[0.082, 0.098, 48]} />
         <meshBasicMaterial
           color={theme.ringInner}
           transparent
-          opacity={0.9}
+          opacity={0.92}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} raycast={noRaycast}>
-        <ringGeometry args={[0.245, 0.268, 48]} />
+        <ringGeometry args={[0.132, 0.148, 48]} />
         <meshBasicMaterial
           color={theme.ringMid}
           transparent
-          opacity={0.72}
+          opacity={0.76}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
@@ -579,11 +580,11 @@ function HologramProjection({
         position={[0, 0.004, 0]}
         raycast={noRaycast}
       >
-        <ringGeometry args={[0.355, 0.376, 56]} />
+        <ringGeometry args={[0.182, 0.198, 56]} />
         <meshBasicMaterial
           color={theme.ringOuter}
           transparent
-          opacity={0.5}
+          opacity={0.55}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
@@ -593,7 +594,7 @@ function HologramProjection({
         position={[0, 0.012, 0]}
         raycast={noRaycast}
       >
-        <ringGeometry args={[0.056, 0.075, 32]} />
+        <ringGeometry args={[0.04, 0.056, 32]} />
         <meshBasicMaterial
           color={theme.ringInner}
           transparent
@@ -820,13 +821,31 @@ function SensorNodeOverlay({
 }: SensorOverlayProps) {
   const node = SENSOR_3D_NODES[stationId];
   const [lx, , lz] = node.labelPos;
+  const [fx, fy, fz] = node.flowPos;
+  const [px, py, pz] = node.pressurePos;
   const showHologram = isHovered || isSelected;
+
+  const { flowTracePts, pressureTracePts } = useMemo(() => {
+    const approachZ = fz + Math.sign(lz - fz) * 0.14;
+    return {
+      flowTracePts: [
+        [lx, 0.273, lz] as [number, number, number],
+        [node.pipeX, 0.273, approachZ] as [number, number, number],
+        [fx, fy, fz] as [number, number, number],
+      ],
+      pressureTracePts: [
+        [lx, 0.273, lz] as [number, number, number],
+        [node.pipeX, 0.273, pz] as [number, number, number],
+        [px, py, pz] as [number, number, number],
+      ],
+    };
+  }, [lx, lz, node.pipeX, fx, fy, fz, px, py, pz]);
 
   return (
     <group>
-      {/* Generous invisible hit volume spanning this station's pipe leg + flow/pressure sensors */}
+      {/* Hit volume spanning this station's pipe leg + flow sensor + T-branch pressure sensor */}
       <mesh
-        position={[lx, 0.25, lz]}
+        position={[node.pipeX + 0.36, 0.25, lz]}
         onPointerOver={(e) => {
           e.stopPropagation();
           onHoverChange(true);
@@ -840,44 +859,86 @@ function SensorNodeOverlay({
           onClick();
         }}
       >
-        <boxGeometry args={[1.55, 0.8, 2.4]} />
+        <boxGeometry args={[1.65, 0.85, 2.8]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Flow sensor physical location marker (cyan) */}
-      <mesh position={node.flowPos} scale={showHologram ? 1.3 : 1} raycast={noRaycast}>
-        <sphereGeometry args={[0.09, 16, 16]} />
+      {/* Flow sensor physical location marker centered on white turbine cap (cyan) */}
+      <mesh position={node.flowPos} scale={showHologram ? 1.25 : 1} raycast={noRaycast}>
+        <sphereGeometry args={[0.056, 16, 16]} />
         <meshStandardMaterial
           color="#019FD7"
           emissive="#019FD7"
-          emissiveIntensity={showHologram ? 1.2 : 0.6}
+          emissiveIntensity={showHologram ? 1.4 : 0.7}
         />
       </mesh>
 
-      {/* Pressure transducer physical location marker (violet) */}
-      <mesh position={node.pressurePos} scale={showHologram ? 1.3 : 1} raycast={noRaycast}>
-        <sphereGeometry args={[0.09, 16, 16]} />
+      {/* Pressure transducer physical location marker centered on black body (violet) */}
+      <mesh position={node.pressurePos} scale={showHologram ? 1.25 : 1} raycast={noRaycast}>
+        <sphereGeometry args={[0.056, 16, 16]} />
         <meshStandardMaterial
-          color="#7c3aed"
+          color="#8b5cf6"
           emissive="#7c3aed"
-          emissiveIntensity={showHologram ? 1.2 : 0.6}
+          emissiveIntensity={showHologram ? 1.4 : 0.7}
         />
       </mesh>
 
-      {/* Alert ring around leg if leaking */}
+      {/* Direct pipe-crown pointer traces & sensor reticles linking hologram hub to exact sensors */}
+      {showHologram && (
+        <>
+          <Line
+            points={flowTracePts}
+            color="#38bdf8"
+            lineWidth={2}
+            transparent
+            opacity={0.85}
+            raycast={noRaycast}
+          />
+          <Line
+            points={pressureTracePts}
+            color="#c084fc"
+            lineWidth={2}
+            transparent
+            opacity={0.85}
+            raycast={noRaycast}
+          />
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[fx, 0.392, fz]} raycast={noRaycast}>
+            <ringGeometry args={[0.08, 0.105, 32]} />
+            <meshBasicMaterial
+              color="#67e8f9"
+              transparent
+              opacity={0.9}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[px, 0.264, pz]} raycast={noRaycast}>
+            <ringGeometry args={[0.08, 0.105, 32]} />
+            <meshBasicMaterial
+              color="#d8b4fe"
+              transparent
+              opacity={0.9}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+        </>
+      )}
+
+      {/* Alert ring flush on testboard mat around leaking pipe leg */}
       {status === "alert" && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[lx, 0.03, lz]} raycast={noRaycast}>
-          <ringGeometry args={[0.45, 0.65, 32]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[lx, 0.048, lz]} raycast={noRaycast}>
+          <ringGeometry args={[0.42, 0.56, 32]} />
           <meshBasicMaterial color="#dc2626" transparent opacity={0.65} />
         </mesh>
       )}
 
-      {/* 3D Hologram projector emitter, ray fan, beam column, and floating HUD card */}
+      {/* 3D Hologram projector emitter flush on pipe crown + synced rays/beam + HUD card */}
       {showHologram && (
         <HologramProjection
           stationId={stationId}
           zoneId={node.zoneId}
-          anchorPos={[lx, 0.275, lz]}
+          anchorPos={[lx, 0.27, lz]}
           flow={flow}
           pressure={pressure}
           status={status}
