@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 import { useHydroStore } from "@/store/hydroStore";
 import {
   Search,
-  Sparkles,
+  Calculator,
   Bell,
   LayoutDashboard,
   Volume2,
@@ -93,7 +93,7 @@ export function TopBar() {
           />
         </div>
 
-        {/* Ask AI Triage Button */}
+        {/* Quick Link to Leak Analysis Calculator */}
         <Link
           href="/analysis"
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl transition-all"
@@ -110,8 +110,8 @@ export function TopBar() {
             (e.currentTarget as HTMLElement).style.background = "#ffffff";
           }}
         >
-          <Sparkles className="w-3.5 h-3.5" style={{ color: "#A6CE38" }} />
-          <span>Ask AI</span>
+          <Calculator className="w-3.5 h-3.5" style={{ color: "#A6CE38" }} />
+          <span>Leak Analysis</span>
         </Link>
 
         {/* Live Stream Status Indicator */}

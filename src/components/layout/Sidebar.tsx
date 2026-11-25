@@ -59,7 +59,7 @@ export function Sidebar() {
       ],
     },
     {
-      title: "Analysis & AI",
+      title: "Analysis",
       items: [
         { href: "/analysis", label: "Leak Analysis", icon: Calculator },
         { href: "/site-map", label: "Geographic Map", icon: MapPin },
@@ -85,33 +85,20 @@ export function Sidebar() {
       {/* Brand Header — Metro Pacific Water */}
       <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid #DFF5FF" }}>
         <Link href="/" className="flex items-center gap-2.5">
-          {/* Brand logo (favicon.ico) */}
-          <div
-            className="w-8 h-8 rounded-xl overflow-hidden bg-white flex items-center justify-center shrink-0"
-            style={{
-              border: "1px solid #C8E5F2",
-              boxShadow: "0 2px 8px rgba(0,118,160,0.22)",
-            }}
-          >
-            <Image
-              src="/favicon.ico"
-              alt="HydroNode Logo"
-              width={32}
-              height={32}
-              unoptimized
-              className="w-full h-full object-contain"
-            />
-          </div>
+          {/* Brand logo (favicon.ico) — raw logo, no container box */}
+          <Image
+            src="/favicon.ico"
+            alt="HydroNode Logo"
+            width={36}
+            height={36}
+            unoptimized
+            className="shrink-0"
+            style={{ mixBlendMode: "multiply" }}
+          />
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-sm tracking-tight" style={{ color: "#0C2340" }}>
                 HydroNode
-              </span>
-              <span
-                className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded tracking-wider"
-                style={{ background: "#0076A0" }}
-              >
-                AI
               </span>
             </div>
             <div className="text-[10px] font-medium leading-none mt-0.5" style={{ color: "#819FD7" }}>

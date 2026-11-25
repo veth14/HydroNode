@@ -8,6 +8,8 @@
 import {
   Component,
   Suspense,
+  useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -23,9 +25,13 @@ import {
   Lightformer,
   Html,
   ContactShadows,
-  Line,
 } from "@react-three/drei";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import {
+  LineMaterial,
+  LineSegments2,
+  LineSegmentsGeometry,
+  type OrbitControls as OrbitControlsImpl,
+} from "three-stdlib";
 import * as THREE from "three";
 import type { StationId, ZoneId } from "@/config/rig";
 import { STATION_IDS, SENSOR_3D_NODES, ZONES } from "@/config/rig";
@@ -192,13 +198,14 @@ const HOLOGRAM_THEMES: Record<
   },
 };
 
-// 13 rays fanning from emitter base center (0, 0.02, 0) up to hologram bezel bottom (y = 0.50)
-const HOLO_RAY_X_STEPS = [-0.82, -0.68, -0.54, -0.4, -0.26, -0.13, 0, 0.13, 0.26, 0.4, 0.54, 0.68, 0.82];
-const HOLO_RAY_SEGMENTS: Array<[[number, number, number], [number, number, number]]> =
-  HOLO_RAY_X_STEPS.map((tx) => [
-    [0, 0.02, 0],
-    [tx, 0.5, -0.015],
-  ]);
+const HOLO_RAY_COUNT = 13;
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
+interface HoloSyncMetrics {
+  fontPx: number;
+  cardW: number;
+  cardH: number;
+}
 
 interface HologramProjectionProps {
   stationId: StationId;
@@ -211,6 +218,302 @@ interface HologramProjectionProps {
   onClick: () => void;
 }
 
+/**
+ * Syncs card 3D lift position + crisp CSS font-size BEFORE <Html> runs its useFrame,
+ * ensuring zero 1-frame lag and pixel-accurate typography at every zoom/resize.
+ */
+function HoloCardPlacement({
+  anchorPos,
+  cardGroupRef,
+  cardRootRef,
+  metricsRef,
+  pulseRingRef,
+}: {
+  anchorPos: [number, number, number];
+  cardGroupRef: React.RefObject<THREE.Group | null>;
+  cardRootRef: React.RefObject<HTMLDivElement | null>;
+  metricsRef: React.RefObject<HoloSyncMetrics>;
+  pulseRingRef: React.RefObject<THREE.Mesh | null>;
+}) {
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+
+  const scratchRef = useRef({
+    anchorVec: new THREE.Vector3(),
+    camUp: new THREE.Vector3(),
+    liftDir: new THREE.Vector3(),
+  });
+
+  const updatePlacement = useCallback(
+    (cam: THREE.Camera, vp: { width: number; height: number }, elapsed: number) => {
+      const s = scratchRef.current;
+      const [ax, ay, az] = anchorPos;
+      s.anchorVec.set(ax, ay, az);
+      const dist = Math.max(2.0, cam.position.distanceTo(s.anchorVec));
+      const fovDeg = cam instanceof THREE.PerspectiveCamera ? cam.fov : 40;
+      const vFOV = (fovDeg * Math.PI) / 180;
+      const pxPerWorld = Math.max(
+        1,
+        vp.height / (2 * Math.tan(vFOV / 2) * dist)
+      );
+
+      // Proportional screen width (~2.95 world units at mid-zoom), clamped crisp for min/max zoom & resize
+      const maxCardW = Math.min(310, Math.max(168, vp.width * 0.42));
+      const targetCardW = THREE.MathUtils.clamp(
+        2.95 * pxPerWorld,
+        152,
+        maxCardW
+      );
+      const fontPx = targetCardW / 12.5;
+      metricsRef.current.fontPx = fontPx;
+
+      const rootEl = cardRootRef.current;
+      if (rootEl) {
+        const appliedPrev = Number.parseFloat(rootEl.style.fontSize) || 0;
+        if (Math.abs(appliedPrev - fontPx) > 0.04) {
+          rootEl.style.fontSize = `${fontPx.toFixed(2)}px`;
+        }
+      }
+
+      const cardW =
+        rootEl && rootEl.offsetWidth > 0 ? rootEl.offsetWidth : targetCardW;
+      const cardH =
+        rootEl && rootEl.offsetHeight > 0
+          ? rootEl.offsetHeight
+          : targetCardW * 0.57;
+      metricsRef.current.cardW = cardW;
+      metricsRef.current.cardH = cardH;
+
+      // Keep the visible fan gap proportional to the card width on screen
+      const fanGapPx = cardW * 0.25;
+      const centerOffsetPx = cardH * 0.5 + fanGapPx;
+
+      s.camUp.set(0, 1, 0).applyQuaternion(cam.quaternion).normalize();
+      s.liftDir
+        .copy(WORLD_UP)
+        .multiplyScalar(0.68)
+        .addScaledVector(s.camUp, 0.32)
+        .normalize();
+
+      const screenUpProj = Math.max(0.35, s.liftDir.dot(s.camUp));
+      const liftDist = centerOffsetPx / (pxPerWorld * screenUpProj);
+      const bobWorld = (Math.sin(elapsed * 2.2) * 3.0) / pxPerWorld;
+
+      if (cardGroupRef.current) {
+        cardGroupRef.current.position
+          .copy(s.liftDir)
+          .multiplyScalar(liftDist)
+          .addScaledVector(s.camUp, bobWorld);
+      }
+
+      if (pulseRingRef.current) {
+        const pulse = 1 + Math.sin(elapsed * 3.0) * 0.06;
+        pulseRingRef.current.scale.set(pulse, pulse, 1);
+      }
+    },
+    [anchorPos, cardGroupRef, cardRootRef, metricsRef, pulseRingRef]
+  );
+
+  useLayoutEffect(() => {
+    updatePlacement(camera, size, 0);
+  }, [updatePlacement, camera, size]);
+
+  useFrame(({ camera: activeCamera, size: activeSize, clock }) => {
+    updatePlacement(activeCamera, activeSize, clock.elapsedTime);
+  });
+
+  return null;
+}
+
+/**
+ * Unprojects the card's exact rendered bottom bezel back into 3D space AFTER <Html>
+ * has updated, locking all 13 rays and the translucent beam cone onto the card width/edge.
+ */
+function HoloBeamAndRays({
+  anchorPos,
+  cardGroupRef,
+  cardRootRef,
+  metricsRef,
+  rayColor,
+  coneColor,
+}: {
+  anchorPos: [number, number, number];
+  cardGroupRef: React.RefObject<THREE.Group | null>;
+  cardRootRef: React.RefObject<HTMLDivElement | null>;
+  metricsRef: React.RefObject<HoloSyncMetrics>;
+  rayColor: string;
+  coneColor: string;
+}) {
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+  const coneRef = useRef<THREE.Mesh | null>(null);
+
+  const rayPositionsRef = useRef<Float32Array>(
+    new Float32Array(HOLO_RAY_COUNT * 6)
+  );
+
+  const [rayObject] = useState(() => {
+    const geom = new LineSegmentsGeometry();
+    geom.setPositions(new Float32Array(HOLO_RAY_COUNT * 6));
+    const mat = new LineMaterial({
+      color: 0x67e8f9,
+      linewidth: 1.65,
+      transparent: true,
+      opacity: 0.68,
+      depthWrite: false,
+    });
+    const mesh = new LineSegments2(geom, mat);
+    mesh.frustumCulled = false;
+    mesh.raycast = noRaycast;
+    return { geom, mat, mesh };
+  });
+
+  useEffect(() => {
+    rayObject.mat.color.set(rayColor);
+  }, [rayColor, rayObject]);
+
+  useEffect(() => {
+    return () => {
+      rayObject.geom.dispose();
+      rayObject.mat.dispose();
+    };
+  }, [rayObject]);
+
+  const scratchRef = useRef({
+    anchorVec: new THREE.Vector3(),
+    cardWorldCenter: new THREE.Vector3(),
+    ndcCenter: new THREE.Vector3(),
+    targetLocal: new THREE.Vector3(),
+    emitterLocal: new THREE.Vector3(0, 0.015, 0),
+    coneTopLocal: new THREE.Vector3(),
+    coneDir: new THREE.Vector3(),
+    coneMid: new THREE.Vector3(),
+    upVec: new THREE.Vector3(0, 1, 0),
+  });
+
+  const syncGeometry = useCallback(
+    (cam: THREE.Camera, vp: { width: number; height: number }) => {
+      const cardGroup = cardGroupRef.current;
+      if (!cardGroup || vp.width <= 0 || vp.height <= 0) return;
+
+      const s = scratchRef.current;
+      const positions = rayPositionsRef.current;
+      rayObject.mat.resolution.set(vp.width, vp.height);
+
+      const [ax, ay, az] = anchorPos;
+      s.anchorVec.set(ax, ay, az);
+
+      cardGroup.updateWorldMatrix(true, false);
+      s.cardWorldCenter.setFromMatrixPosition(cardGroup.matrixWorld);
+      s.ndcCenter.copy(s.cardWorldCenter).project(cam);
+
+      const cx = (s.ndcCenter.x * 0.5 + 0.5) * vp.width;
+      const cy = (-s.ndcCenter.y * 0.5 + 0.5) * vp.height;
+
+      const rootEl = cardRootRef.current;
+      const fontPx = metricsRef.current.fontPx;
+      const cardW =
+        rootEl && rootEl.offsetWidth > 0
+          ? rootEl.offsetWidth
+          : metricsRef.current.cardW;
+      const cardH =
+        rootEl && rootEl.offsetHeight > 0
+          ? rootEl.offsetHeight
+          : metricsRef.current.cardH;
+
+      const halfW = cardW * 0.5;
+      const halfH = cardH * 0.5;
+      // Rays span strictly inside the outer rounded corners along the flat bottom outer bezel
+      const cornerInsetPx = fontPx * 0.85;
+      const halfSpanPx = Math.max(8, halfW - cornerInsetPx);
+      const bezelTuckPx = Math.max(1.0, fontPx * 0.08);
+      const targetScreenY = cy + halfH - bezelTuckPx;
+
+      for (let i = 0; i < HOLO_RAY_COUNT; i++) {
+        const u = (i / (HOLO_RAY_COUNT - 1)) * 2 - 1;
+        const sx = cx + u * halfSpanPx;
+        const ndcX = (sx / vp.width) * 2 - 1;
+        const ndcY = -(targetScreenY / vp.height) * 2 + 1;
+
+        s.targetLocal
+          .set(ndcX, ndcY, s.ndcCenter.z)
+          .unproject(cam)
+          .sub(s.anchorVec);
+
+        const baseIdx = i * 6;
+        positions[baseIdx] = s.emitterLocal.x;
+        positions[baseIdx + 1] = s.emitterLocal.y;
+        positions[baseIdx + 2] = s.emitterLocal.z;
+        positions[baseIdx + 3] = s.targetLocal.x;
+        positions[baseIdx + 4] = s.targetLocal.y;
+        positions[baseIdx + 5] = s.targetLocal.z;
+      }
+
+      rayObject.geom.setPositions(positions);
+
+      if (coneRef.current) {
+        const ndcCx = (cx / vp.width) * 2 - 1;
+        const ndcCy = -(targetScreenY / vp.height) * 2 + 1;
+        s.coneTopLocal
+          .set(ndcCx, ndcCy, s.ndcCenter.z)
+          .unproject(cam)
+          .sub(s.anchorVec);
+
+        s.coneDir.subVectors(s.coneTopLocal, s.emitterLocal);
+        const coneLen = Math.max(0.05, s.coneDir.length());
+        s.coneMid
+          .addVectors(s.emitterLocal, s.coneTopLocal)
+          .multiplyScalar(0.5);
+
+        const dist = Math.max(2.0, cam.position.distanceTo(s.anchorVec));
+        const fovDeg = cam instanceof THREE.PerspectiveCamera ? cam.fov : 40;
+        const pxPerWorld = Math.max(
+          1,
+          vp.height / (2 * Math.tan((fovDeg * Math.PI) / 360) * dist)
+        );
+        const cardWorldW = cardW / pxPerWorld;
+        const coneRadiusScale = THREE.MathUtils.clamp(
+          cardWorldW * 0.42,
+          0.78,
+          1.35
+        );
+
+        coneRef.current.position.copy(s.coneMid);
+        coneRef.current.quaternion.setFromUnitVectors(
+          s.upVec,
+          s.coneDir.normalize()
+        );
+        coneRef.current.scale.set(coneRadiusScale, coneLen, coneRadiusScale);
+      }
+    },
+    [anchorPos, cardGroupRef, cardRootRef, metricsRef, rayObject]
+  );
+
+  useLayoutEffect(() => {
+    syncGeometry(camera, size);
+  }, [syncGeometry, camera, size]);
+
+  useFrame(({ camera: activeCamera, size: activeSize }) => {
+    syncGeometry(activeCamera, activeSize);
+  });
+
+  return (
+    <>
+      <primitive object={rayObject.mesh} />
+      <mesh ref={coneRef} frustumCulled={false} raycast={noRaycast}>
+        <cylinderGeometry args={[0.145, 0.068, 1, 28, 1, true]} />
+        <meshBasicMaterial
+          color={coneColor}
+          transparent
+          opacity={0.32}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </>
+  );
+}
+
 function HologramProjection({
   stationId,
   zoneId,
@@ -221,35 +524,22 @@ function HologramProjection({
   isSelected,
   onClick,
 }: HologramProjectionProps) {
-  const holoGroupRef = useRef<THREE.Group | null>(null);
+  const cardGroupRef = useRef<THREE.Group | null>(null);
+  const cardRootRef = useRef<HTMLDivElement | null>(null);
   const pulseRingRef = useRef<THREE.Mesh | null>(null);
-  const camera = useThree((s) => s.camera);
-  const theme = HOLOGRAM_THEMES[status];
-  const [ax, , az] = anchorPos;
-
-  useLayoutEffect(() => {
-    if (holoGroupRef.current) {
-      holoGroupRef.current.rotation.y = Math.atan2(
-        camera.position.x - ax,
-        camera.position.z - az
-      );
-    }
-  }, [camera, ax, az]);
-
-  useFrame(({ camera: activeCamera, clock }) => {
-    const t = clock.elapsedTime;
-    if (holoGroupRef.current) {
-      holoGroupRef.current.rotation.y = Math.atan2(
-        activeCamera.position.x - ax,
-        activeCamera.position.z - az
-      );
-      holoGroupRef.current.position.y = Math.sin(t * 2.2) * 0.025;
-    }
-    if (pulseRingRef.current) {
-      const pulse = 1 + Math.sin(t * 3.0) * 0.06;
-      pulseRingRef.current.scale.set(pulse, pulse, 1);
-    }
+  const metricsRef = useRef<HoloSyncMetrics>({
+    fontPx: 14.8,
+    cardW: 185,
+    cardH: 105,
   });
+  const theme = HOLOGRAM_THEMES[status];
+
+  const handleCardMount = useCallback((el: HTMLDivElement | null) => {
+    cardRootRef.current = el;
+    if (el) {
+      el.style.fontSize = `${metricsRef.current.fontPx.toFixed(2)}px`;
+    }
+  }, []);
 
   return (
     <group position={anchorPos}>
@@ -298,98 +588,68 @@ function HologramProjection({
           depthWrite={false}
         />
       </mesh>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.012, 0]}
+        raycast={noRaycast}
+      >
+        <ringGeometry args={[0.056, 0.075, 32]} />
+        <meshBasicMaterial
+          color={theme.ringInner}
+          transparent
+          opacity={0.85}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
 
-      {/* Camera-azimuth-aligned fan rays, glowing cone column, and double-bezel HUD card */}
-      <group ref={holoGroupRef}>
-        {HOLO_RAY_SEGMENTS.map((pts, idx) => (
-          <Line
-            key={idx}
-            points={pts}
-            color={theme.ray}
-            lineWidth={1.6}
-            transparent
-            opacity={0.62}
-          />
-        ))}
+      {/* Sibling 1: Updates card 3D lift + native CSS fontSize before <Html> computes projection */}
+      <HoloCardPlacement
+        anchorPos={anchorPos}
+        cardGroupRef={cardGroupRef}
+        cardRootRef={cardRootRef}
+        metricsRef={metricsRef}
+        pulseRingRef={pulseRingRef}
+      />
 
-        {/* Central translucent hologram projection beam cone */}
-        <mesh position={[0, 0.28, 0.015]} raycast={noRaycast}>
-          <cylinderGeometry args={[0.145, 0.068, 0.54, 28, 1, true]} />
-          <meshBasicMaterial
-            color={theme.cone}
-            transparent
-            opacity={0.34}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0.545, 0.015]}
-          raycast={noRaycast}
-        >
-          <ringGeometry args={[0.132, 0.15, 32]} />
-          <meshBasicMaterial
-            color={theme.ringInner}
-            transparent
-            opacity={0.75}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0.012, 0.015]}
-          raycast={noRaycast}
-        >
-          <ringGeometry args={[0.056, 0.075, 32]} />
-          <meshBasicMaterial
-            color={theme.ringInner}
-            transparent
-            opacity={0.85}
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
-        </mesh>
-
-        {/* Screen-space hologram HUD card — no CSS3D transform so text stays pixel-perfect at all zoom levels */}
+      {/* Sibling 2: Native crisp vector HTML card (never CSS3D-skewed or upscaled) */}
+      <group ref={cardGroupRef}>
         <Html
           center
-          position={[0, 1.04, 0]}
+          position={[0, 0, 0]}
           pointerEvents={isSelected ? "auto" : "none"}
           zIndexRange={[100, 0]}
         >
           <div
+            ref={handleCardMount}
             onClick={isSelected ? onClick : undefined}
             style={{
-              width: "188px",
+              width: "12.5em",
               boxSizing: "border-box",
-              padding: "4px",
-              borderRadius: "16px",
-              border: `2.5px solid ${theme.outerBorder}`,
+              padding: "0.25em",
+              borderRadius: "1em",
+              border: `0.16em solid ${theme.outerBorder}`,
               background: theme.outerBg,
               boxShadow: isSelected
-                ? `0 0 24px ${theme.glow}, inset 0 0 12px ${theme.glow}`
-                : `0 0 16px ${theme.glow}, inset 0 0 8px ${theme.glow}`,
+                ? `0 0 1.4em ${theme.glow}, inset 0 0 0.7em ${theme.glow}`
+                : `0 0 1em ${theme.glow}, inset 0 0 0.5em ${theme.glow}`,
               cursor: isSelected ? "pointer" : "default",
               userSelect: "none",
               fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-              WebkitFontSmoothing: "antialiased" as const,
-              MozOsxFontSmoothing: "grayscale" as const,
-              textRendering: "optimizeLegibility" as const,
-              transform: "translateZ(0)",
-              willChange: "transform",
-              backfaceVisibility: "hidden" as const,
+              WebkitFontSmoothing: "antialiased",
+              MozOsxFontSmoothing: "grayscale",
+              textRendering: "optimizeLegibility",
+              lineHeight: 1.25,
             }}
           >
             <div
               style={{
-                borderRadius: "11px",
-                padding: "9px 12px",
-                border: `1.5px solid ${theme.innerBorder}`,
+                borderRadius: "0.72em",
+                padding: "0.56em 0.76em",
+                border: `0.1em solid ${theme.innerBorder}`,
                 backgroundColor: theme.innerBg,
-                backgroundImage: `repeating-linear-gradient(0deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 8px)`,
-                boxShadow: `inset 0 0 18px ${theme.glow}40`,
+                backgroundImage: `repeating-linear-gradient(0deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 4px), repeating-linear-gradient(90deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 9px)`,
+                boxShadow: `inset 0 0 1.1em ${theme.glow}40`,
                 overflow: "hidden",
               }}
             >
@@ -399,29 +659,29 @@ function HologramProjection({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: "6px",
-                  marginBottom: "8px",
+                  gap: "0.4em",
+                  marginBottom: "0.52em",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.45em" }}>
                   <span
                     style={{
-                      width: "9px",
-                      height: "9px",
+                      width: "0.56em",
+                      height: "0.56em",
                       borderRadius: "50%",
                       background: theme.dot,
-                      boxShadow: `0 0 8px ${theme.glow}`,
+                      boxShadow: `0 0 0.5em ${theme.glow}`,
                       display: "inline-block",
                       animation: status !== "normal" ? "pulse 1.2s infinite" : undefined,
                     }}
                   />
                   <span
                     style={{
-                      fontSize: "13px",
+                      fontSize: "0.88em",
                       fontWeight: 700,
-                      color: "#e0f7ff",
+                      color: "#e6f9ff",
                       letterSpacing: "0.02em",
-                      textShadow: `0 0 8px ${theme.glow}`,
+                      textShadow: `0 0 6px ${theme.glow}`,
                     }}
                   >
                     {stationId} · Z{zoneId}
@@ -430,19 +690,19 @@ function HologramProjection({
                 {status === "alert" ? (
                   <AlertTriangle
                     style={{
-                      width: 14,
-                      height: 14,
+                      width: "0.95em",
+                      height: "0.95em",
                       color: "#f87171",
-                      filter: "drop-shadow(0 0 4px rgba(248,113,113,0.7))",
+                      filter: "drop-shadow(0 0 3px rgba(248,113,113,0.7))",
                     }}
                   />
                 ) : (
                   <CheckCircle2
                     style={{
-                      width: 14,
-                      height: 14,
+                      width: "0.95em",
+                      height: "0.95em",
                       color: "#6ee7b7",
-                      filter: "drop-shadow(0 0 4px rgba(110,231,183,0.6))",
+                      filter: "drop-shadow(0 0 3px rgba(110,231,183,0.6))",
                     }}
                   />
                 )}
@@ -454,30 +714,30 @@ function HologramProjection({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: "6px",
-                  marginBottom: "5px",
+                  gap: "0.4em",
+                  marginBottom: "0.34em",
                 }}
               >
                 <span
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "5px",
-                    fontSize: "11px",
+                    gap: "0.35em",
+                    fontSize: "0.75em",
                     fontWeight: 600,
                     color: "#bae6fd",
                   }}
                 >
-                  <Droplets style={{ width: 12, height: 12, color: "#67e8f9" }} />
+                  <Droplets style={{ width: "0.9em", height: "0.9em", color: "#67e8f9" }} />
                   Flow
                 </span>
                 <span
                   style={{
-                    fontSize: "12px",
+                    fontSize: "0.82em",
                     fontWeight: 700,
                     color: "#7dd3fc",
                     fontVariantNumeric: "tabular-nums",
-                    textShadow: "0 0 8px rgba(125,211,252,0.45)",
+                    textShadow: "0 0 6px rgba(125,211,252,0.4)",
                   }}
                 >
                   {flow != null ? `${flow.toFixed(1)} L/m` : "--"}
@@ -490,29 +750,29 @@ function HologramProjection({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: "6px",
+                  gap: "0.4em",
                 }}
               >
                 <span
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "5px",
-                    fontSize: "11px",
+                    gap: "0.35em",
+                    fontSize: "0.75em",
                     fontWeight: 600,
                     color: "#bae6fd",
                   }}
                 >
-                  <Gauge style={{ width: 12, height: 12, color: "#d8b4fe" }} />
+                  <Gauge style={{ width: "0.9em", height: "0.9em", color: "#d8b4fe" }} />
                   Press
                 </span>
                 <span
                   style={{
-                    fontSize: "12px",
+                    fontSize: "0.82em",
                     fontWeight: 700,
                     color: "#d8b4fe",
                     fontVariantNumeric: "tabular-nums",
-                    textShadow: "0 0 8px rgba(216,180,254,0.45)",
+                    textShadow: "0 0 6px rgba(216,180,254,0.4)",
                   }}
                 >
                   {pressure != null ? `${pressure.toFixed(2)} bar` : "--"}
@@ -522,6 +782,16 @@ function HologramProjection({
           </div>
         </Html>
       </group>
+
+      {/* Sibling 3: Locks 13 rays & translucent cone onto the card's exact screen bottom edge */}
+      <HoloBeamAndRays
+        anchorPos={anchorPos}
+        cardGroupRef={cardGroupRef}
+        cardRootRef={cardRootRef}
+        metricsRef={metricsRef}
+        rayColor={theme.ray}
+        coneColor={theme.cone}
+      />
     </group>
   );
 }
@@ -909,6 +1179,18 @@ export function Pipeline3DCanvas({
             <meshStandardMaterial color="#EEF6FA" roughness={1} />
           </mesh>
 
+          <OrbitControls
+            ref={controlsRef}
+            makeDefault
+            enablePan
+            enableZoom
+            enableRotate
+            minDistance={4}
+            maxDistance={24}
+            maxPolarAngle={Math.PI / 2.15}
+            target={[0, 0.2, 0]}
+          />
+
           <RigBaseboard />
 
           {/* GLB Model & Live Sensor Overlays */}
@@ -965,18 +1247,6 @@ export function Pipeline3DCanvas({
               );
             })}
           </Suspense>
-
-          <OrbitControls
-            ref={controlsRef}
-            makeDefault
-            enablePan
-            enableZoom
-            enableRotate
-            minDistance={4}
-            maxDistance={24}
-            maxPolarAngle={Math.PI / 2.15}
-            target={[0, 0.2, 0]}
-          />
         </Canvas>
       </CanvasErrorBoundary>
 
