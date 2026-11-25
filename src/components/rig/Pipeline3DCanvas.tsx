@@ -8,13 +8,14 @@
 import {
   Component,
   Suspense,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   useGLTF,
   OrbitControls,
@@ -125,14 +126,408 @@ function RigBaseboard() {
   );
 }
 
-// ─── Sensor 3D Beacon + Leader Line + Floating HTML Card ─────────────────────
+// ─── Hologram Telemetry Theme & Geometry Constants ───────────────────────────
 const noRaycast = () => {};
 
+type NodeStatus = "normal" | "alert" | "warning";
+
+const HOLOGRAM_THEMES: Record<
+  NodeStatus,
+  {
+    outerBorder: string;
+    innerBorder: string;
+    outerBg: string;
+    innerBg: string;
+    scanline: string;
+    glow: string;
+    dot: string;
+    ringInner: string;
+    ringMid: string;
+    ringOuter: string;
+    ray: string;
+    cone: string;
+  }
+> = {
+  normal: {
+    outerBorder: "#a5f3fc",
+    innerBorder: "#22d3ee",
+    outerBg: "rgba(8, 52, 74, 0.36)",
+    innerBg: "rgba(3, 28, 46, 0.9)",
+    scanline: "rgba(56, 189, 248, 0.09)",
+    glow: "rgba(34, 211, 238, 0.55)",
+    dot: "#99f6e4",
+    ringInner: "#a5f3fc",
+    ringMid: "#22d3ee",
+    ringOuter: "#0891b2",
+    ray: "#67e8f9",
+    cone: "#38bdf8",
+  },
+  warning: {
+    outerBorder: "#fde68a",
+    innerBorder: "#f59e0b",
+    outerBg: "rgba(68, 44, 6, 0.36)",
+    innerBg: "rgba(42, 26, 4, 0.9)",
+    scanline: "rgba(251, 191, 36, 0.09)",
+    glow: "rgba(245, 158, 11, 0.55)",
+    dot: "#fef08a",
+    ringInner: "#fde68a",
+    ringMid: "#fbbf24",
+    ringOuter: "#d97706",
+    ray: "#fcd34d",
+    cone: "#f59e0b",
+  },
+  alert: {
+    outerBorder: "#fecaca",
+    innerBorder: "#f87171",
+    outerBg: "rgba(74, 10, 14, 0.42)",
+    innerBg: "rgba(48, 7, 12, 0.92)",
+    scanline: "rgba(248, 113, 113, 0.11)",
+    glow: "rgba(239, 68, 68, 0.65)",
+    dot: "#fca5a5",
+    ringInner: "#fecaca",
+    ringMid: "#f87171",
+    ringOuter: "#dc2626",
+    ray: "#fca5a5",
+    cone: "#ef4444",
+  },
+};
+
+// 13 rays fanning from emitter base center (0, 0.02, 0) up to hologram bezel bottom (y = 0.50)
+const HOLO_RAY_X_STEPS = [-0.82, -0.68, -0.54, -0.4, -0.26, -0.13, 0, 0.13, 0.26, 0.4, 0.54, 0.68, 0.82];
+const HOLO_RAY_SEGMENTS: Array<[[number, number, number], [number, number, number]]> =
+  HOLO_RAY_X_STEPS.map((tx) => [
+    [0, 0.02, 0],
+    [tx, 0.5, -0.015],
+  ]);
+
+interface HologramProjectionProps {
+  stationId: StationId;
+  zoneId: ZoneId;
+  anchorPos: [number, number, number];
+  flow: number | null;
+  pressure: number | null;
+  status: NodeStatus;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function HologramProjection({
+  stationId,
+  zoneId,
+  anchorPos,
+  flow,
+  pressure,
+  status,
+  isSelected,
+  onClick,
+}: HologramProjectionProps) {
+  const holoGroupRef = useRef<THREE.Group | null>(null);
+  const pulseRingRef = useRef<THREE.Mesh | null>(null);
+  const camera = useThree((s) => s.camera);
+  const theme = HOLOGRAM_THEMES[status];
+  const [ax, , az] = anchorPos;
+
+  useLayoutEffect(() => {
+    if (holoGroupRef.current) {
+      holoGroupRef.current.rotation.y = Math.atan2(
+        camera.position.x - ax,
+        camera.position.z - az
+      );
+    }
+  }, [camera, ax, az]);
+
+  useFrame(({ camera: activeCamera, clock }) => {
+    const t = clock.elapsedTime;
+    if (holoGroupRef.current) {
+      holoGroupRef.current.rotation.y = Math.atan2(
+        activeCamera.position.x - ax,
+        activeCamera.position.z - az
+      );
+      holoGroupRef.current.position.y = Math.sin(t * 2.2) * 0.025;
+    }
+    if (pulseRingRef.current) {
+      const pulse = 1 + Math.sin(t * 3.0) * 0.06;
+      pulseRingRef.current.scale.set(pulse, pulse, 1);
+    }
+  });
+
+  return (
+    <group position={anchorPos}>
+      {/* Concentric glowing holographic emitter rings on pipe crown */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast}>
+        <circleGeometry args={[0.085, 32]} />
+        <meshBasicMaterial
+          color={theme.ringInner}
+          transparent
+          opacity={0.7}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]} raycast={noRaycast}>
+        <ringGeometry args={[0.145, 0.168, 48]} />
+        <meshBasicMaterial
+          color={theme.ringInner}
+          transparent
+          opacity={0.9}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]} raycast={noRaycast}>
+        <ringGeometry args={[0.245, 0.268, 48]} />
+        <meshBasicMaterial
+          color={theme.ringMid}
+          transparent
+          opacity={0.72}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh
+        ref={pulseRingRef}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.004, 0]}
+        raycast={noRaycast}
+      >
+        <ringGeometry args={[0.355, 0.376, 56]} />
+        <meshBasicMaterial
+          color={theme.ringOuter}
+          transparent
+          opacity={0.5}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Camera-azimuth-aligned fan rays, glowing cone column, and double-bezel HUD card */}
+      <group ref={holoGroupRef}>
+        {HOLO_RAY_SEGMENTS.map((pts, idx) => (
+          <Line
+            key={idx}
+            points={pts}
+            color={theme.ray}
+            lineWidth={1.6}
+            transparent
+            opacity={0.62}
+          />
+        ))}
+
+        {/* Central translucent hologram projection beam cone */}
+        <mesh position={[0, 0.28, 0.015]} raycast={noRaycast}>
+          <cylinderGeometry args={[0.145, 0.068, 0.54, 28, 1, true]} />
+          <meshBasicMaterial
+            color={theme.cone}
+            transparent
+            opacity={0.34}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.545, 0.015]}
+          raycast={noRaycast}
+        >
+          <ringGeometry args={[0.132, 0.15, 32]} />
+          <meshBasicMaterial
+            color={theme.ringInner}
+            transparent
+            opacity={0.75}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.012, 0.015]}
+          raycast={noRaycast}
+        >
+          <ringGeometry args={[0.056, 0.075, 32]} />
+          <meshBasicMaterial
+            color={theme.ringInner}
+            transparent
+            opacity={0.85}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* 3D perspective CSS3D hologram panel locked onto the fan top edge */}
+        <Html
+          transform
+          center
+          distanceFactor={4}
+          position={[0, 1.04, 0]}
+          pointerEvents={isSelected ? "auto" : "none"}
+          zIndexRange={[100, 0]}
+        >
+          <div
+            onClick={isSelected ? onClick : undefined}
+            style={{
+              width: "188px",
+              boxSizing: "border-box",
+              padding: "4px",
+              borderRadius: "16px",
+              border: `2.5px solid ${theme.outerBorder}`,
+              background: theme.outerBg,
+              boxShadow: isSelected
+                ? `0 0 24px ${theme.glow}, inset 0 0 12px ${theme.glow}`
+                : `0 0 16px ${theme.glow}, inset 0 0 8px ${theme.glow}`,
+              cursor: isSelected ? "pointer" : "default",
+              userSelect: "none",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+            }}
+          >
+            <div
+              style={{
+                borderRadius: "11px",
+                padding: "9px 12px",
+                border: `1.5px solid ${theme.innerBorder}`,
+                backgroundColor: theme.innerBg,
+                backgroundImage: `repeating-linear-gradient(0deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 3px), repeating-linear-gradient(90deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 8px)`,
+                boxShadow: `inset 0 0 18px ${theme.glow}40`,
+                overflow: "hidden",
+              }}
+            >
+              {/* Station header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "6px",
+                  marginBottom: "8px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                  <span
+                    style={{
+                      width: "9px",
+                      height: "9px",
+                      borderRadius: "50%",
+                      background: theme.dot,
+                      boxShadow: `0 0 8px ${theme.glow}`,
+                      display: "inline-block",
+                      animation: status !== "normal" ? "pulse 1.2s infinite" : undefined,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      color: "#e0f7ff",
+                      letterSpacing: "0.02em",
+                      textShadow: `0 0 8px ${theme.glow}`,
+                    }}
+                  >
+                    {stationId} · Z{zoneId}
+                  </span>
+                </div>
+                {status === "alert" ? (
+                  <AlertTriangle
+                    style={{
+                      width: 14,
+                      height: 14,
+                      color: "#f87171",
+                      filter: "drop-shadow(0 0 4px rgba(248,113,113,0.7))",
+                    }}
+                  />
+                ) : (
+                  <CheckCircle2
+                    style={{
+                      width: 14,
+                      height: 14,
+                      color: "#6ee7b7",
+                      filter: "drop-shadow(0 0 4px rgba(110,231,183,0.6))",
+                    }}
+                  />
+                )}
+              </div>
+
+              {/* Flow reading */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "6px",
+                  marginBottom: "5px",
+                }}
+              >
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "#bae6fd",
+                  }}
+                >
+                  <Droplets style={{ width: 12, height: 12, color: "#67e8f9" }} />
+                  Flow
+                </span>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#7dd3fc",
+                    fontVariantNumeric: "tabular-nums",
+                    textShadow: "0 0 8px rgba(125,211,252,0.45)",
+                  }}
+                >
+                  {flow != null ? `${flow.toFixed(1)} L/m` : "--"}
+                </span>
+              </div>
+
+              {/* Pressure reading */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "6px",
+                }}
+              >
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "#bae6fd",
+                  }}
+                >
+                  <Gauge style={{ width: 12, height: 12, color: "#d8b4fe" }} />
+                  Press
+                </span>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#d8b4fe",
+                    fontVariantNumeric: "tabular-nums",
+                    textShadow: "0 0 8px rgba(216,180,254,0.45)",
+                  }}
+                >
+                  {pressure != null ? `${pressure.toFixed(2)} bar` : "--"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Html>
+      </group>
+    </group>
+  );
+}
+
+// ─── Sensor 3D Beacon + Hologram Projection Trigger ──────────────────────────
 interface SensorOverlayProps {
   stationId: StationId;
   flow: number | null;
   pressure: number | null;
-  status: "normal" | "alert" | "warning";
+  status: NodeStatus;
   isHovered: boolean;
   isSelected: boolean;
   onHoverChange: (hovered: boolean) => void;
@@ -150,28 +545,8 @@ function SensorNodeOverlay({
   onClick,
 }: SensorOverlayProps) {
   const node = SENSOR_3D_NODES[stationId];
-  const [lx, ly, lz] = node.labelPos;
-  const pipeAnchor: [number, number, number] = [lx, 0.24, lz];
-  const showCard = isHovered || isSelected;
-
-  const color =
-    status === "alert"
-      ? "#dc2626"
-      : status === "warning"
-        ? "#d97706"
-        : "#0076A0";
-  const bgColor =
-    status === "alert"
-      ? "#fef2f2"
-      : status === "warning"
-        ? "#fffbeb"
-        : "#ffffff";
-  const borderColor =
-    status === "alert"
-      ? "#fecaca"
-      : status === "warning"
-        ? "#fde68a"
-        : "#C8E5F2";
+  const [lx, , lz] = node.labelPos;
+  const showHologram = isHovered || isSelected;
 
   return (
     <group>
@@ -196,22 +571,22 @@ function SensorNodeOverlay({
       </mesh>
 
       {/* Flow sensor physical location marker (cyan) */}
-      <mesh position={node.flowPos} scale={showCard ? 1.3 : 1} raycast={noRaycast}>
+      <mesh position={node.flowPos} scale={showHologram ? 1.3 : 1} raycast={noRaycast}>
         <sphereGeometry args={[0.09, 16, 16]} />
         <meshStandardMaterial
           color="#019FD7"
           emissive="#019FD7"
-          emissiveIntensity={showCard ? 1.2 : 0.6}
+          emissiveIntensity={showHologram ? 1.2 : 0.6}
         />
       </mesh>
 
       {/* Pressure transducer physical location marker (violet) */}
-      <mesh position={node.pressurePos} scale={showCard ? 1.3 : 1} raycast={noRaycast}>
+      <mesh position={node.pressurePos} scale={showHologram ? 1.3 : 1} raycast={noRaycast}>
         <sphereGeometry args={[0.09, 16, 16]} />
         <meshStandardMaterial
           color="#7c3aed"
           emissive="#7c3aed"
-          emissiveIntensity={showCard ? 1.2 : 0.6}
+          emissiveIntensity={showHologram ? 1.2 : 0.6}
         />
       </mesh>
 
@@ -223,126 +598,18 @@ function SensorNodeOverlay({
         </mesh>
       )}
 
-      {/* Leader line & floating card appear only when hovered or clicked */}
-      {showCard && (
-        <>
-          <Line
-            points={[pipeAnchor, [lx, ly - 0.1, lz]]}
-            color={isSelected ? color : "#019FD7"}
-            lineWidth={1.5}
-            transparent
-            opacity={0.8}
-          />
-
-          <Html
-            position={node.labelPos}
-            center
-            distanceFactor={10}
-            style={{ pointerEvents: isSelected ? "auto" : "none" }}
-            zIndexRange={[100, 0]}
-          >
-            <div
-              onClick={isSelected ? onClick : undefined}
-              style={{
-                background: bgColor,
-                border: `2px solid ${isSelected ? color : borderColor}`,
-                borderRadius: "12px",
-                padding: "7px 10px",
-                minWidth: "124px",
-                cursor: isSelected ? "pointer" : "default",
-                boxShadow: isSelected
-                  ? `0 0 0 3px ${color}35, 0 6px 18px rgba(0,0,0,0.18)`
-                  : "0 4px 16px rgba(12,35,64,0.18)",
-                transform: "translateY(-8px)",
-                userSelect: "none",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
-              }}
-            >
-              {/* Station header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "6px",
-                  marginBottom: "4px",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                  <span
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      background: color,
-                      display: "inline-block",
-                      animation: status !== "normal" ? "pulse 1.2s infinite" : undefined,
-                    }}
-                  />
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#0C2340" }}>
-                    {stationId} · Z{node.zoneId}
-                  </span>
-                </div>
-                {status === "alert" ? (
-                  <AlertTriangle style={{ width: 11, height: 11, color: "#dc2626" }} />
-                ) : (
-                  <CheckCircle2 style={{ width: 11, height: 11, color: "#16a34a" }} />
-                )}
-              </div>
-
-              {/* Flow reading */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "6px",
-                  marginBottom: "2px",
-                }}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "10px", color: "#2D5A7A" }}>
-                  <Droplets style={{ width: 10, height: 10, color: "#019FD7" }} />
-                  Flow
-                </span>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "#0076A0",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {flow != null ? `${flow.toFixed(1)} L/m` : "--"}
-                </span>
-              </div>
-
-              {/* Pressure reading */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "6px",
-                }}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: "3px", fontSize: "10px", color: "#2D5A7A" }}>
-                  <Gauge style={{ width: 10, height: 10, color: "#7c3aed" }} />
-                  Press
-                </span>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "#7c3aed",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {pressure != null ? `${pressure.toFixed(2)} bar` : "--"}
-                </span>
-              </div>
-            </div>
-          </Html>
-        </>
+      {/* 3D Hologram projector emitter, ray fan, beam column, and floating HUD card */}
+      {showHologram && (
+        <HologramProjection
+          stationId={stationId}
+          zoneId={node.zoneId}
+          anchorPos={[lx, 0.275, lz]}
+          flow={flow}
+          pressure={pressure}
+          status={status}
+          isSelected={isSelected}
+          onClick={onClick}
+        />
       )}
     </group>
   );
