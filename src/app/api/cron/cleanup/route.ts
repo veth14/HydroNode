@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { readingsRaw } from "@/db/schema";
-import { sql, lt } from "drizzle-orm";
+import { lt } from "drizzle-orm";
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;

@@ -6,10 +6,11 @@
 // - High text contrast (WCAG AAA)
 // - Clean white surfaces and slate borders
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { formatBytes } from "@/lib/utils";
 import type { DbUsage } from "@/types";
+import { STATION_IDS } from "@/config/rig";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Save, Trash2, Database, Cpu } from "lucide-react";
@@ -21,11 +22,8 @@ interface SettingsMap {
   baseline_S2?: { q0: number; p0: number };
   baseline_S3?: { q0: number; p0: number };
   baseline_S4?: { q0: number; p0: number };
-  baseline_S5?: { q0: number; p0: number };
-  baseline_S6?: { q0: number; p0: number };
   severity_thresholds?: { low: number; medium: number };
   repeat_alert_window_min?: { value: number };
-  data_source?: { value: string };
   units?: { flow: string; pressure: string; vibration: string };
 }
 
@@ -44,46 +42,37 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const [lowThresh, setLowThresh] = useState<number>(5);
-  const [medThresh, setMedThresh] = useState<number>(10);
-  const [repeatWindow, setRepeatWindow] = useState<number>(10);
-  const [dataSource, setDataSource] = useState<string>("simulated");
-
-  const [baselines, setBaselines] = useState<
+  const [editedLowThresh, setEditedLowThresh] = useState<number | null>(null);
+  const [editedMedThresh, setEditedMedThresh] = useState<number | null>(null);
+  const [editedRepeatWindow, setEditedRepeatWindow] = useState<number | null>(null);
+  const [editedBaselines, setEditedBaselines] = useState<
     Record<string, { q0: number; p0: number }>
-  >({
+  >({});
+
+  const lowThresh = editedLowThresh ?? settingsData?.severity_thresholds?.low ?? 5;
+  const medThresh = editedMedThresh ?? settingsData?.severity_thresholds?.medium ?? 10;
+  const repeatWindow = editedRepeatWindow ?? settingsData?.repeat_alert_window_min?.value ?? 10;
+
+  const defaultBaselines: Record<string, { q0: number; p0: number }> = {
     S1: { q0: 15.0, p0: 5.0 },
     S2: { q0: 14.8, p0: 4.9 },
     S3: { q0: 14.6, p0: 4.8 },
     S4: { q0: 14.4, p0: 4.7 },
-    S5: { q0: 14.2, p0: 4.6 },
-    S6: { q0: 14.0, p0: 4.5 },
-  });
+  };
+  const baselines: Record<string, { q0: number; p0: number }> = Object.fromEntries(
+    STATION_IDS.map((id) => {
+      const serverVal = settingsData?.[`baseline_${id}` as keyof SettingsMap] as
+        | { q0: number; p0: number }
+        | undefined;
+      return [id, editedBaselines[id] ?? serverVal ?? defaultBaselines[id]];
+    })
+  );
 
-  useEffect(() => {
-    if (settingsData) {
-      if (settingsData.severity_thresholds) {
-        setLowThresh(settingsData.severity_thresholds.low ?? 5);
-        setMedThresh(settingsData.severity_thresholds.medium ?? 10);
-      }
-      if (settingsData.repeat_alert_window_min) {
-        setRepeatWindow(settingsData.repeat_alert_window_min.value ?? 10);
-      }
-      if (settingsData.data_source) {
-        setDataSource(settingsData.data_source.value ?? "simulated");
-      }
-      const bMap: Record<string, { q0: number; p0: number }> = {};
-      ["S1", "S2", "S3", "S4", "S5", "S6"].forEach((id) => {
-        const key = `baseline_${id}` as keyof SettingsMap;
-        if (settingsData[key]) {
-          bMap[id] = settingsData[key] as { q0: number; p0: number };
-        }
-      });
-      if (Object.keys(bMap).length > 0) {
-        setBaselines((prev) => ({ ...prev, ...bMap }));
-      }
-    }
-  }, [settingsData]);
+  const setLowThresh = (v: number) => setEditedLowThresh(v);
+  const setMedThresh = (v: number) => setEditedMedThresh(v);
+  const setRepeatWindow = (v: number) => setEditedRepeatWindow(v);
+  const setBaselines = (next: Record<string, { q0: number; p0: number }>) =>
+    setEditedBaselines(next);
 
   const handleSaveAll = async () => {
     setSaving(true);
@@ -181,8 +170,8 @@ export default function SettingsPage() {
               subtitle="Calibrated steady-state parameters measured under zero-leak flow"
             />
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5">
-                {(["S1", "S2", "S3", "S4", "S5", "S6"] as const).map((id) => (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                {STATION_IDS.map((id) => (
                   <div
                     key={id}
                     className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2 text-xs"

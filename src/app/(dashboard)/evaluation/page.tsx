@@ -28,21 +28,15 @@ import { Stat } from "@/components/ui/Stat";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { useHydroStore } from "@/store/hydroStore";
 import {
   CheckCircle2,
   ShieldAlert,
   Timer,
-  Radio,
   Download,
   FileSpreadsheet,
   Cpu,
-  Layers,
   Activity,
-  Filter,
   Check,
-  AlertTriangle,
-  Waves,
 } from "lucide-react";
 
 /* ── Benchmark Data for Charts ─────────────────────────────────────────── */
@@ -136,8 +130,7 @@ const EXPERIMENTAL_TRIALS: DefenseTrial[] = [
 ];
 
 export default function EvaluationPage() {
-  const architectureMode = useHydroStore((s) => s.architectureMode);
-  const setArchitectureMode = useHydroStore((s) => s.setArchitectureMode);
+  const [architectureMode, setArchitectureMode] = useState<"4x2" | "4x3">("4x2");
 
   const [filterMode, setFilterMode] = useState<"all" | "leaks" | "normal">("all");
   const [copied, setCopied] = useState(false);
@@ -186,7 +179,7 @@ export default function EvaluationPage() {
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `HydroNode_Defense_Validation_Trials_${architectureMode === "4x3" ? "OptionB_4x3" : "OptionA_6x2"}.csv`
+      `HydroNode_Defense_Validation_Trials_${architectureMode === "4x2" ? "Live_4x2" : "Future_4x3"}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -214,8 +207,17 @@ export default function EvaluationPage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2.5">
-          {/* Architecture Switcher */}
           <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              onClick={() => setArchitectureMode("4x2")}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                architectureMode === "4x2"
+                  ? "bg-slate-900 text-white shadow-2xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Active Rig (4×2 Bi-Modal)
+            </button>
             <button
               onClick={() => setArchitectureMode("4x3")}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
@@ -224,17 +226,7 @@ export default function EvaluationPage() {
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Option B (4×3 Tri-Modal)
-            </button>
-            <button
-              onClick={() => setArchitectureMode("6x2")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                architectureMode === "6x2"
-                  ? "bg-slate-900 text-white shadow-2xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Option A (6×2 Bi-Modal)
+              Planned Expansion (4×3)
             </button>
           </div>
 
@@ -257,15 +249,40 @@ export default function EvaluationPage() {
               <Cpu className="w-4 h-4 text-sky-600" />
               <span>Rig Hardware Architecture Topology Specification</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 ml-1">
-                {architectureMode === "4x3" ? "OPTION B SELECTED (RECOMMENDED)" : "OPTION A SELECTED"}
+                {architectureMode === "4x2" ? "4×2 LIVE DEPLOYMENT" : "4×3 PLANNED EXPANSION"}
               </span>
             </div>
           }
-          subtitle="Physical pinout, sensor channel allocation, and multimodal Edge-AI cyber-physical configuration"
+          subtitle="Physical pinout, sensor channel allocation, and ESP32-S3 cyber-physical configuration"
         />
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Option B Spec */}
+            {/* Active 4x2 Spec */}
+            <div
+              className={`p-4 rounded-xl border transition-all ${
+                architectureMode === "4x2"
+                  ? "bg-sky-50/40 border-sky-300 ring-2 ring-sky-500/20 shadow-xs"
+                  : "bg-slate-50 border-slate-200 opacity-70"
+              }`}
+            >
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-sky-500" />
+                  Live Rig: 4 Stations × 2 Sensors (Bi-Modal)
+                </span>
+                <Badge variant={architectureMode === "4x2" ? "accent" : "neutral"} size="sm">
+                  8 Transducers · 4 Zones
+                </Badge>
+              </div>
+              <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                <li>• <strong>Active Stations:</strong> S1, S2, S3, S4 across 4 serpentine PVC loops.</li>
+                <li>• <strong>Sensors per Station:</strong> Flow (Hall / EL817) + Pressure (ADS1115 I²C ADC).</li>
+                <li>• <strong>Hydraulic Localization:</strong> Real-time inter-station flow delta (ΔQ) + pressure drop Severity Index (ΔP / P₀).</li>
+                <li>• <strong>Edge Bus:</strong> ESP32-S3 live HTTP ingest over <code>/api/ingest</code>.</li>
+              </ul>
+            </div>
+
+            {/* Future 4x3 Spec */}
             <div
               className={`p-4 rounded-xl border transition-all ${
                 architectureMode === "4x3"
@@ -275,45 +292,17 @@ export default function EvaluationPage() {
             >
               <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                 <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-sky-500" />
-                  Option B: 4 Stations × 3 Sensors (Tri-Modal)
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  Future Expansion: 4 Stations × 3 Sensors (Tri-Modal)
                 </span>
                 <Badge variant={architectureMode === "4x3" ? "accent" : "neutral"} size="sm">
-                  12 Transducers · 3 Zones
+                  +Piezo Seismic (Planned)
                 </Badge>
               </div>
               <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-                <li>• <strong>Active Stations:</strong> S1, S2, S3, S4 (3 monitored pipe zones).</li>
-                <li>• <strong>Sensors per Station:</strong> Flow (EL817) + Pressure (ADS1115 I²C) + <strong>Piezo Film Seismic ($S$)</strong>.</li>
-                <li>• <strong>Multimodal Fusion:</strong> High-frequency acoustic wavefront ($S$) + hydraulic mass-balance (&Delta;Q) + pressure decay (&Delta;P).</li>
-                <li>• <strong>Adaptive Sampling:</strong> 10 Hz nominal &rarr; <strong>100 Hz elevated burst</strong> triggered by piezo film vibration RMS (&gt; 0.150 g).</li>
-                <li>• <strong>Defense Justification:</strong> Proves thesis innovation in cyber-physical multimodal Edge-AI fusion.</li>
-              </ul>
-            </div>
-
-            {/* Option A Spec */}
-            <div
-              className={`p-4 rounded-xl border transition-all ${
-                architectureMode === "6x2"
-                  ? "bg-sky-50/40 border-sky-300 ring-2 ring-sky-500/20 shadow-xs"
-                  : "bg-slate-50 border-slate-200 opacity-70"
-              }`}
-            >
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                  Option A: 6 Stations × 2 Sensors (Bi-Modal)
-                </span>
-                <Badge variant={architectureMode === "6x2" ? "accent" : "neutral"} size="sm">
-                  12 Transducers · 5 Zones
-                </Badge>
-              </div>
-              <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-                <li>• <strong>Active Stations:</strong> S1, S2, S3, S4, S5, S6 (5 monitored pipe zones).</li>
-                <li>• <strong>Sensors per Station:</strong> Flow ($Q$) via Hall/EL817 + Pressure ($P$) via ADS1115 I²C ADC.</li>
-                <li>• <strong>Spatial Resolution:</strong> Higher spatial granularity (isolates breach down to 1 of 5 shorter pipe loops).</li>
-                <li>• <strong>Trade-off:</strong> Omits high-frequency acoustic/seismic piezo sensors; cannot capture transient elastodynamic wave packets.</li>
-                <li>• <strong>Defense Justification:</strong> Best if defense panel emphasizes pure pipeline length subdivision over acoustic AI.</li>
+                <li>• <strong>Add-on Transducer:</strong> Piezo Film Seismic Sensor (S) per station (not yet installed).</li>
+                <li>• <strong>Multimodal Fusion:</strong> Adds acoustic wavefront (15–240 Hz) to ΔQ + ΔP telemetry.</li>
+                <li>• <strong>Adaptive Sampling:</strong> 10 Hz nominal → 100 Hz burst triggered by vibration RMS (&gt; 0.150 g).</li>
               </ul>
             </div>
           </div>

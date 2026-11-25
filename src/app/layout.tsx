@@ -9,6 +9,10 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 export const metadata: Metadata = {
   title: "HydroNode — IoT Pipe Leak Detection",
   description: "Low-cost IoT water pipe leak detection system supporting SDG 6.",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

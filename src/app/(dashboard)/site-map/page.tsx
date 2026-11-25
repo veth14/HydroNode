@@ -50,7 +50,7 @@ export default function SiteMapPage() {
       <Card>
         <CardHeader
           title="GIS Municipal Overlay"
-          subtitle="Real-world GPS coordinates for Stations S1 through S6"
+          subtitle="Real-world GPS coordinates for Stations S1 through S4"
         />
         <CardContent>
           <SiteMapInner />
@@ -58,7 +58,7 @@ export default function SiteMapPage() {
           <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
             <Info className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
             <span>
-              Click on any station marker or zone polyline to inspect real-time flow rate, line pressure, and seismic wave RMS energy transmitted from the on-rig transducers.
+              Click on any station marker or zone polyline to inspect real-time flow rate and line pressure transmitted from the live on-rig transducers.
             </span>
           </div>
         </CardContent>

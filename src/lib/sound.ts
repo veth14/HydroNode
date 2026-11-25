@@ -77,7 +77,7 @@ export function setAlarmActive(active: boolean) {
           console.warn("Alarm siren armed — waiting for operator click to sound:", err.message);
         });
       }
-    } catch (e) {
+    } catch {
       pendingAlarmPlayback = true;
     }
   } else {

@@ -10,7 +10,6 @@ import {
   timestamp,
   text,
   jsonb,
-  numeric,
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";

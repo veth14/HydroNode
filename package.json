@@ -16,6 +16,9 @@
     },
     "dependencies": {
         "@neondatabase/serverless": "^1.2.0",
+        "@react-three/drei": "^10.7.9",
+        "@react-three/fiber": "^9.8.2",
+        "@types/three": "^0.187.0",
         "drizzle-orm": "^0.45.4",
         "framer-motion": "^14.11.1",
         "leaflet": "^1.9.4",
@@ -25,6 +28,7 @@
         "react-dom": "19.3.0",
         "recharts": "^3.10.1",
         "swr": "^2.5.1",
+        "three": "^0.187.0",
         "zod": "^4.6.7",
         "zustand": "^5.1.0"
     },

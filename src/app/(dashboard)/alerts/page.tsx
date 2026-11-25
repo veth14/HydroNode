@@ -21,7 +21,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { CheckCircle2, AlertTriangle, X, Filter, Activity, Droplets } from "lucide-react";
+import { CheckCircle2, X, Filter, Activity, Droplets } from "lucide-react";
 import { setAlarmActive } from "@/lib/sound";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -149,7 +149,7 @@ export default function AlertsPage() {
             className="border border-slate-200 rounded-xl px-3 py-1.5 bg-slate-50 text-slate-800 font-medium shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
           >
             <option value="all">All Zones</option>
-            {[1, 2, 3, 4, 5].map((z) => (
+            {[1, 2, 3, 4].map((z) => (
               <option key={z} value={z}>
                 Zone {z}
               </option>
@@ -405,7 +405,7 @@ export default function AlertsPage() {
                   <div className="flex justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                     <span className="text-slate-600">Seismic Wave RMS Energy</span>
                     <span className="font-bold font-mono tabular-nums text-amber-800">
-                      {selectedAlert.features.vibrationRms?.toFixed(3) ?? "--"} g
+                      {selectedAlert.features.vibrationRms ? `${selectedAlert.features.vibrationRms.toFixed(3)} g` : "N/A (No sensor)"}
                     </span>
                   </div>
                   <div className="flex justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200">

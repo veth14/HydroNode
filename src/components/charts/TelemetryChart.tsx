@@ -1,12 +1,9 @@
 "use client";
 // src/components/charts/TelemetryChart.tsx
-// High-frequency sensor stream chart in Light Mode.
-// Follows 20 Rules:
-// - High text contrast
-// - Tabular numbers for all timestamps and values
-// - Clean white card surface with subtle grid lines
+// Live high-frequency Flow & Pressure sensor stream chart in Light Mode.
+// 8 sensors active (4 junctions × 2 sensors: Hall Flow + ADS1115 Pressure). Vibration coming soon.
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import useSWR from "swr";
 import {
   ResponsiveContainer,
@@ -23,7 +20,7 @@ import {
 } from "recharts";
 import type { StationId } from "@/types";
 import { STATION_IDS } from "@/config/rig";
-import { Waves, Droplets, Gauge, Activity } from "lucide-react";
+import { Droplets, Gauge, Activity } from "lucide-react";
 
 interface RawReadingPoint {
   t: string;
@@ -39,15 +36,16 @@ export function TelemetryChart({
 }: {
   initialStation?: StationId;
 }) {
-  const [selectedStation, setSelectedStation] = useState<StationId>(initialStation);
-  const [activeMetric, setActiveMetric] = useState<"seismic_wave" | "all" | "flow" | "pressure">("seismic_wave");
+  const [localOverride, setLocalOverride] = useState<{
+    forInitial: StationId;
+    value: StationId;
+  } | null>(null);
+  const selectedStation =
+    localOverride?.forInitial === initialStation ? localOverride.value : initialStation;
+  const setSelectedStation = (value: StationId) =>
+    setLocalOverride({ forInitial: initialStation, value });
 
-  // Keep synced with parent selection
-  useEffect(() => {
-    if (initialStation && initialStation !== selectedStation) {
-      setSelectedStation(initialStation);
-    }
-  }, [initialStation, selectedStation]);
+  const [activeMetric, setActiveMetric] = useState<"all" | "flow" | "pressure">("all");
 
   const { data, isLoading } = useSWR<RawReadingPoint[]>(
     `/api/readings?stationId=${selectedStation}&raw=true&range=1h`,
@@ -55,12 +53,9 @@ export function TelemetryChart({
     { refreshInterval: 3000 }
   );
 
-  const rawList = Array.isArray(data) ? data : [];
-  const latestRaw = rawList[rawList.length - 1];
-  const latestVib = latestRaw?.vibration ?? 0.082;
-  const isHighSeismic = latestVib > 0.15;
+  const rawList = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const hasReadings = rawList.length > 0;
 
-  // 1. Standard telemetry data points for All 3 Sensors, Flow, and Pressure
   const chartData = useMemo(() => {
     return rawList.slice(-45).map((d) => ({
       time: new Date(d.t).toLocaleTimeString([], {
@@ -70,55 +65,7 @@ export function TelemetryChart({
       }),
       flow: Number(d.flow.toFixed(2)),
       pressure: Number(d.pressure.toFixed(2)),
-      seismicRms: Number(d.vibration.toFixed(3)),
     }));
-  }, [rawList]);
-
-  // 2. High-density Seismogram Oscillogram derived 100% from actual data points
-  const seismogramPoints = useMemo(() => {
-    const pts: Array<{ time: string; seismicWave: number; threshPos: number; threshNeg: number }> = [];
-    const sourceSlice = rawList.slice(-45);
-    const SUBS = 14;
-
-    for (let i = 0; i < sourceSlice.length; i++) {
-      const current = sourceSlice[i];
-      const next = sourceSlice[Math.min(i + 1, sourceSlice.length - 1)];
-      const tCurrent = new Date(current.t).getTime();
-      const tNext = new Date(next.t).getTime();
-      const spanMs = tNext > tCurrent ? tNext - tCurrent : 3000;
-
-      const ampCur = Math.max(current.vibration, 0.01);
-      const ampNext = Math.max(next.vibration, 0.01);
-
-      for (let s = 0; s < SUBS; s++) {
-        const frac = s / SUBS;
-        const subTime = new Date(tCurrent + frac * spanMs);
-        const amp = ampCur + (ampNext - ampCur) * frac;
-
-        const timeSec = subTime.getTime() / 1000;
-        const phase1 = timeSec * 14.5;
-        const phase2 = timeSec * 31.2;
-        const phase3 = timeSec * 53.7;
-
-        const wave =
-          amp *
-          (0.72 * Math.sin(phase1) +
-            0.21 * Math.sin(phase2) +
-            0.07 * Math.sin(phase3));
-
-        pts.push({
-          time: subTime.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-          seismicWave: Number(wave.toFixed(4)),
-          threshPos: 0.15,
-          threshNeg: -0.15,
-        });
-      }
-    }
-    return pts;
   }, [rawList]);
 
   return (
@@ -132,25 +79,23 @@ export function TelemetryChart({
           <div>
             <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
               <span>Station {selectedStation} Telemetry Stream</span>
-              {isHighSeismic ? (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200">
-                  Elevated Acoustic RMS
-                </span>
-              ) : (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Nominal Baseline
-                </span>
-              )}
+              <span
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${hasReadings
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "bg-slate-50 text-slate-600 border-slate-200"
+                  }`}
+              >
+                {hasReadings ? "Live ESP32 Stream" : "Awaiting ESP32 Data"}
+              </span>
             </h3>
             <p className="text-xs text-slate-500">
-              Live high-frequency telemetry from Hall pulse, ADS1115 ADC, and Piezo module
+              Live flow &amp; pressure telemetry from EL817 Hall pulse &amp; ADS1115 ADC
             </p>
           </div>
         </div>
 
         {/* Station Select & Metric Tabs */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Station Selector Dropdown */}
           <select
             value={selectedStation}
             onChange={(e) => setSelectedStation(e.target.value as StationId)}
@@ -163,51 +108,42 @@ export function TelemetryChart({
             ))}
           </select>
 
-          {/* Metric View Modes */}
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 text-xs">
             <button
-              onClick={() => setActiveMetric("seismic_wave")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                activeMetric === "seismic_wave"
-                  ? "bg-white text-amber-800 shadow-xs border border-amber-200"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <Waves className="w-3.5 h-3.5" />
-              Seismogram
-            </button>
-            <button
               onClick={() => setActiveMetric("all")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                activeMetric === "all"
-                  ? "bg-white text-sky-700 shadow-xs border border-sky-200"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeMetric === "all"
+                ? "bg-white text-sky-700 shadow-xs border border-sky-200"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
-              All 3 Sensors
+              Flow &amp; Pressure
             </button>
             <button
               onClick={() => setActiveMetric("flow")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                activeMetric === "flow"
-                  ? "bg-white text-sky-700 shadow-xs border border-sky-200"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeMetric === "flow"
+                ? "bg-white text-sky-700 shadow-xs border border-sky-200"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               <Droplets className="w-3.5 h-3.5" />
               Flow (Q)
             </button>
             <button
               onClick={() => setActiveMetric("pressure")}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                activeMetric === "pressure"
-                  ? "bg-white text-indigo-700 shadow-xs border border-indigo-200"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeMetric === "pressure"
+                ? "bg-white text-indigo-700 shadow-xs border border-indigo-200"
+                : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               <Gauge className="w-3.5 h-3.5" />
               Pressure (P)
             </button>
+            <span
+              className="px-2 py-1 text-[10px] font-medium text-slate-400 cursor-not-allowed"
+              title="Piezo vibration sensors are not yet installed on the rig"
+            >
+              Vibration (Soon)
+            </span>
           </div>
         </div>
       </div>
@@ -218,76 +154,16 @@ export function TelemetryChart({
           <div className="w-full h-full flex items-center justify-center text-xs text-slate-500 font-mono animate-pulse">
             Connecting to Live Telemetry Stream...
           </div>
-        ) : activeMetric === "seismic_wave" ? (
-          /* SEISMOGRAM NEEDLE TRACE */
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={seismogramPoints} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 10, fill: "#64748b" }}
-                stroke="#cbd5e1"
-                interval="preserveStartEnd"
-                minTickGap={45}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: "#64748b" }}
-                stroke="#cbd5e1"
-                domain={[-0.70, 0.70]}
-                tickCount={7}
-                tickFormatter={(v) => `${v > 0 ? "+" : ""}${v.toFixed(2)} g`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#ffffff",
-                  borderColor: "#cbd5e1",
-                  borderRadius: "8px",
-                  fontSize: "11px",
-                  color: "#0f172a",
-                }}
-                formatter={(val: any, name?: any) => {
-                  const nameStr = String(name ?? "");
-                  if (nameStr.includes("Wave")) return [`${Number(val) > 0 ? "+" : ""}${Number(val).toFixed(4)} g`, "Instant Ground Accel A(t)"];
-                  return [String(val), nameStr];
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
-
-              <ReferenceLine
-                y={0}
-                stroke="#94a3b8"
-                strokeWidth={1.5}
-                label={{ value: "0.000 g (Equilibrium)", fill: "#64748b", fontSize: 9, position: "insideBottomLeft" }}
-              />
-
-              <ReferenceLine
-                y={0.15}
-                stroke="#dc2626"
-                strokeDasharray="4 4"
-                strokeWidth={1.5}
-                label={{ value: "+0.150 g Threshold", fill: "#dc2626", fontSize: 9, position: "insideTopRight" }}
-              />
-              <ReferenceLine
-                y={-0.15}
-                stroke="#dc2626"
-                strokeDasharray="4 4"
-                strokeWidth={1.5}
-                label={{ value: "-0.150 g Threshold", fill: "#dc2626", fontSize: 9, position: "insideBottomRight" }}
-              />
-
-              <Line
-                type="linear"
-                dataKey="seismicWave"
-                name="Seismic Waveform A(t) (g)"
-                stroke="#d97706"
-                strokeWidth={1.2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        ) : chartData.length === 0 ? (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-xs text-slate-500 bg-slate-50/70 rounded-xl border border-dashed border-slate-200">
+            <span className="font-semibold text-slate-700">
+              No live readings recorded in the last hour for {selectedStation}
+            </span>
+            <span className="font-mono text-[11px] text-slate-400">
+              Waiting for ESP32-S3 batch upload via POST /api/ingest
+            </span>
+          </div>
         ) : activeMetric === "all" ? (
-          /* DUAL Y-AXIS 3-SENSOR SCADA VIEW */
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -299,19 +175,19 @@ export function TelemetryChart({
                 minTickGap={45}
               />
               <YAxis
-                yAxisId="hydraulic"
-                tick={{ fontSize: 10, fill: "#64748b" }}
+                yAxisId="flow"
+                tick={{ fontSize: 10, fill: "#0284c7" }}
                 stroke="#cbd5e1"
                 domain={[0, 20]}
-                tickFormatter={(v) => `${v}`}
+                unit=" L/m"
               />
               <YAxis
-                yAxisId="seismic"
+                yAxisId="pressure"
                 orientation="right"
-                tick={{ fontSize: 10, fill: "#d97706" }}
-                stroke="#d9770640"
-                domain={[0, 0.45]}
-                tickFormatter={(v) => `${v.toFixed(2)} g`}
+                tick={{ fontSize: 10, fill: "#4f46e5" }}
+                stroke="#4f46e540"
+                domain={[0, 7]}
+                unit=" bar"
               />
               <Tooltip
                 contentStyle={{
@@ -325,17 +201,17 @@ export function TelemetryChart({
               <Legend wrapperStyle={{ fontSize: 11, paddingTop: 6 }} />
 
               <Line
-                yAxisId="hydraulic"
+                yAxisId="flow"
                 type="monotone"
                 dataKey="flow"
                 name="Flow (Pulse) [L/min]"
-                stroke="#0284c7"
+                stroke="#019FD7"
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}
               />
               <Line
-                yAxisId="hydraulic"
+                yAxisId="pressure"
                 type="monotone"
                 dataKey="pressure"
                 name="Pressure (ADS1115) [bar]"
@@ -344,26 +220,15 @@ export function TelemetryChart({
                 dot={false}
                 isAnimationActive={false}
               />
-              <Line
-                yAxisId="seismic"
-                type="monotone"
-                dataKey="seismicRms"
-                name="Seismic Wave RMS (Piezo) [g]"
-                stroke="#d97706"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
             </LineChart>
           </ResponsiveContainer>
         ) : activeMetric === "flow" ? (
-          /* FLOW RATE (PULSE INTERRUPTS) */
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id="flowGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0284c7" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
+                  <stop offset="5%" stopColor="#019FD7" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#019FD7" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -384,12 +249,17 @@ export function TelemetryChart({
                   color: "#0f172a",
                 }}
               />
-              <ReferenceLine y={15.0} stroke="#0284c7" strokeDasharray="3 3" label={{ value: "Q₀ Baseline (15.0 L/m)", fill: "#0284c7", fontSize: 10 }} />
+              <ReferenceLine
+                y={15.0}
+                stroke="#0284c7"
+                strokeDasharray="3 3"
+                label={{ value: "Q₀ Baseline (15.0 L/m)", fill: "#0284c7", fontSize: 10 }}
+              />
               <Area
                 type="monotone"
                 dataKey="flow"
                 name="Flow Rate (L/min)"
-                stroke="#0284c7"
+                stroke="#019FD7"
                 strokeWidth={2}
                 fill="url(#flowGrad)"
                 dot={false}
@@ -398,7 +268,6 @@ export function TelemetryChart({
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          /* PRESSURE (ADS1115 16-BIT I2C ADC) */
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 15, right: 15, left: -10, bottom: 0 }}>
               <defs>
@@ -425,7 +294,12 @@ export function TelemetryChart({
                   color: "#0f172a",
                 }}
               />
-              <ReferenceLine y={5.0} stroke="#4f46e5" strokeDasharray="3 3" label={{ value: "P₀ Baseline (5.0 bar)", fill: "#4f46e5", fontSize: 10 }} />
+              <ReferenceLine
+                y={5.0}
+                stroke="#4f46e5"
+                strokeDasharray="3 3"
+                label={{ value: "P₀ Baseline (5.0 bar)", fill: "#4f46e5", fontSize: 10 }}
+              />
               <Area
                 type="monotone"
                 dataKey="pressure"
@@ -441,22 +315,20 @@ export function TelemetryChart({
         )}
       </div>
 
-      {/* Seismogram Annotation Footer */}
+      {/* Footer Annotation */}
       <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-600" />
+          <span className="w-2 h-2 rounded-full bg-sky-500" />
           <span>
-            {activeMetric === "seismic_wave"
-              ? "Live Seismogram: Ground motion acceleration derived directly from real sensor telemetry stream"
-              : activeMetric === "all"
-              ? "Dual-Axis SCADA Telemetry: Left axis = Flow & Pressure; Right axis = Seismic RMS (g)"
+            {activeMetric === "all"
+              ? "Dual-Axis Telemetry: Left axis = Flow Rate (L/min); Right axis = Line Pressure (bar)"
               : activeMetric === "flow"
-              ? "Flow Telemetry: Hall effect pulse counting via EL817 optocoupler calibrated to L/min"
-              : "Pressure Telemetry: 5V piezoresistive transducer via ADS1115 16-bit I2C ADC calibrated to bar"}
+                ? "Flow Telemetry: Hall effect pulse counting via EL817 optocoupler calibrated to L/min"
+                : "Pressure Telemetry: 5V piezoresistive transducer via ADS1115 16-bit I2C ADC calibrated to bar"}
           </span>
         </div>
         <div className="text-[11px] text-slate-400 font-mono">
-          I²C ADS1115 · EL817 ISOLATION · 3S LIVE POLLING
+          4×2 SENSORS · ADS1115 + EL817 · LIVE ONLY
         </div>
       </div>
     </div>

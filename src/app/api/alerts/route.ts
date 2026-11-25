@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { alerts, stations, zones } from "@/db/schema";
-import { desc, eq, and, inArray } from "drizzle-orm";
+import { desc, eq, and } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

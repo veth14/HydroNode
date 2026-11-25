@@ -19,14 +19,13 @@ import { isAlertSoundMuted, toggleAlertSoundMuted } from "@/lib/sound";
 
 export function TopBar() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() =>
+    typeof window !== "undefined" ? isAlertSoundMuted() : false
+  );
   const alerts = useHydroStore((s) => s.alerts);
   const activeAlerts = alerts.filter((a) => a.status === "active").length;
 
   useEffect(() => {
-    setMounted(true);
-    setIsMuted(isAlertSoundMuted());
     const handleMuteChange = (e: Event) => {
       const custom = e as CustomEvent<boolean>;
       setIsMuted(custom.detail);
@@ -39,7 +38,6 @@ export function TopBar() {
     if (pathname === "/") return "Dashboard";
     if (pathname.startsWith("/alerts")) return "Alerts & Triage";
     if (pathname.startsWith("/stations")) return "Station Telemetry";
-    if (pathname.startsWith("/simulation")) return "Simulation Panel";
     if (pathname.startsWith("/analysis")) return "Leak Analysis";
     if (pathname.startsWith("/site-map")) return "Geographic Map";
     if (pathname.startsWith("/evaluation")) return "Rig Evaluation";
@@ -141,17 +139,17 @@ export function TopBar() {
           style={
             activeAlerts > 0 && !isMuted
               ? {
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  color: "#dc2626",
-                  animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
-                }
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                color: "#dc2626",
+                animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
+              }
               : {
-                  background: "#ffffff",
-                  border: "1px solid #C8E5F2",
-                  color: isMuted ? "#818F99" : "#019FD7",
-                  boxShadow: "0 1px 2px rgba(0,118,160,0.08)",
-                }
+                background: "#ffffff",
+                border: "1px solid #C8E5F2",
+                color: isMuted ? "#818F99" : "#019FD7",
+                boxShadow: "0 1px 2px rgba(0,118,160,0.08)",
+              }
           }
         >
           {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}

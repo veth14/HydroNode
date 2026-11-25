@@ -1,18 +1,32 @@
 // scripts/send-test-batch.ts
-// Test script to send a sample batch to POST /api/ingest
+// CLI connectivity verification script to post a live-shaped ESP32 batch to POST /api/ingest.
 
-import { generateBatch } from "../src/services/simulator";
+import type { IngestPayload } from "../src/types";
 
 async function main() {
   const url = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const apiKey = process.env.INGEST_API_KEY || "hydronode_secure_ingest_key_2026";
+  const now = new Date().toISOString();
 
-  console.log(`Sending sample batch to ${url}/api/ingest...`);
+  const payload: IngestPayload = {
+    deviceId: "esp32-s3-rig-01",
+    sentAt: now,
+    readings: [
+      { stationId: "S1", t: now, flow: 15.0, pressure: 5.0, vibration: 0 },
+      { stationId: "S2", t: now, flow: 14.8, pressure: 4.9, vibration: 0 },
+      { stationId: "S3", t: now, flow: 14.6, pressure: 4.8, vibration: 0 },
+      { stationId: "S4", t: now, flow: 14.4, pressure: 4.7, vibration: 0 },
+    ],
+    alerts: [],
+    samplingModes: {
+      S1: "normal",
+      S2: "normal",
+      S3: "normal",
+      S4: "normal",
+    },
+  };
 
-  // Generate a realistic batch with a simulated medium leak on Zone 2
-  const batch = generateBatch([{ zoneId: 2, magnitude: "medium" }]);
-
-  console.log(`Generated batch: ${batch.readings.length} readings, ${batch.alerts.length} alert(s)`);
+  console.log(`Posting live connectivity test batch to ${url}/api/ingest...`);
 
   const response = await fetch(`${url}/api/ingest`, {
     method: "POST",
@@ -20,7 +34,7 @@ async function main() {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
     },
-    body: JSON.stringify(batch),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -37,4 +51,3 @@ main().catch((err) => {
   console.error("Error executing send-test-batch:", err);
   process.exit(1);
 });
-

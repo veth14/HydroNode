@@ -5,7 +5,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { settings } from "@/db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 export async function GET() {

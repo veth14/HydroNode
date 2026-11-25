@@ -1,34 +1,36 @@
 // src/app/api/ingest/route.ts
-// POST /api/ingest — receives batched sensor data from the ESP32 (or simulator).
+// POST /api/ingest — receives batched sensor data from the live ESP32 controller.
 // Protected by x-api-key header.
+// Architecture: 4 stations (S1–S4), 2 sensors per junction (flow + pressure; vibration defaults to 0 until installed).
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { readingsRaw, readingsMinute, alerts, stations, zones, settings } from "@/db/schema";
+import { readingsRaw, readingsMinute, alerts, stations, settings } from "@/db/schema";
 import { sql, eq, and } from "drizzle-orm";
 import { evaluateAlert } from "@/lib/leakLogic";
-import type { StationId, SeverityThresholds } from "@/types";
+import { STATION_IDS } from "@/config/rig";
+import type { SeverityThresholds } from "@/types";
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 const ReadingSchema = z.object({
-  stationId: z.enum(["S1", "S2", "S3", "S4", "S5", "S6"]),
+  stationId: z.enum(["S1", "S2", "S3", "S4"]),
   t: z.string().datetime(),
   flow: z.number(),
   pressure: z.number(),
-  vibration: z.number(),
+  vibration: z.number().default(0),
 });
 
 const AlertFeaturesSchema = z.object({
   pressureDropRate: z.number(),
   flowDifference: z.number(),
-  vibrationRms: z.number(),
+  vibrationRms: z.number().default(0),
   dominantFreq: z.number().optional(),
   bandEnergy: z.number().optional(),
 });
 
 const AlertSchema = z.object({
-  stationId: z.enum(["S1", "S2", "S3", "S4", "S5", "S6"]),
+  stationId: z.enum(["S1", "S2", "S3", "S4"]),
   t: z.string().datetime(),
   confidence: z.number().min(0).max(1),
   features: AlertFeaturesSchema,
@@ -179,7 +181,7 @@ export async function POST(req: NextRequest) {
     for (const r of readings) {
       latestByStation.set(r.stationId, r.flow);
     }
-    const flows = ["S1", "S2", "S3", "S4", "S5", "S6"].map(
+    const flows = STATION_IDS.map(
       (id) => latestByStation.get(id) ?? baseline.q0
     );
 

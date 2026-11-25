@@ -1,37 +1,37 @@
 // src/app/api/stations/route.ts
-// GET /api/stations — returns all station rows with latest reading snapshot.
-// High-performance with in-memory caching and resilient fallback.
+// GET /api/stations — returns S1–S4 station rows with latest live reading snapshot.
 
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { stations, readingsRaw } from "@/db/schema";
-import { desc, eq } from "drizzle-orm";
-import { STATION_IDS, STATION_LATLNG } from "@/config/rig";
+import { desc, eq, inArray } from "drizzle-orm";
+import { STATION_IDS } from "@/config/rig";
 
-// In-memory cache to ensure instant sub-millisecond responses and protect against Neon cold-start ETIMEDOUT
-let cachedStations: any[] = STATION_IDS.map((id, idx) => ({
+import type { LiveStation } from "@/types";
+
+// Fallback skeleton when DB is unreachable (live mode — no fake telemetry numbers)
+let cachedStations: LiveStation[] = STATION_IDS.map((id) => ({
   id,
   name: `Station ${id}`,
-  zoneUpstream: idx > 0 ? idx : null,
-  zoneDownstream: idx < 5 ? idx + 1 : null,
-  lat: STATION_LATLNG[id][0],
-  lng: STATION_LATLNG[id][1],
-  status: "online",
+  status: "offline",
   samplingMode: "normal",
-  lastSeen: new Date().toISOString(),
-  latestFlow: 15.0 - idx * 0.2,
-  latestPressure: 5.0 - idx * 0.1,
-  latestVibration: 0.08,
+  lastSeen: null,
+  latestFlow: null,
+  latestPressure: null,
+  latestVibration: null,
 }));
 
 export async function GET() {
   try {
-    const stationRows = await db.select().from(stations);
+    const stationRows = await db
+      .select()
+      .from(stations)
+      .where(inArray(stations.id, [...STATION_IDS]));
+
     if (!stationRows || stationRows.length === 0) {
       return NextResponse.json(cachedStations);
     }
 
-    // Parallel fetch for the 6 stations instead of sequential loop
     const latestPromises = stationRows.map(async (s) => {
       try {
         const row = await db
@@ -54,15 +54,19 @@ export async function GET() {
     const latestResults = await Promise.all(latestPromises);
     const latestMap = Object.fromEntries(latestResults.map((r) => [r.id, r]));
 
-    const result = stationRows.map((s) => ({
-      ...s,
-      lastSeen: s.lastSeen?.toISOString() ?? null,
-      latestFlow: latestMap[s.id]?.flow ?? null,
-      latestPressure: latestMap[s.id]?.pressure ?? null,
-      latestVibration: latestMap[s.id]?.vibration ?? null,
-    }));
+    const result: LiveStation[] = stationRows
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((s) => ({
+        id: s.id as LiveStation["id"],
+        name: s.name,
+        status: s.status as LiveStation["status"],
+        samplingMode: s.samplingMode as LiveStation["samplingMode"],
+        lastSeen: s.lastSeen?.toISOString() ?? null,
+        latestFlow: latestMap[s.id]?.flow ?? null,
+        latestPressure: latestMap[s.id]?.pressure ?? null,
+        latestVibration: latestMap[s.id]?.vibration ?? null,
+      }));
 
-    // Update in-memory cache
     cachedStations = result;
     return NextResponse.json(result);
   } catch (err) {

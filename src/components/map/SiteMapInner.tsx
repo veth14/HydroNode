@@ -1,9 +1,6 @@
 "use client";
 // src/components/map/SiteMapInner.tsx
-// Leaflet + OpenStreetMap component in Light Mode.
-// Split into two separate effects to prevent reload loop:
-//   Effect 1 (empty deps) — initialises the Leaflet map instance once.
-//   Effect 2 ([stations, alerts, injectedLeaks]) — updates layer styles and popups in place.
+// Leaflet + OpenStreetMap component in Light Mode (live-only 4-station setup).
 
 import { useEffect, useRef } from "react";
 import L from "leaflet";
@@ -26,7 +23,6 @@ export default function SiteMapInner() {
 
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
-  const injectedLeaks = useHydroStore((s) => s.injectedLeaks);
 
   // Effect 1: Initialise Leaflet map once on mount
   useEffect(() => {
@@ -43,10 +39,13 @@ export default function SiteMapInner() {
 
     ZONES.forEach((zone) => {
       const coordA = STATION_LATLNG[zone.stationA];
-      const coordB = STATION_LATLNG[zone.stationB];
+      const coordB =
+        zone.stationA === zone.stationB
+          ? ([coordA[0] + 0.0002, coordA[1] + 0.0002] as [number, number])
+          : STATION_LATLNG[zone.stationB];
 
       const polyline = L.polyline([coordA, coordB], {
-        color: "#0284c7",
+        color: "#0076A0",
         weight: 5,
         opacity: 0.85,
       }).addTo(map);
@@ -61,8 +60,8 @@ export default function SiteMapInner() {
       const markerHtml = `
         <div style="
           background-color: #ffffff;
-          color: #0284c7;
-          border: 2px solid #0284c7;
+          color: #0076A0;
+          border: 2px solid #019FD7;
           border-radius: 50%;
           width: 28px;
           height: 28px;
@@ -89,15 +88,18 @@ export default function SiteMapInner() {
       markerRefsRef.current.set(sid, marker);
     });
 
+    const polylines = polylineRefsRef.current;
+    const markers = markerRefsRef.current;
+
     return () => {
       map.remove();
       mapInstanceRef.current = null;
-      polylineRefsRef.current.clear();
-      markerRefsRef.current.clear();
+      polylines.clear();
+      markers.clear();
     };
   }, []);
 
-  // Effect 2: Update existing layers without unmounting
+  // Effect 2: Update existing layers from live DB telemetry
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -109,15 +111,14 @@ export default function SiteMapInner() {
       if (!polyline) return;
 
       const alert = activeAlerts.find((a) => a.zoneId === zone.id);
-      const isSimulatedLeak = injectedLeaks.includes(zone.id);
-      const hasIssue = !!(alert || isSimulatedLeak);
+      const hasIssue = Boolean(alert);
 
       const color =
-        alert?.severity === "high" || isSimulatedLeak
+        alert?.severity === "high"
           ? "#dc2626"
           : alert?.severity === "medium"
           ? "#d97706"
-          : "#0284c7";
+          : "#0076A0";
 
       polyline.setStyle({
         color,
@@ -128,7 +129,7 @@ export default function SiteMapInner() {
 
       polyline.setPopupContent(`
         <div style="font-family: sans-serif; font-size: 12px;">
-          <strong style="color: #0f172a;">Zone ${zone.id} Pipeline</strong><br/>
+          <strong style="color: #0C2340;">Zone ${zone.id} Pipeline</strong><br/>
           <span>${zone.stationA} &rarr; ${zone.stationB}</span><br/>
           <span>Status: <strong style="color: ${color};">${
             alert ? alert.severity.toUpperCase() + " ALERT" : "Normal"
@@ -145,7 +146,7 @@ export default function SiteMapInner() {
 
       marker.setPopupContent(`
         <div style="font-family: sans-serif; font-size: 12px; line-height: 1.5;">
-          <strong style="font-size: 13px; color: #0284c7;">Station ${sid}</strong><br/>
+          <strong style="font-size: 13px; color: #0076A0;">Station ${sid}</strong><br/>
           <span>Flow: <strong>${
             stationData?.latestFlow != null
               ? stationData.latestFlow.toFixed(2) + " L/min"
@@ -156,15 +157,11 @@ export default function SiteMapInner() {
               ? stationData.latestPressure.toFixed(2) + " bar"
               : "--"
           }</strong></span><br/>
-          <span>Seismic RMS: <strong>${
-            stationData?.latestVibration != null
-              ? stationData.latestVibration.toFixed(3) + " g"
-              : "--"
-          }</strong></span>
+          <span style="color: #64748b;">Vibration: Not installed</span>
         </div>
       `);
     });
-  }, [stations, alerts, injectedLeaks]);
+  }, [stations, alerts]);
 
   return (
     <div

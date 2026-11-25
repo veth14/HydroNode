@@ -1,15 +1,14 @@
 // src/types/index.ts
 // Shared TypeScript types used across the app.
+// Live-only 4-zone, 4-station (8-sensor) setup: Flow + Pressure per junction.
 
-export type StationId = "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
-export type ZoneId = 1 | 2 | 3 | 4 | 5;
+export type StationId = "S1" | "S2" | "S3" | "S4";
+export type ZoneId = 1 | 2 | 3 | 4;
 export type StationStatus = "online" | "offline" | "alert" | "elevated";
 export type ZoneStatus = "healthy" | "alert" | "warning";
 export type SamplingMode = "normal" | "elevated";
 export type Severity = "low" | "medium" | "high";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
-export type DataSource = "simulated" | "live";
-export type ArchitectureMode = "4x3" | "6x2"; // Option B: 4 stations × 3 sensors | Option A: 6 stations × 2 sensors
 
 export interface SeverityThresholds {
   low: number;
@@ -100,4 +99,3 @@ export interface DbUsage {
   minuteRows: number;
   alertRows: number;
 }
-

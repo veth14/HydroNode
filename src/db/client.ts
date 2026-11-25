@@ -17,7 +17,6 @@ function getDb() {
 
 // In development, avoid creating multiple connections across HMR reloads.
 declare global {
-  // eslint-disable-next-line no-var
   var __db: ReturnType<typeof getDb> | undefined;
 }
 

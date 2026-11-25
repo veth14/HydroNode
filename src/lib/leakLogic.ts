@@ -85,8 +85,9 @@ export function localizeZone(flows: number[]): number {
  */
 export function isDemandSpike(
   features: LeakFeatures,
-  thresholds: SeverityThresholds
+  thresholds?: SeverityThresholds
 ): boolean {
+  void thresholds;
   // If flow difference is large but pressure drop rate is negligible,
   // treat as demand spike (no alert).
   return features.pressureDropRate < 0.05 && features.flowDifference > 2;

@@ -4,17 +4,16 @@
 // Brand: #0076A0 (deep ocean blue), #019FD7 (sky blue), #A6CE38 (lime green)
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Bell,
   Radio,
   Calculator,
-  FlaskConical,
   MapPin,
   BarChart3,
   Settings,
-  Droplets,
   ChevronDown,
   Cpu,
 } from "lucide-react";
@@ -54,15 +53,14 @@ export function Sidebar() {
           href: "/stations/S1",
           label: "Station Telemetry",
           icon: Radio,
-          badge: "6 Nodes",
+          badge: "4 Nodes",
           badgeTone: "accent",
         },
       ],
     },
     {
-      title: "Simulation & AI",
+      title: "Analysis & AI",
       items: [
-        { href: "/simulation", label: "Simulation Panel", icon: FlaskConical },
         { href: "/analysis", label: "Leak Analysis", icon: Calculator },
         { href: "/site-map", label: "Geographic Map", icon: MapPin },
       ],
@@ -87,15 +85,22 @@ export function Sidebar() {
       {/* Brand Header — Metro Pacific Water */}
       <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: "1px solid #DFF5FF" }}>
         <Link href="/" className="flex items-center gap-2.5">
-          {/* MPW brand mark — gradient ocean blue */}
+          {/* Brand logo (favicon.ico) */}
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center"
+            className="w-8 h-8 rounded-xl overflow-hidden bg-white flex items-center justify-center shrink-0"
             style={{
-              background: "linear-gradient(135deg, #0076A0 0%, #019FD7 100%)",
-              boxShadow: "0 2px 8px rgba(0,118,160,0.35)",
+              border: "1px solid #C8E5F2",
+              boxShadow: "0 2px 8px rgba(0,118,160,0.22)",
             }}
           >
-            <Droplets className="w-4 h-4 text-white" />
+            <Image
+              src="/favicon.ico"
+              alt="HydroNode Logo"
+              width={32}
+              height={32}
+              unoptimized
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
@@ -212,7 +217,7 @@ export function Sidebar() {
             </span>
           </div>
           <div className="text-[11px] leading-tight" style={{ color: "#2D5A7A" }}>
-            18 Sensors (6× F·P·S) · 2AWG Multi-conductor
+            8 Sensors (4× F·P) · ESP32-S3 Live Bus
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-[10px]" style={{ color: "#818F99" }}>
