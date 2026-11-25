@@ -44,6 +44,7 @@ import {
   CheckCircle2,
   Wifi,
   RotateCcw,
+  Compass,
 } from "lucide-react";
 
 // ─── WebGL Error Boundary ────────────────────────────────────────────────────
@@ -856,6 +857,7 @@ function SensorNodeOverlay({
         }}
         onClick={(e) => {
           e.stopPropagation();
+          if (e.delta > 5) return;
           onClick();
         }}
       >
@@ -997,6 +999,80 @@ function ZoneAlertBanner({ zoneId, leakRate, si }: ZoneAlertBannerProps) {
   );
 }
 
+// ─── Smooth Camera Focus & Preset Controller ─────────────────────────────────
+type CameraPresetMode = "overview" | "top";
+
+const OVERVIEW_CAM_POS: [number, number, number] = [0, 6.6, 8.0];
+const OVERVIEW_TARGET: [number, number, number] = [0, 0.25, 0];
+const TOP_CAM_POS: [number, number, number] = [0, 10.6, 0.8];
+const TOP_TARGET: [number, number, number] = [0, 0.2, 0];
+
+function CameraRigController({
+  controlsRef,
+  glideActiveRef,
+  focusStation,
+  presetMode,
+  presetNonce,
+}: {
+  controlsRef: React.RefObject<OrbitControlsImpl | null>;
+  glideActiveRef: React.RefObject<boolean>;
+  focusStation: StationId | null;
+  presetMode: CameraPresetMode;
+  presetNonce: number;
+}) {
+  const animStateRef = useRef({
+    hasInitialized: false,
+    goalPos: new THREE.Vector3(...OVERVIEW_CAM_POS),
+    goalTarget: new THREE.Vector3(...OVERVIEW_TARGET),
+  });
+
+  useEffect(() => {
+    const state = animStateRef.current;
+    if (!state.hasInitialized) {
+      state.hasInitialized = true;
+      if (!focusStation && presetNonce === 0) return;
+    }
+
+    if (focusStation) {
+      const node = SENSOR_3D_NODES[focusStation];
+      const [, , lz] = node.labelPos;
+      const lookX = node.pipeX + 0.28;
+      state.goalTarget.set(lookX, 0.55, lz);
+      state.goalPos.set(lookX + 0.75, 2.35, lz + 3.15);
+    } else if (presetMode === "top") {
+      state.goalTarget.set(...TOP_TARGET);
+      state.goalPos.set(...TOP_CAM_POS);
+    } else {
+      state.goalTarget.set(...OVERVIEW_TARGET);
+      state.goalPos.set(...OVERVIEW_CAM_POS);
+    }
+    glideActiveRef.current = true;
+  }, [focusStation, presetMode, presetNonce, glideActiveRef]);
+
+  useFrame((_, delta) => {
+    const ctrl = controlsRef.current;
+    if (!glideActiveRef.current || !ctrl) return;
+
+    const { goalPos, goalTarget } = animStateRef.current;
+    const alpha = 1 - Math.exp(-5.8 * Math.min(delta, 0.05));
+    ctrl.object.position.lerp(goalPos, alpha);
+    ctrl.target.lerp(goalTarget, alpha);
+    ctrl.update();
+
+    if (
+      ctrl.object.position.distanceTo(goalPos) < 0.025 &&
+      ctrl.target.distanceTo(goalTarget) < 0.025
+    ) {
+      ctrl.object.position.copy(goalPos);
+      ctrl.target.copy(goalTarget);
+      ctrl.update();
+      glideActiveRef.current = false;
+    }
+  });
+
+  return null;
+}
+
 // ─── Main exported component ─────────────────────────────────────────────────
 interface Pipeline3DCanvasProps {
   selectedStationId?: StationId | null;
@@ -1017,18 +1093,27 @@ export function Pipeline3DCanvas({
   const mounted = useIsClient();
   const [hoveredStation, setHoveredStation] = useState<StationId | null>(null);
   const [localPinnedStation, setLocalPinnedStation] = useState<StationId | null>(null);
+  const [presetMode, setPresetMode] = useState<CameraPresetMode>("overview");
+  const [presetNonce, setPresetNonce] = useState(0);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const glideActiveRef = useRef(false);
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
   const activeAlerts = alerts.filter((a) => a.status === "active");
 
   const activeStation =
     selectedStationId !== undefined ? selectedStationId : localPinnedStation;
+  const focusStation: StationId | null =
+    activeStation ??
+    (selectedZoneId != null ? (`S${selectedZoneId}` as StationId) : null);
 
-  const toggleStation = (sid: StationId) => {
+  const selectOrToggleStation = (sid: StationId) => {
     const next = activeStation === sid ? null : sid;
     if (selectedStationId === undefined) {
       setLocalPinnedStation(next);
+    }
+    if (next === null) {
+      setPresetMode("overview");
     }
     onSelectStation?.(next);
   };
@@ -1045,12 +1130,20 @@ export function Pipeline3DCanvas({
   );
 
   const handleResetView = () => {
-    const ctrl = controlsRef.current;
-    if (!ctrl) return;
-    ctrl.object.position.set(0, 7.2, 8.8);
-    ctrl.target.set(0, 0.2, 0);
-    ctrl.update();
+    clearPinnedStation();
+    setPresetMode("overview");
+    setPresetNonce((n) => n + 1);
   };
+
+  const handleTopView = () => {
+    clearPinnedStation();
+    setPresetMode((prev) => (prev === "top" ? "overview" : "top"));
+    setPresetNonce((n) => n + 1);
+  };
+
+  const stopCameraGlide = useCallback(() => {
+    glideActiveRef.current = false;
+  }, []);
 
   if (!mounted) {
     return (
@@ -1097,31 +1190,84 @@ export function Pipeline3DCanvas({
           "linear-gradient(160deg, #EEF6FA 0%, #DFF5FF 55%, #F4FAFD 100%)",
       }}
     >
-      {/* Active alert banners */}
-      {activeAlerts.length > 0 && (
+      {/* Top-left quick station focus bar + active alert banners */}
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          left: 12,
+          zIndex: 20,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: 6,
+        }}
+      >
         <div
           style={{
-            position: "absolute",
-            top: 12,
-            left: 12,
-            zIndex: 20,
             display: "flex",
-            flexDirection: "column",
-            gap: 6,
+            alignItems: "center",
+            gap: 3,
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid #C8E5F2",
+            borderRadius: 20,
+            padding: "3px 4px",
+            boxShadow: "0 2px 8px rgba(0,118,160,0.08)",
           }}
         >
-          {activeAlerts.slice(0, 2).map((alert) => (
-            <ZoneAlertBanner
-              key={alert.id}
-              zoneId={(alert.zoneId ?? 1) as ZoneId}
-              leakRate={alert.leakRate ?? 0}
-              si={alert.si ?? 0}
-            />
-          ))}
+          <button
+            type="button"
+            onClick={handleResetView}
+            style={{
+              background: focusStation === null && presetMode === "overview" ? "#0076A0" : "transparent",
+              color: focusStation === null && presetMode === "overview" ? "#ffffff" : "#2D5A7A",
+              border: "none",
+              borderRadius: 16,
+              padding: "3px 9px",
+              fontSize: 10,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Overview
+          </button>
+          {STATION_IDS.map((sid) => {
+            const isActiveFocus = focusStation === sid;
+            return (
+              <button
+                key={sid}
+                type="button"
+                onClick={() => selectOrToggleStation(sid)}
+                style={{
+                  background: isActiveFocus ? "#0076A0" : "transparent",
+                  color: isActiveFocus ? "#ffffff" : "#2D5A7A",
+                  border: "none",
+                  borderRadius: 16,
+                  padding: "3px 9px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+                title={`Zoom camera smoothly to ${sid}`}
+              >
+                {sid}
+              </button>
+            );
+          })}
         </div>
-      )}
 
-      {/* Top-right status + Reset camera button */}
+        {activeAlerts.slice(0, 2).map((alert) => (
+          <ZoneAlertBanner
+            key={alert.id}
+            zoneId={(alert.zoneId ?? 1) as ZoneId}
+            leakRate={alert.leakRate ?? 0}
+            si={alert.si ?? 0}
+          />
+        ))}
+      </div>
+
+      {/* Top-right Top View + Reset camera + ESP32 status */}
       <div
         style={{
           position: "absolute",
@@ -1133,6 +1279,28 @@ export function Pipeline3DCanvas({
           gap: 8,
         }}
       >
+        <button
+          type="button"
+          onClick={handleTopView}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            background: presetMode === "top" && !focusStation ? "#0076A0" : "rgba(255,255,255,0.9)",
+            border: "1px solid #C8E5F2",
+            borderRadius: 20,
+            padding: "4px 10px",
+            fontSize: 10,
+            fontWeight: 600,
+            color: presetMode === "top" && !focusStation ? "#ffffff" : "#0076A0",
+            cursor: "pointer",
+          }}
+          title="Switch between overhead top-down and 3D perspective"
+        >
+          <Compass style={{ width: 11, height: 11 }} />
+          Top View
+        </button>
+
         <button
           type="button"
           onClick={handleResetView}
@@ -1188,7 +1356,7 @@ export function Pipeline3DCanvas({
         <Canvas
           shadows
           dpr={[1, 3]}
-          camera={{ position: [0, 7.2, 8.8], fov: 40, near: 0.1, far: 100 }}
+          camera={{ position: OVERVIEW_CAM_POS, fov: 40, near: 0.1, far: 100 }}
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
           onPointerMissed={clearPinnedStation}
         >
@@ -1246,10 +1414,22 @@ export function Pipeline3DCanvas({
             enablePan
             enableZoom
             enableRotate
-            minDistance={4}
-            maxDistance={24}
+            enableDamping
+            dampingFactor={0.08}
+            minDistance={2.2}
+            maxDistance={22}
+            minPolarAngle={0.18}
             maxPolarAngle={Math.PI / 2.15}
-            target={[0, 0.2, 0]}
+            target={OVERVIEW_TARGET}
+            onStart={stopCameraGlide}
+          />
+
+          <CameraRigController
+            controlsRef={controlsRef}
+            glideActiveRef={glideActiveRef}
+            focusStation={focusStation}
+            presetMode={presetMode}
+            presetNonce={presetNonce}
           />
 
           <RigBaseboard />
@@ -1303,7 +1483,7 @@ export function Pipeline3DCanvas({
                       hovered ? sid : prev === sid ? null : prev
                     )
                   }
-                  onClick={() => toggleStation(sid)}
+                  onClick={() => selectOrToggleStation(sid)}
                 />
               );
             })}
@@ -1333,8 +1513,7 @@ export function Pipeline3DCanvas({
       >
         <span>Drag to orbit</span>
         <span>· Scroll to zoom</span>
-        <span>· Right-drag to pan</span>
-        <span>· Hover or click node to view S1–S4 (4×2 Flow &amp; Pressure)</span>
+        <span>· Click S1–S4 or any pipe leg to focus</span>
       </div>
     </div>
   );
