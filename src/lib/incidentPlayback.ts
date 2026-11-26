@@ -8,12 +8,15 @@ import {
   classifyStatusKind,
   evaluateFriendRowAnomaly,
   formatPhtTime,
+  isNoFlowCondition,
   normalizeConfidence01,
   normalizePumpRaw,
   rowFlows,
   rowPressuresBar,
 } from "@/lib/friendTelemetry";
 import type { LiveAlert } from "@/types";
+
+export type ReplayIssueKind = "none" | "leak" | "no_flow" | "sensor_fault";
 
 export interface TimelineEvent {
   tSeconds: number;
@@ -35,7 +38,9 @@ export interface PlaybackFrame {
   pumpOn: boolean;
   /** DB row status string */
   status: string;
-  /** Real alert evaluations matching live pipeline triage */
+  /** Separates genuine leaks from no-flow / sensor-fault states */
+  issueKind: ReplayIssueKind;
+  /** Real active leak alerts (empty on No Flow or SensorFailure) */
   alerts: LiveAlert[];
   /** Flow difference (L/min) across stations */
   flowDelta: number;
@@ -117,9 +122,12 @@ function buildFrameFromState(
     : 0;
 
   const statusKind = classifyStatusKind(state.status);
+  const noFlow = isNoFlowCondition(state.flow, state.pumpOn ? "ON" : "OFF");
   const alerts: LiveAlert[] = [];
+  let issueKind: ReplayIssueKind = "none";
 
-  if (statusKind === "leak" || statusKind === "sensor_failure") {
+  // Only trigger a leak alert when status actually indicates a leak AND water is flowing
+  if (statusKind === "leak" && !noFlow) {
     const toVirtualAdc = (bar: number) => 225 + (bar / 12.0) * (4095 - 225);
     const virtualRow: FriendSensorRow = {
       id: state.rowId,
@@ -139,31 +147,40 @@ function buildFrameFromState(
     };
 
     const evalRes = evaluateFriendRowAnomaly(virtualRow);
-    const zoneId: ZoneId = evalRes.zoneId ?? 1;
-    const zoneMeta = ZONES.find((z) => z.id === zoneId);
-    const targetStation: StationId =
-      zoneMeta && zoneMeta.stationA !== zoneMeta.stationB
-        ? zoneMeta.stationB
-        : evalRes.stationId;
+    if (evalRes.kind === "leak") {
+      issueKind = "leak";
+      const zoneId: ZoneId = evalRes.zoneId ?? 1;
+      const zoneMeta = ZONES.find((z) => z.id === zoneId);
+      const targetStation: StationId =
+        zoneMeta && zoneMeta.stationA !== zoneMeta.stationB
+          ? zoneMeta.stationB
+          : evalRes.stationId;
 
-    alerts.push({
-      id: state.rowId || 9000 + zoneId,
-      stationId: targetStation,
-      zoneId,
-      ts: new Date().toISOString(),
-      features: {
-        pressureDropRate: evalRes.pressureDropBar,
-        flowDifference: evalRes.flowDiff,
-        vibrationRms: 0,
-      },
-      confidence: normalizeConfidence01(state.confidence),
-      severity: evalRes.severity,
-      si: evalRes.si,
-      leakRate: evalRes.flowDiff,
-      recommendedAction: evalRes.recommendedActionText,
-      status: "active",
-      repeatCount: 1,
-    });
+      alerts.push({
+        id: state.rowId || 9000 + zoneId,
+        stationId: targetStation,
+        zoneId,
+        ts: new Date().toISOString(),
+        features: {
+          pressureDropRate: evalRes.pressureDropBar,
+          flowDifference: evalRes.flowDiff,
+          vibrationRms: 0,
+        },
+        confidence: normalizeConfidence01(state.confidence),
+        severity: evalRes.severity,
+        si: evalRes.si,
+        leakRate: evalRes.flowDiff,
+        recommendedAction: evalRes.recommendedActionText,
+        status: "active",
+        repeatCount: 1,
+      });
+    } else {
+      issueKind = noFlow ? "no_flow" : "sensor_fault";
+    }
+  } else if (noFlow) {
+    issueKind = "no_flow";
+  } else if (statusKind === "sensor_failure") {
+    issueKind = "sensor_fault";
   }
 
   let currentEvent = events[0] ?? EMPTY_EVENT;
@@ -178,6 +195,7 @@ function buildFrameFromState(
     pressure: state.pressure,
     pumpOn: state.pumpOn,
     status: state.status,
+    issueKind,
     alerts,
     flowDelta: Number(flowDelta.toFixed(2)),
     pressureDrop: Number(pressureDrop.toFixed(2)),

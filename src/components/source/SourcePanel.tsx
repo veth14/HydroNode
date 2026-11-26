@@ -21,6 +21,7 @@ import {
   formatPhtDateTime,
   formatPhtTime,
   formatRelativeAge,
+  isNoFlowCondition,
 } from "@/lib/friendTelemetry";
 
 interface SourceData {
@@ -134,7 +135,10 @@ export function SourcePanel() {
   }
 
   const { latest, pumpTransitions, pumpState } = data;
-  const statusInfo = statusMeta(latest.status);
+  const noFlow = isNoFlowCondition(latest.flow, latest.pumpStatus);
+  const statusInfo = statusMeta(
+    noFlow && classifyStatusKind(latest.status) === "leak" ? "No Flow (Idle)" : latest.status
+  );
   const StatusIcon = statusInfo.Icon;
   const pumpOn = latest.pumpStatus === "ON";
   const pumpStarting = pumpState?.pumpStatus === "starting";

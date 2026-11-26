@@ -119,4 +119,54 @@ test("buildDbReplayScenario builds chronological PHT replay and evaluates real l
   assert.ok(fEnd);
   assert.equal(fEnd.pumpOn, false);
   assert.deepEqual(fEnd.flow, [0, 0, 0, 0]);
+  assert.equal(fEnd.issueKind, "no_flow");
+  assert.equal(fEnd.alerts.length, 0);
+});
+
+test("SensorFailure & 0-flow DB rows never generate LEAK DETECTED alerts in Time Machine", () => {
+  const rows: FriendSensorRow[] = [
+    {
+      id: 1024,
+      created_at: "2026-11-26T20:11:33.974Z",
+      status: "SensorFailure",
+      flow1: 0,
+      flow2: 0,
+      flow3: 0,
+      flow4: 0,
+      pressure1: 458,
+      pressure2: 464,
+      pressure3: 447,
+      pressure4: 469,
+      localization: "None",
+      confidence: 54,
+      pump_status: "OFF",
+    },
+    {
+      id: 1025,
+      created_at: "2026-11-26T20:11:39.000Z",
+      status: "Leak",
+      flow1: 0,
+      flow2: 0,
+      flow3: 0,
+      flow4: 0,
+      pressure1: 458,
+      pressure2: 464,
+      pressure3: 447,
+      pressure4: 469,
+      localization: "Zone4",
+      confidence: 54,
+      pump_status: "OFF",
+    },
+  ];
+
+  const sc = buildDbReplayScenario(rows);
+  const f1 = calculatePlaybackFrame(sc, 0);
+  assert.ok(f1);
+  assert.equal(f1.alerts.length, 0);
+  assert.equal(f1.issueKind, "no_flow");
+
+  const f2 = calculatePlaybackFrame(sc, sc.durationSec);
+  assert.ok(f2);
+  assert.equal(f2.alerts.length, 0);
+  assert.equal(f2.issueKind, "no_flow");
 });

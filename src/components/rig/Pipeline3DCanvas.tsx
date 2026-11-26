@@ -38,6 +38,7 @@ import type { StationId, ZoneId } from "@/config/rig";
 import type { LiveAlert } from "@/types";
 import { STATION_IDS, SENSOR_3D_NODES, ZONES } from "@/config/rig";
 import { useHydroStore } from "@/store/hydroStore";
+import { isNoFlowCondition } from "@/lib/friendTelemetry";
 import { PipeFlowWater } from "./PipeFlowWater";
 import {
   Droplets,
@@ -658,7 +659,7 @@ function HologramProjection({
             ref={handleCardMount}
             onClick={isSelected ? onClick : undefined}
             style={{
-              width: status === "alert" ? "14em" : "12.5em",
+              width: status === "alert" ? "16.2em" : "13.2em",
               boxSizing: "border-box",
               padding: "0.25em",
               borderRadius: "1em",
@@ -684,28 +685,29 @@ function HologramProjection({
               <div
                 style={{
                   borderRadius: "0.72em",
-                  padding: "0.6em 0.8em",
+                  padding: "0.58em 0.76em",
                   border: `0.12em solid #f87171`,
                   backgroundColor: "rgba(48, 7, 12, 0.94)",
                   backgroundImage: `repeating-linear-gradient(0deg, rgba(248,113,113,0.07) 0px, rgba(248,113,113,0.07) 1px, transparent 1px, transparent 4px), repeating-linear-gradient(90deg, rgba(248,113,113,0.05) 0px, rgba(248,113,113,0.05) 1px, transparent 1px, transparent 9px)`,
+                  boxSizing: "border-box",
                   overflow: "hidden",
                 }}
               >
-                {/* Row 1: ⚠ LEAK DETECTED + station label + severity badge */}
+                {/* Row 1: ⚠ LEAK\nDETECTED + compact SEVERITY badge (never clips) */}
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: "0.4em",
-                    marginBottom: "0.5em",
+                    gap: "0.45em",
+                    marginBottom: "0.48em",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4em" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.42em", minWidth: 0, flex: "1 1 auto" }}>
                     <AlertTriangle
                       style={{
-                        width: "1.1em",
-                        height: "1.1em",
+                        width: "1.25em",
+                        height: "1.25em",
                         color: "#fbbf24",
                         filter: "drop-shadow(0 0 4px rgba(251,191,36,0.9))",
                         animation: "leak-pulse 1.4s ease-in-out infinite",
@@ -714,22 +716,24 @@ function HologramProjection({
                     />
                     <span
                       style={{
-                        fontSize: "0.82em",
+                        fontSize: "0.78em",
                         fontWeight: 800,
                         color: "#fbbf24",
                         letterSpacing: "0.04em",
                         textShadow: "0 0 8px rgba(251,191,36,0.8), 0 0 16px rgba(251,191,36,0.4)",
-                        whiteSpace: "nowrap",
+                        lineHeight: 1.08,
                       }}
                     >
-                      LEAK DETECTED
+                      LEAK
+                      <br />
+                      DETECTED
                     </span>
                   </div>
                   <div
                     style={{
                       border: "0.1em solid #f59e0b",
-                      borderRadius: "0.3em",
-                      padding: "0.1em 0.35em",
+                      borderRadius: "0.32em",
+                      padding: "0.14em 0.42em",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
@@ -738,18 +742,19 @@ function HologramProjection({
                   >
                     <span
                       style={{
-                        fontSize: "0.52em",
+                        fontSize: "0.46em",
                         fontWeight: 700,
                         color: "#fbbf24",
                         letterSpacing: "0.06em",
-                        lineHeight: 1.1,
+                        lineHeight: 1.15,
+                        whiteSpace: "nowrap",
                       }}
                     >
                       SEVERITY
                     </span>
                     <span
                       style={{
-                        fontSize: "0.6em",
+                        fontSize: "0.56em",
                         fontWeight: 800,
                         color: activeAlert.severity === "high"
                           ? "#ef4444"
@@ -758,7 +763,8 @@ function HologramProjection({
                             : "#fbbf24",
                         letterSpacing: "0.04em",
                         textShadow: "0 0 6px currentColor",
-                        lineHeight: 1.1,
+                        lineHeight: 1.15,
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {activeAlert.severity.toUpperCase()}
@@ -967,14 +973,31 @@ function HologramProjection({
                       {stationId} · Z{zoneId}
                     </span>
                   </div>
-                  <CheckCircle2
-                    style={{
-                      width: "0.95em",
-                      height: "0.95em",
-                      color: "#6ee7b7",
-                      filter: "drop-shadow(0 0 3px rgba(110,231,183,0.6))",
-                    }}
-                  />
+                  {flow != null && flow <= 0.05 ? (
+                    <span
+                      style={{
+                        fontSize: "0.54em",
+                        fontWeight: 700,
+                        color: "#fde68a",
+                        background: "rgba(245,158,11,0.16)",
+                        border: "0.09em solid rgba(251,191,36,0.5)",
+                        borderRadius: "0.3em",
+                        padding: "0.12em 0.35em",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      NO FLOW
+                    </span>
+                  ) : (
+                    <CheckCircle2
+                      style={{
+                        width: "0.95em",
+                        height: "0.95em",
+                        color: "#6ee7b7",
+                        filter: "drop-shadow(0 0 3px rgba(110,231,183,0.6))",
+                      }}
+                    />
+                  )}
                 </div>
 
                 {/* Flow reading */}
@@ -1391,7 +1414,33 @@ export function Pipeline3DCanvas({
   const alerts = useHydroStore((s) => s.alerts);
   const kpi = useHydroStore((s) => s.kpi);
   const activeAlerts = alerts.filter((a) => a.status === "active");
-  const displayedAlerts = isPlaybackMode && overrideAlerts != null ? overrideAlerts : activeAlerts;
+  const liveFlow: [number, number, number, number] = [
+    stations.find((s) => s.id === "S1")?.latestFlow ?? 0,
+    stations.find((s) => s.id === "S2")?.latestFlow ?? 0,
+    stations.find((s) => s.id === "S3")?.latestFlow ?? 0,
+    stations.find((s) => s.id === "S4")?.latestFlow ?? 0,
+  ];
+  const livePressure: [number, number, number, number] = [
+    stations.find((s) => s.id === "S1")?.latestPressure ?? 0,
+    stations.find((s) => s.id === "S2")?.latestPressure ?? 0,
+    stations.find((s) => s.id === "S3")?.latestPressure ?? 0,
+    stations.find((s) => s.id === "S4")?.latestPressure ?? 0,
+  ];
+  const waterFlow: [number, number, number, number] =
+    isPlaybackMode && overrideFlow ? overrideFlow : liveFlow;
+  const waterPressure: [number, number, number, number] =
+    isPlaybackMode && overridePressure ? overridePressure : livePressure;
+  const livePumpOn = kpi?.pumpStatus === "running" || kpi?.pumpStatus === "starting";
+  const waterPumpOn: boolean =
+    isPlaybackMode && overridePumpOn != null ? overridePumpOn : livePumpOn;
+  const hasWaterFlow = waterFlow.some((f) => f > 0.05) || waterPumpOn;
+
+  // Never display LEAK DETECTED alerts on the 3D canvas when the pipeline has no flow
+  const rawDisplayedAlerts =
+    isPlaybackMode && overrideAlerts != null ? overrideAlerts : activeAlerts;
+  const displayedAlerts = isNoFlowCondition(waterFlow, waterPumpOn ? "ON" : "OFF")
+    ? []
+    : rawDisplayedAlerts;
 
   const activeStation =
     selectedStationId !== undefined ? selectedStationId : localPinnedStation;
@@ -1420,28 +1469,6 @@ export function Pipeline3DCanvas({
   const hasLiveReadings = stations.some(
     (s) => s.latestFlow != null || s.latestPressure != null
   );
-
-  // ── Flow & Pressure values driving internal pipe water + hologram overlays ──
-  const liveFlow: [number, number, number, number] = [
-    stations.find((s) => s.id === "S1")?.latestFlow ?? 0,
-    stations.find((s) => s.id === "S2")?.latestFlow ?? 0,
-    stations.find((s) => s.id === "S3")?.latestFlow ?? 0,
-    stations.find((s) => s.id === "S4")?.latestFlow ?? 0,
-  ];
-  const livePressure: [number, number, number, number] = [
-    stations.find((s) => s.id === "S1")?.latestPressure ?? 0,
-    stations.find((s) => s.id === "S2")?.latestPressure ?? 0,
-    stations.find((s) => s.id === "S3")?.latestPressure ?? 0,
-    stations.find((s) => s.id === "S4")?.latestPressure ?? 0,
-  ];
-  const waterFlow: [number, number, number, number] =
-    isPlaybackMode && overrideFlow ? overrideFlow : liveFlow;
-  const waterPressure: [number, number, number, number] =
-    isPlaybackMode && overridePressure ? overridePressure : livePressure;
-  const livePumpOn = kpi?.pumpStatus === "running" || kpi?.pumpStatus === "starting";
-  const waterPumpOn: boolean =
-    isPlaybackMode && overridePumpOn != null ? overridePumpOn : livePumpOn;
-  const hasWaterFlow = waterFlow.some((f) => f > 0.05) || waterPumpOn;
 
   const legAlerts: [boolean, boolean, boolean, boolean] = STATION_IDS.map((sid) => {
     return displayedAlerts.some((a) => {

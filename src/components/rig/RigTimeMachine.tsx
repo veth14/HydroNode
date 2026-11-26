@@ -427,7 +427,7 @@ export function RigTimeMachine({ onFrameUpdate, onExit }: RigTimeMachineProps) {
               </div>
             </div>
 
-            {/* ─── Station S1–S4 Flow & Pressure Bars ─── */}
+              {/* ─── Station S1–S4 Flow & Pressure Bars ─── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               <div
                 className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl"
@@ -436,9 +436,16 @@ export function RigTimeMachine({ onFrameUpdate, onExit }: RigTimeMachineProps) {
                 {(["S1", "S2", "S3", "S4"] as const).map((sid, i) => {
                   const f = currentFrame.flow[i] ?? 0;
                   const p = currentFrame.pressure[i] ?? 0;
+                  const maxF = Math.max(...currentFrame.flow, 0);
                   const flowPct = Math.min(100, (f / Math.max(FLOW_NOMINAL_LPM, 0.1)) * 100);
                   const pressPct = Math.min(100, (p / 1.2) * 100);
-                  const starved = currentFrame.pumpOn && f < FLOW_NOMINAL_LPM * 0.45;
+                  const isLeakStation = currentFrame.alerts.some((a) => a.stationId === sid);
+                  const starved =
+                    isLeakStation ||
+                    (currentFrame.issueKind === "leak" &&
+                      maxF >= 1.0 &&
+                      f < maxF * 0.55);
+                  const isNoFlow = f < 0.15;
 
                   return (
                     <div
@@ -457,12 +464,14 @@ export function RigTimeMachine({ onFrameUpdate, onExit }: RigTimeMachineProps) {
                           className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                             starved
                               ? "bg-red-100 text-red-700"
-                              : currentFrame.pumpOn
-                                ? "bg-sky-50 text-sky-700"
-                                : "bg-slate-100 text-slate-500"
+                              : isNoFlow
+                                ? "bg-slate-100 text-slate-600"
+                                : currentFrame.pumpOn
+                                  ? "bg-sky-50 text-sky-700"
+                                  : "bg-slate-100 text-slate-500"
                           }`}
                         >
-                          {starved ? "LOW" : currentFrame.pumpOn ? "OK" : "OFF"}
+                          {starved ? "LEAK" : isNoFlow ? "NO FLOW" : currentFrame.pumpOn ? "OK" : "OFF"}
                         </span>
                       </div>
 
@@ -516,8 +525,18 @@ export function RigTimeMachine({ onFrameUpdate, onExit }: RigTimeMachineProps) {
                 <div
                   className="p-3 rounded-xl flex items-center justify-between"
                   style={{
-                    background: hasLeak ? "#fef2f2" : "#F4FAFD",
-                    border: `1px solid ${hasLeak ? "#fecaca" : "#DFF5FF"}`,
+                    background: hasLeak
+                      ? "#fef2f2"
+                      : currentFrame.issueKind === "sensor_fault"
+                        ? "#fffbeb"
+                        : "#F4FAFD",
+                    border: `1px solid ${
+                      hasLeak
+                        ? "#fecaca"
+                        : currentFrame.issueKind === "sensor_fault"
+                          ? "#fde68a"
+                          : "#DFF5FF"
+                    }`,
                   }}
                 >
                   <div>
@@ -526,10 +545,20 @@ export function RigTimeMachine({ onFrameUpdate, onExit }: RigTimeMachineProps) {
                     </span>
                     <span
                       className="text-sm font-bold flex items-center gap-1.5 mt-0.5"
-                      style={{ color: hasLeak ? "#b91c1c" : currentFrame.pumpOn ? "#047857" : "#475569" }}
+                      style={{
+                        color: hasLeak
+                          ? "#b91c1c"
+                          : currentFrame.issueKind === "sensor_fault"
+                            ? "#b45309"
+                            : currentFrame.issueKind === "no_flow"
+                              ? "#475569"
+                              : "#047857",
+                      }}
                     >
                       {hasLeak && <AlertTriangle className="w-3.5 h-3.5 text-red-600 animate-pulse" />}
-                      {currentFrame.status}
+                      {currentFrame.issueKind === "no_flow"
+                        ? `No Flow (${currentFrame.status})`
+                        : currentFrame.status}
                     </span>
                   </div>
                   <div className="text-right font-mono tabular-nums text-xs">

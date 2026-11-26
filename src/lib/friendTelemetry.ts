@@ -59,6 +59,21 @@ export function normalizePumpRaw(val: string | null | undefined): "ON" | "OFF" {
   return String(val ?? "").trim().toUpperCase() === "ON" ? "ON" : "OFF";
 }
 
+/**
+ * Returns true when there is effectively zero water flowing across the entire loop
+ * (pump OFF with stagnant fluid, or all stations <= 0.15 L/min).
+ * Prevents dry pipes, closed valves, or stopped pumps from ever being misclassified as leaks.
+ */
+export function isNoFlowCondition(
+  flows: readonly number[],
+  pumpRaw: "ON" | "OFF" = "ON"
+): boolean {
+  const maxFlow = flows.length > 0 ? Math.max(...flows.map((f) => Math.max(0, f))) : 0;
+  if (maxFlow < 0.15) return true;
+  if (pumpRaw === "OFF" && maxFlow < 0.25) return true;
+  return false;
+}
+
 /** Classify firmware status string. */
 export function classifyStatusKind(
   status: string | null | undefined
@@ -153,6 +168,7 @@ export function derivePumpState(
 /** Derive zone, station, flow loss, and severity for one sensor_data row. */
 export function evaluateFriendRowAnomaly(row: FriendSensorRow): {
   kind: "normal" | "leak" | "sensor_failure" | "other";
+  isNoFlow: boolean;
   zoneId: ZoneId | null;
   stationId: StationId;
   flowDiff: number;
@@ -161,12 +177,40 @@ export function evaluateFriendRowAnomaly(row: FriendSensorRow): {
   si: number;
   recommendedActionText: string;
 } {
-  const kind = classifyStatusKind(row.status);
+  const rawKind = classifyStatusKind(row.status);
   const flows = rowFlows(row);
   const pressures = rowPressuresBar(row);
+  const pumpRaw = normalizePumpRaw(row.pump_status);
+  const noFlow = isNoFlowCondition(flows, pumpRaw);
+
+  // Never mistake no-flow (all sensors 0 / pump OFF with stagnant water) for an active leak
+  const kind: "normal" | "leak" | "sensor_failure" | "other" =
+    rawKind === "leak" && noFlow ? "sensor_failure" : rawKind;
+
+  // Sensor failures and no-flow states should not report leak flow delta, SI%, or leak zone
+  if (kind !== "leak") {
+    const statusLabel = row.status ?? "Anomaly";
+    const recommendedActionText = noFlow
+      ? `No water flow detected (pump ${pumpRaw}, 0 L/min) — verify pump/valve operation (not a leak).`
+      : kind === "sensor_failure"
+        ? `Check wiring / turbine sensor health (firmware reported: ${statusLabel}).`
+        : `Review telemetry event (${statusLabel}).`;
+
+    return {
+      kind,
+      isNoFlow: noFlow,
+      zoneId: null,
+      stationId: "S1",
+      flowDiff: 0,
+      pressureDropBar: 0,
+      severity: kind === "sensor_failure" ? "medium" : "low",
+      si: 0,
+      recommendedActionText,
+    };
+  }
 
   let zoneId = parseLocalizationZone(row.localization);
-  if (zoneId === null && kind === "leak") {
+  if (zoneId === null) {
     const inferred = localizeZone(flows);
     zoneId = (inferred >= 1 && inferred <= 4 ? inferred : 1) as ZoneId;
   }
@@ -194,24 +238,18 @@ export function evaluateFriendRowAnomaly(row: FriendSensorRow): {
   const pDown = pressures[nextIdx] ?? pUp;
   const pressureDropBar = Math.max(0, pUp - pDown);
 
-  const si = pUp > 0 ? Math.min(100, (pressureDropBar / pUp) * 100) : kind === "leak" ? 15 : 4;
-  const severity: Severity =
-    kind === "sensor_failure"
-      ? "medium"
-      : kind === "leak"
-      ? classifySeverity(Math.max(si, flowSeverityScore), { low: 5, medium: 10 })
-      : "low";
+  const si = pUp > 0 ? Math.min(100, (pressureDropBar / pUp) * 100) : 15;
+  const severity: Severity = classifySeverity(Math.max(si, flowSeverityScore), {
+    low: 5,
+    medium: 10,
+  });
 
-  const statusLabel = row.status ?? "Anomaly";
-  const recommendedActionText =
-    kind === "sensor_failure"
-      ? `Check wiring / water flow on rig (firmware reported: ${statusLabel}).`
-      : kind === "leak"
-      ? `${recommendedAction(severity)} (${statusLabel}${zoneId ? ` in Zone ${zoneId}` : ""})`
-      : `Review telemetry event (${statusLabel}).`;
+  const statusLabel = row.status ?? "Leak";
+  const recommendedActionText = `${recommendedAction(severity)} (${statusLabel}${zoneId ? ` in Zone ${zoneId}` : ""})`;
 
   return {
     kind,
+    isNoFlow: noFlow,
     zoneId,
     stationId: (zoneMeta?.stationA ?? "S1") as StationId,
     flowDiff: Number(flowDiff.toFixed(2)),

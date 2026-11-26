@@ -149,4 +149,25 @@ test("evaluateFriendRowAnomaly distinguishes Leak vs SensorFailure", () => {
   assert.equal(calEval.stationId, "S3");
   assert.equal(calEval.flowDiff, 2.7);
   assert.equal(calEval.severity, "high");
+
+  // No-flow guard: never mistake 0 L/min across S1..S4 (or pump OFF dry pipe) for a leak
+  const noFlowMislabelledLeak = makeRow({
+    status: "Leak",
+    localization: "Zone4",
+    flow1: 0,
+    flow2: 0,
+    flow3: 0,
+    flow4: 0,
+    pressure1: 458,
+    pressure2: 464,
+    pressure3: 447,
+    pressure4: 469,
+    pump_status: "OFF",
+  });
+  const noFlowEval = evaluateFriendRowAnomaly(noFlowMislabelledLeak);
+  assert.notEqual(noFlowEval.kind, "leak");
+  assert.equal(noFlowEval.isNoFlow, true);
+  assert.equal(noFlowEval.zoneId, null);
+  assert.equal(noFlowEval.si, 0);
+  assert.equal(noFlowEval.flowDiff, 0);
 });
