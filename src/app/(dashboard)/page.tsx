@@ -2,11 +2,12 @@
 // src/app/(dashboard)/page.tsx
 // HydroNode SCADA Dashboard — Metro Pacific Water
 // Live-only mode: 4 zones, 4 junctions × 2 sensors (flow + pressure) = 8 sensors.
-// No simulation, no time machine, no architecture toggle.
+// Time Machine: replay calibrated preset scenarios or live DB history on the 3D canvas.
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { RigCanvas } from "@/components/rig/RigCanvas";
+import { RigTimeMachine } from "@/components/rig/RigTimeMachine";
 import { TelemetryChart } from "@/components/charts/TelemetryChart";
 import { Stat } from "@/components/ui/Stat";
 import { Badge } from "@/components/ui/Badge";
@@ -16,6 +17,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { SourcePanel } from "@/components/source/SourcePanel";
 import type { StationId, ZoneId } from "@/config/rig";
 import type { PumpStatus } from "@/types";
+import type { PlaybackFrame } from "@/lib/incidentPlayback";
 import { ZONES, STATION_IDS } from "@/config/rig";
 import {
   AlertTriangle,
@@ -31,6 +33,7 @@ import {
   Waves,
   ChevronRight,
   ChevronLeft,
+  Clock,
 } from "lucide-react";
 
 const PUMP_STATUS_META: Record<
@@ -81,7 +84,6 @@ const PUMP_STATUS_META: Record<
 export default function NetworkOverviewPage() {
   const kpi = useHydroStore((s) => s.kpi);
   const pumpStatus: PumpStatus = kpi?.pumpStatus ?? "off";
-  const pumpMeta = PUMP_STATUS_META[pumpStatus];
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
   const { getBaseline } = useSettings();
@@ -90,17 +92,53 @@ export default function NetworkOverviewPage() {
   const [selectedStation, setSelectedStation] = useState<StationId>("S1");
   const [canvasStation, setCanvasStation] = useState<StationId | null>(null);
 
-  const activeAlerts = alerts.filter((a) => a.status === "active");
+  // ── Time Machine state (Live DB Replay only) ──────────────────────────────
+  const [timeMachineActive, setTimeMachineActive] = useState(false);
+  const [tmFrame, setTmFrame] = useState<PlaybackFrame | null>(null);
+
+  const handleTmFrame = useCallback((frame: PlaybackFrame | null) => {
+    setTmFrame(frame);
+  }, []);
+
+  const handleTmExit = useCallback(() => {
+    setTimeMachineActive(false);
+    setTmFrame(null);
+  }, []);
+
+  const isReplayActive = timeMachineActive && tmFrame != null;
+  const effectivePumpStatus: PumpStatus = isReplayActive
+    ? tmFrame.pumpOn
+      ? "running"
+      : "off"
+    : pumpStatus;
+  const pumpMeta = PUMP_STATUS_META[effectivePumpStatus];
+
+  const effectiveStations = isReplayActive
+    ? STATION_IDS.map((sid, idx) => ({
+        id: sid,
+        name: `Station ${sid}`,
+        status: (tmFrame.alerts.some((a) => a.stationId === sid) ? "alert" : "online") as "online" | "alert",
+        samplingMode: "normal" as const,
+        lastSeen: null,
+        latestFlow: tmFrame.flow[idx] ?? 0,
+        latestPressure: tmFrame.pressure[idx] ?? 0,
+        latestVibration: null,
+      }))
+    : stations;
+
+  const activeAlerts = isReplayActive
+    ? tmFrame.alerts
+    : alerts.filter((a) => a.status === "active");
   const totalZones = 4;
   const totalSensors = 8; // 4 junctions × 2 (flow + pressure)
 
   const selectedZoneData = selectedZone ? ZONES.find((z) => z.id === selectedZone) : null;
   const zoneAlert = selectedZone ? activeAlerts.find((a) => a.zoneId === selectedZone) : null;
 
-  const activeStation = stations.find((s) => s.id === selectedStation) ?? stations[0];
+  const activeStation = effectiveStations.find((s) => s.id === selectedStation) ?? effectiveStations[0];
   const stationIdx = STATION_IDS.indexOf(selectedStation);
   const nextStation = stationIdx < STATION_IDS.length - 1
-    ? stations.find((s) => s.id === STATION_IDS[stationIdx + 1])
+    ? effectiveStations.find((s) => s.id === STATION_IDS[stationIdx + 1])
     : null;
   const flowDelta = activeStation && nextStation
     && activeStation.latestFlow != null && nextStation.latestFlow != null
@@ -139,12 +177,19 @@ export default function NetworkOverviewPage() {
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2 mb-1.5">
-              {/* Live badge */}
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border"
-                style={{ background: "#F3FFD1", color: "#4a7a00", borderColor: "#A6CE38" }}>
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#A6CE38" }} />
-                SCADA LIVE
-              </span>
+              {/* Live vs Time Machine badge */}
+              {isReplayActive ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                  TIME MACHINE · {tmFrame.label}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border"
+                  style={{ background: "#F3FFD1", color: "#4a7a00", borderColor: "#A6CE38" }}>
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#A6CE38" }} />
+                  SCADA LIVE
+                </span>
+              )}
               {/* Live pump state badge */}
               <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${pumpMeta.pillClass}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${pumpMeta.dotClass}`} />
@@ -198,37 +243,42 @@ export default function NetworkOverviewPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat
           label="Active Alerts"
-          value={kpi?.activeAlerts ?? 0}
-          tone={(kpi?.activeAlerts ?? 0) > 0 ? "critical" : "success"}
+          value={isReplayActive ? activeAlerts.length : (kpi?.activeAlerts ?? 0)}
+          tone={(isReplayActive ? activeAlerts.length : (kpi?.activeAlerts ?? 0)) > 0 ? "critical" : "success"}
           icon={<AlertTriangle className="w-4 h-4" />}
           trend={{
-            direction: (kpi?.activeAlerts ?? 0) > 0 ? "up" : "flat",
-            label: (kpi?.activeAlerts ?? 0) > 0 ? "Immediate triage required" : `All ${totalZones} zones nominal`,
+            direction: (isReplayActive ? activeAlerts.length : (kpi?.activeAlerts ?? 0)) > 0 ? "up" : "flat",
+            label: (isReplayActive ? activeAlerts.length : (kpi?.activeAlerts ?? 0)) > 0 ? "Immediate triage required" : `All ${totalZones} zones nominal`,
           }}
         />
         <Stat
           label="Network Integrity"
-          value={`${Math.min(totalZones, kpi?.zonesHealthy ?? totalZones)} / ${totalZones}`}
+          value={`${isReplayActive ? Math.max(0, totalZones - activeAlerts.length) : Math.min(totalZones, kpi?.zonesHealthy ?? totalZones)} / ${totalZones}`}
           tone="success"
           icon={<ShieldCheck className="w-4 h-4" />}
-          trend={{ direction: (kpi?.zonesHealthy ?? 0) === totalZones ? "up" : "flat", label: (kpi?.zonesHealthy ?? 0) === totalZones ? "All zones at nominal pressure" : `${kpi?.zonesHealthy ?? 0}/${totalZones} zones nominal` }}
+          trend={{
+            direction: (isReplayActive ? activeAlerts.length === 0 : (kpi?.zonesHealthy ?? 0) === totalZones) ? "up" : "flat",
+            label: (isReplayActive ? activeAlerts.length === 0 : (kpi?.zonesHealthy ?? 0) === totalZones)
+              ? "All zones at nominal pressure"
+              : `${isReplayActive ? Math.max(0, totalZones - activeAlerts.length) : (kpi?.zonesHealthy ?? 0)}/${totalZones} zones nominal`,
+          }}
         />
         <Stat
           label="Active Stations"
-          value={`${Math.min(STATION_IDS.length, kpi?.stationsOnline ?? STATION_IDS.length)} / ${STATION_IDS.length}`}
+          value={`${isReplayActive ? (tmFrame.pumpOn ? totalZones : 0) : Math.min(STATION_IDS.length, kpi?.stationsOnline ?? STATION_IDS.length)} / ${STATION_IDS.length}`}
           tone="default"
           icon={<Radio className="w-4 h-4" />}
-          trend={{ direction: "up", label: `${totalSensors} sensors online (4×2 Bi-Modal)` }}
+          trend={{ direction: "up", label: isReplayActive ? `Time Machine frame (${tmFrame.label})` : `${totalSensors} sensors online (4×2 Bi-Modal)` }}
         />
         <Stat
           label="Fluid Loss Rate"
-          value={kpi?.estimatedWaterLoss?.toFixed(1) ?? "0.0"}
+          value={(isReplayActive ? tmFrame.flowDelta : (kpi?.estimatedWaterLoss ?? 0)).toFixed(1)}
           unit="L/min"
-          tone={(kpi?.estimatedWaterLoss ?? 0) > 0 ? "critical" : "default"}
+          tone={(isReplayActive ? tmFrame.flowDelta : (kpi?.estimatedWaterLoss ?? 0)) > 0.5 ? "critical" : "default"}
           icon={<Droplets className="w-4 h-4" />}
           trend={{
-            direction: (kpi?.estimatedWaterLoss ?? 0) > 0 ? "up" : "flat",
-            label: (kpi?.estimatedWaterLoss ?? 0) > 0 ? "Leak delta detected" : "Zero fluid loss recorded",
+            direction: (isReplayActive ? tmFrame.flowDelta : (kpi?.estimatedWaterLoss ?? 0)) > 0.5 ? "up" : "flat",
+            label: (isReplayActive ? tmFrame.flowDelta : (kpi?.estimatedWaterLoss ?? 0)) > 0.5 ? "Leak delta detected" : "Zero fluid loss recorded",
           }}
         />
       </div>
@@ -265,6 +315,32 @@ export default function NetworkOverviewPage() {
           subtitle={`Real-time 3D physical rig · 4 sensor stations · 4 zones monitored (4×2 Bi-Modal — Flow + Pressure)`}
           action={
             <div className="flex items-center gap-2">
+              {/* Time Machine toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  setTimeMachineActive((p) => !p);
+                  if (timeMachineActive) setTmFrame(null);
+                }}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all cursor-pointer"
+                style={
+                  timeMachineActive
+                    ? {
+                        background: "linear-gradient(135deg,#0d2033,#0a2a40)",
+                        color: "#67e8f9",
+                        borderColor: "rgba(103,232,249,0.4)",
+                        boxShadow: "0 0 10px rgba(103,232,249,0.2)",
+                      }
+                    : {
+                        background: "#F4FAFD",
+                        color: "#2D5A7A",
+                        borderColor: "#DFF5FF",
+                      }
+                }
+              >
+                <Clock className="w-3 h-3" />
+                {timeMachineActive ? "⏹ Exit Time Machine" : "⏮ Time Machine"}
+              </button>
               {/* Legend pills */}
               <div className="hidden sm:flex items-center gap-2 text-[10px]">
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full" style={{ background: "#DFF5FF", color: "#0076A0" }}>
@@ -288,6 +364,12 @@ export default function NetworkOverviewPage() {
               setCanvasStation(id);
               if (id) setSelectedStation(id);
             }}
+            overrideFlow={isReplayActive ? tmFrame.flow : null}
+            overridePressure={isReplayActive ? tmFrame.pressure : null}
+            overridePumpOn={isReplayActive ? tmFrame.pumpOn : null}
+            overrideAlerts={isReplayActive ? tmFrame.alerts : null}
+            isPlaybackMode={isReplayActive}
+            playbackLabel={isReplayActive ? tmFrame.label : null}
           />
 
           {/* Selected Zone Side Drawer */}
@@ -361,6 +443,13 @@ export default function NetworkOverviewPage() {
         </div>
       </Card>
 
+      {/* ─── Time Machine Panel (Live DB Replay) ─── */}
+      {timeMachineActive && (
+        <div>
+          <RigTimeMachine onFrameUpdate={handleTmFrame} onExit={handleTmExit} />
+        </div>
+      )}
+
       {/* ─── 5. Active Pipeline Zones Table ─── */}
       <Card hasFlutedFooter>
         <CardHeader
@@ -388,8 +477,8 @@ export default function NetworkOverviewPage() {
             <tbody>
               {ZONES.map((zone, idx) => {
                 const alert = activeAlerts.find((a) => a.zoneId === zone.id);
-                const stA = stations.find((s) => s.id === zone.stationA);
-                const stB = stations.find((s) => s.id === zone.stationB);
+                const stA = effectiveStations.find((s) => s.id === zone.stationA);
+                const stB = effectiveStations.find((s) => s.id === zone.stationB);
                 const isSelected = selectedZone === zone.id;
                 const iconStyle = zoneIconStyles[idx % zoneIconStyles.length];
                 const hasAlert = Boolean(alert);
@@ -621,7 +710,7 @@ export default function NetworkOverviewPage() {
             title={
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4" style={{ color: "#019FD7" }} />
-                <span>Station {selectedStation} Live</span>
+                <span>Station {selectedStation} {isReplayActive ? "Replay" : "Live"}</span>
               </div>
             }
             subtitle="Flow + Pressure sensor readings"

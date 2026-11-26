@@ -1,9 +1,9 @@
 // src/app/api/source/route.ts
 // GET /api/source
 // Returns latest telemetry, pump state & transition history, and recent series from
-// the friend's ESP32 Neon DB (sensor_data). Returns ok:true + empty:true when 0 rows exist.
+// the friend's ESP32 Neon DB (sensor_data). Supports optional `?limit=N` (1..500) for Time Machine replay.
 
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { hasFriendDbConfigured } from "@/db/friendClient";
 import { queryFriendSourceOverview } from "@/lib/friendSource";
 import {
@@ -15,12 +15,13 @@ import {
   rowPressuresRaw,
 } from "@/lib/friendTelemetry";
 
-const HISTORY_ROWS = 60;
+const DEFAULT_HISTORY_ROWS = 60;
+const MAX_HISTORY_ROWS = 500;
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   if (!hasFriendDbConfigured()) {
     return NextResponse.json(
       { ok: false, error: "FRIEND_DATABASE_URL is not configured" },
@@ -28,9 +29,15 @@ export async function GET() {
     );
   }
 
+  const rawLimit = Number(req.nextUrl.searchParams.get("limit"));
+  const historyLimit =
+    Number.isFinite(rawLimit) && rawLimit > 0
+      ? Math.min(MAX_HISTORY_ROWS, Math.floor(rawLimit))
+      : DEFAULT_HISTORY_ROWS;
+
   try {
     const { totalRows, latest, chronoHistory, pumpTransitions, pumpState } =
-      await queryFriendSourceOverview(HISTORY_ROWS);
+      await queryFriendSourceOverview(historyLimit);
 
     if (!latest) {
       return NextResponse.json(
@@ -41,6 +48,7 @@ export async function GET() {
           pumpState,
           pumpTransitions: [],
           series: [],
+          history: [],
           rowCount: 0,
           totalRows: 0,
         },
@@ -80,6 +88,7 @@ export async function GET() {
         pumpState,
         pumpTransitions,
         series,
+        history: chronoHistory,
         rowCount: chronoHistory.length,
         totalRows,
       },

@@ -35,8 +35,10 @@ import {
 } from "three-stdlib";
 import * as THREE from "three";
 import type { StationId, ZoneId } from "@/config/rig";
+import type { LiveAlert } from "@/types";
 import { STATION_IDS, SENSOR_3D_NODES, ZONES } from "@/config/rig";
 import { useHydroStore } from "@/store/hydroStore";
+import { PipeFlowWater } from "./PipeFlowWater";
 import {
   Droplets,
   Gauge,
@@ -81,17 +83,37 @@ class CanvasErrorBoundary extends Component<
   }
 }
 
-// ─── GLB Model (clones scene once so remounts never double-scale) ────────────
+// ─── GLB Model (clones scene once; blue PVC pipes made translucent sight-glass) ─
 function PipelineModel() {
   const { scene } = useGLTF("/pipeline.glb");
 
-  const { clonedScene, scale, offset } = useMemo(() => {
+  const { clonedScene, scale, offset, clonedMaterials } = useMemo(() => {
     const clone = scene.clone(true);
+    const createdMats: THREE.Material[] = [];
+
     clone.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+
+        // Make straight blue PVC pipes translucent optical blue sight-glass
+        // so flowing water & pressure levels remain visible inside the pipeline.
+        if (mesh.name.includes("Blue_PVC_Pipes")) {
+          const baseMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+          if (baseMat) {
+            const mat = baseMat.clone() as THREE.MeshStandardMaterial;
+            mat.transparent = true;
+            mat.opacity = 0.36;
+            mat.depthWrite = false;
+            mat.roughness = 0.16;
+            mat.metalness = 0.08;
+            mat.side = THREE.DoubleSide;
+            mesh.material = mat;
+            mesh.renderOrder = 2;
+            createdMats.push(mat);
+          }
+        }
       }
     });
 
@@ -105,8 +127,15 @@ function PipelineModel() {
       clonedScene: clone,
       scale: s,
       offset: [-center.x, -box.min.y, -center.z] as [number, number, number],
+      clonedMaterials: createdMats,
     };
   }, [scene]);
+
+  useEffect(() => {
+    return () => {
+      for (const m of clonedMaterials) m.dispose();
+    };
+  }, [clonedMaterials]);
 
   // Rotate +90 deg around Y so the 4 serpentine legs run left -> right (S1 -> S4)
   return (
@@ -1321,6 +1350,18 @@ interface Pipeline3DCanvasProps {
   selectedStationId?: StationId | null;
   selectedZoneId?: ZoneId | null;
   onSelectStation?: (id: StationId | null) => void;
+  /** Optional flow override from Time Machine replay (L/min per station) */
+  overrideFlow?: [number, number, number, number] | null;
+  /** Optional pressure override from Time Machine replay (bar per station) */
+  overridePressure?: [number, number, number, number] | null;
+  /** Optional pump state override from Time Machine */
+  overridePumpOn?: boolean | null;
+  /** Optional active alerts override from Time Machine */
+  overrideAlerts?: LiveAlert[] | null;
+  /** True while Time Machine replay controls the viewport */
+  isPlaybackMode?: boolean;
+  /** Current Time Machine frame timestamp / note badge */
+  playbackLabel?: string | null;
 }
 
 const emptySubscribe = () => () => { };
@@ -1332,6 +1373,12 @@ export function Pipeline3DCanvas({
   selectedStationId,
   selectedZoneId,
   onSelectStation,
+  overrideFlow,
+  overridePressure,
+  overridePumpOn,
+  overrideAlerts,
+  isPlaybackMode = false,
+  playbackLabel,
 }: Pipeline3DCanvasProps) {
   const mounted = useIsClient();
   const [hoveredStation, setHoveredStation] = useState<StationId | null>(null);
@@ -1342,7 +1389,9 @@ export function Pipeline3DCanvas({
   const glideActiveRef = useRef(false);
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
+  const kpi = useHydroStore((s) => s.kpi);
   const activeAlerts = alerts.filter((a) => a.status === "active");
+  const displayedAlerts = isPlaybackMode && overrideAlerts != null ? overrideAlerts : activeAlerts;
 
   const activeStation =
     selectedStationId !== undefined ? selectedStationId : localPinnedStation;
@@ -1371,6 +1420,36 @@ export function Pipeline3DCanvas({
   const hasLiveReadings = stations.some(
     (s) => s.latestFlow != null || s.latestPressure != null
   );
+
+  // ── Flow & Pressure values driving internal pipe water + hologram overlays ──
+  const liveFlow: [number, number, number, number] = [
+    stations.find((s) => s.id === "S1")?.latestFlow ?? 0,
+    stations.find((s) => s.id === "S2")?.latestFlow ?? 0,
+    stations.find((s) => s.id === "S3")?.latestFlow ?? 0,
+    stations.find((s) => s.id === "S4")?.latestFlow ?? 0,
+  ];
+  const livePressure: [number, number, number, number] = [
+    stations.find((s) => s.id === "S1")?.latestPressure ?? 0,
+    stations.find((s) => s.id === "S2")?.latestPressure ?? 0,
+    stations.find((s) => s.id === "S3")?.latestPressure ?? 0,
+    stations.find((s) => s.id === "S4")?.latestPressure ?? 0,
+  ];
+  const waterFlow: [number, number, number, number] =
+    isPlaybackMode && overrideFlow ? overrideFlow : liveFlow;
+  const waterPressure: [number, number, number, number] =
+    isPlaybackMode && overridePressure ? overridePressure : livePressure;
+  const livePumpOn = kpi?.pumpStatus === "running" || kpi?.pumpStatus === "starting";
+  const waterPumpOn: boolean =
+    isPlaybackMode && overridePumpOn != null ? overridePumpOn : livePumpOn;
+  const hasWaterFlow = waterFlow.some((f) => f > 0.05) || waterPumpOn;
+
+  const legAlerts: [boolean, boolean, boolean, boolean] = STATION_IDS.map((sid) => {
+    return displayedAlerts.some((a) => {
+      if (a.stationId === sid) return true;
+      const zone = ZONES.find((z) => z.id === a.zoneId);
+      return zone != null && zone.stationB === sid;
+    });
+  }) as [boolean, boolean, boolean, boolean];
 
   const handleResetView = () => {
     clearPinnedStation();
@@ -1500,7 +1579,7 @@ export function Pipeline3DCanvas({
           })}
         </div>
 
-        {activeAlerts.slice(0, 2).map((alert) => (
+        {displayedAlerts.slice(0, 2).map((alert) => (
           <ZoneAlertBanner
             key={alert.id}
             zoneId={(alert.zoneId ?? 1) as ZoneId}
@@ -1571,13 +1650,33 @@ export function Pipeline3DCanvas({
             display: "flex",
             alignItems: "center",
             gap: 6,
-            background: hasLiveReadings ? "#F3FFD1" : "#F4FAFD",
-            border: `1px solid ${hasLiveReadings ? "#A6CE38" : "#C8E5F2"}`,
+            background: isPlaybackMode
+              ? "#fef3c7"
+              : hasWaterFlow
+                ? "#dff5ff"
+                : hasLiveReadings
+                  ? "#F3FFD1"
+                  : "#F4FAFD",
+            border: `1px solid ${
+              isPlaybackMode
+                ? "#f59e0b"
+                : hasWaterFlow
+                  ? "#38bdf8"
+                  : hasLiveReadings
+                    ? "#A6CE38"
+                    : "#C8E5F2"
+            }`,
             borderRadius: 20,
             padding: "4px 10px",
             fontSize: 10,
             fontWeight: 700,
-            color: hasLiveReadings ? "#4a7a00" : "#2D5A7A",
+            color: isPlaybackMode
+              ? "#92400e"
+              : hasWaterFlow
+                ? "#0369a1"
+                : hasLiveReadings
+                  ? "#4a7a00"
+                  : "#2D5A7A",
           }}
         >
           <Wifi style={{ width: 10, height: 10 }} />
@@ -1585,13 +1684,25 @@ export function Pipeline3DCanvas({
             style={{
               width: 6,
               height: 6,
-              background: hasLiveReadings ? "#A6CE38" : "#019FD7",
+              background: isPlaybackMode
+                ? "#d97706"
+                : hasWaterFlow
+                  ? "#0284c7"
+                  : hasLiveReadings
+                    ? "#A6CE38"
+                    : "#019FD7",
               borderRadius: "50%",
               display: "inline-block",
               animation: "pulse 1.5s infinite",
             }}
           />
-          {hasLiveReadings ? "LIVE ESP32" : "ESP32 READY"}
+          {isPlaybackMode
+            ? `REPLAY${playbackLabel ? ` · ${playbackLabel}` : ""}`
+            : hasWaterFlow
+              ? "FLOWING · LIVE"
+              : hasLiveReadings
+                ? "LIVE ESP32"
+                : "ESP32 READY"}
         </div>
       </div>
 
@@ -1700,24 +1811,45 @@ export function Pipeline3DCanvas({
           >
             <PipelineModel />
 
-            {STATION_IDS.map((sid) => {
+            {/* ── Internal Water Volume & Flow Animation (based on L/min + bar pressure) ── */}
+            <PipeFlowWater
+              flow={waterFlow}
+              pressure={waterPressure}
+              pumpOn={waterPumpOn}
+              legAlerts={legAlerts}
+            />
+
+            {STATION_IDS.map((sid, idx) => {
               const stationData = stations.find((s) => s.id === sid);
-              const stationAlert = activeAlerts.find((a) => a.stationId === sid);
+              const stationAlert = displayedAlerts.find((a) => a.stationId === sid);
               const nodeZoneId = SENSOR_3D_NODES[sid].zoneId;
               const zone = ZONES.find((z) => z.id === nodeZoneId);
               const zoneAlert = zone
-                ? activeAlerts.find((a) => a.zoneId === zone.id)
+                ? displayedAlerts.find((a) => a.zoneId === zone.id)
                 : undefined;
-              const hasAlert = !!(stationAlert || zoneAlert);
+              // Match alert strictly to upstream/target station in playback mode so localized HUD shines accurately
+              const matchedAlert = isPlaybackMode
+                ? stationAlert
+                : stationAlert ?? zoneAlert;
+              const hasAlert = Boolean(matchedAlert);
               const isZoneHighlighted =
                 selectedZoneId != null && nodeZoneId === selectedZoneId;
+
+              const nodeFlow =
+                isPlaybackMode && overrideFlow
+                  ? overrideFlow[idx]
+                  : (stationData?.latestFlow ?? null);
+              const nodePressure =
+                isPlaybackMode && overridePressure
+                  ? overridePressure[idx]
+                  : (stationData?.latestPressure ?? null);
 
               return (
                 <SensorNodeOverlay
                   key={sid}
                   stationId={sid}
-                  flow={stationData?.latestFlow ?? null}
-                  pressure={stationData?.latestPressure ?? null}
+                  flow={nodeFlow}
+                  pressure={nodePressure}
                   status={hasAlert ? "alert" : "normal"}
                   isHovered={hoveredStation === sid}
                   isSelected={activeStation === sid || isZoneHighlighted}
@@ -1727,7 +1859,7 @@ export function Pipeline3DCanvas({
                     )
                   }
                   onClick={() => selectOrToggleStation(sid)}
-                  activeAlert={stationAlert ?? zoneAlert}
+                  activeAlert={matchedAlert}
                 />
               );
             })}
