@@ -1,10 +1,9 @@
 "use client";
 // src/hooks/usePolling.ts
-// Polls the API and updates Zustand store.
-// Intervals tuned for 30s ESP32 ingest cycle:
-//   stations + kpi → 15s (no need to poll faster than half the ingest interval)
-//   alerts         → 8s  (alert state can change without a full ingest cycle)
-// Live-only mode: no simulation injection, alarm driven purely by DB alerts.
+// Polls backend endpoints and synchronizes Zustand store.
+// Tuned for the friend's ~3s ESP32 ingest cadence into sensor_data:
+//   stations + kpi + alerts -> 5s refresh (single fast Neon HTTP query each).
+// Live-only mode: no simulation injection.
 
 import useSWR from "swr";
 import { useEffect } from "react";
@@ -35,35 +34,35 @@ export function usePolling() {
   }, []);
 
   const { data: stations } = useSWR<LiveStation[]>("/api/stations", fetcher, {
-    refreshInterval: 15000,
-    revalidateOnFocus: false,
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
     dedupingInterval: 2000,
   });
 
   const { data: alerts } = useSWR<LiveAlert[]>("/api/alerts", fetcher, {
-    refreshInterval: 8000,
-    revalidateOnFocus: false,
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
     dedupingInterval: 2000,
   });
 
   const { data: kpi } = useSWR<KpiData>("/api/kpi", fetcher, {
-    refreshInterval: 15000,
-    revalidateOnFocus: false,
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
     dedupingInterval: 2000,
   });
 
   useEffect(() => {
-    if (stations && stations.length > 0) {
+    if (Array.isArray(stations) && stations.length > 0) {
       setStations(stations);
       markBatchReceived();
     }
   }, [stations, setStations, markBatchReceived]);
 
   useEffect(() => {
-    if (alerts) setAlerts(alerts); // alarm activation handled inside setAlerts
+    if (Array.isArray(alerts)) setAlerts(alerts);
   }, [alerts, setAlerts]);
 
   useEffect(() => {
-    if (kpi) setKpi(kpi);
+    if (kpi && "activeAlerts" in kpi) setKpi(kpi);
   }, [kpi, setKpi]);
 }

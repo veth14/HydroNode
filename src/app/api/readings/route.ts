@@ -1,11 +1,16 @@
 // src/app/api/readings/route.ts
 // GET /api/readings?stationId=S1&range=1h|24h|7d|30d
-// Live-only: returns actual readings from PostgreSQL (no synthetic fallback).
+// Reads from friend's Neon DB (sensor_data) when FRIEND_DATABASE_URL is configured.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { readingsRaw, readingsMinute } from "@/db/schema";
 import { desc, eq, and, gte } from "drizzle-orm";
+import { STATION_IDS, type StationId } from "@/config/rig";
+import { hasFriendDbConfigured } from "@/db/friendClient";
+import { queryFriendReadings } from "@/lib/friendSource";
+
+export const dynamic = "force-dynamic";
 
 const RANGE_MS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -14,7 +19,6 @@ const RANGE_MS: Record<string, number> = {
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
 
-// Supports up to 5s granularity across 1h (720 pts) without full-table scans
 const RAW_LIMIT = 720;
 
 export async function GET(req: NextRequest) {
@@ -27,10 +31,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "stationId required" }, { status: 400 });
   }
 
+  const headers = { "Cache-Control": "no-store" };
+
+  if (hasFriendDbConfigured()) {
+    if (!STATION_IDS.includes(stationId as StationId)) {
+      return NextResponse.json([], { headers });
+    }
+    try {
+      const data = await queryFriendReadings(stationId as StationId, range, raw);
+      return NextResponse.json(data, { headers });
+    } catch (err) {
+      console.warn("Friend readings query error:", err);
+      return NextResponse.json([], { headers });
+    }
+  }
+
   const ms = RANGE_MS[range] ?? RANGE_MS["1h"];
   const since = new Date(Date.now() - ms);
-
-  const headers = { "Cache-Control": "no-store" };
 
   try {
     if (raw) {

@@ -1,17 +1,33 @@
 // src/app/api/alerts/route.ts
-// GET /api/alerts – returns alerts (filterable by status/severity/zone), capped at 100 rows.
-// DELETE /api/alerts – resolves all active alerts and normalizes station/zone statuses.
+// GET /api/alerts – returns anomaly/leak events from friend's sensor_data (when configured)
+// or legacy HydroNode alerts table.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { alerts, stations, zones } from "@/db/schema";
 import { desc, eq, and } from "drizzle-orm";
+import { hasFriendDbConfigured } from "@/db/friendClient";
+import { queryFriendAlerts } from "@/lib/friendSource";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const severity = searchParams.get("severity");
   const zoneId = searchParams.get("zoneId");
+
+  if (hasFriendDbConfigured()) {
+    try {
+      const friendAlerts = await queryFriendAlerts({ status, severity, zoneId });
+      return NextResponse.json(friendAlerts, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    } catch (err) {
+      console.error("[/api/alerts] Friend DB error:", err);
+      return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+    }
+  }
 
   const conditions = [];
   if (status) conditions.push(eq(alerts.status, status));
@@ -35,6 +51,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (hasFriendDbConfigured()) {
+    // Source DB sensor_data is read-only and owned by the ESP32/Flask uploader
+    return NextResponse.json({
+      ok: true,
+      readOnlySource: true,
+      message: "Source database sensor_data is read-only; active status clears automatically when readings return to Normal.",
+    });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const purge = searchParams.get("purge") === "true";
@@ -42,14 +67,12 @@ export async function DELETE(req: NextRequest) {
     if (purge) {
       await db.delete(alerts);
     } else {
-      // Mark all active alerts as resolved
       await db
         .update(alerts)
         .set({ status: "resolved" })
         .where(eq(alerts.status, "active"));
     }
 
-    // Reset stations + zones in parallel
     await Promise.all([
       db.update(stations).set({ status: "online", samplingMode: "normal" }),
       db.update(zones).set({ status: "healthy" }),

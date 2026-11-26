@@ -563,7 +563,7 @@ export default function EvaluationPage() {
                     <tr key={inc.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="p-2.5 font-semibold text-slate-800">#{inc.id}</td>
                       <td className="p-2.5 font-sans text-slate-600 text-[11px]">
-                        {new Date(inc.ts).toLocaleString()}
+                        {new Date(inc.ts).toLocaleString("en-PH", { timeZone: "Asia/Manila" })} PHT
                       </td>
                       <td className="p-2.5">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
@@ -628,7 +628,7 @@ export default function EvaluationPage() {
               </span>
               {summary?.lastIngestAt && (
                 <span className="font-mono text-slate-400">
-                  Last ingest: {new Date(summary.lastIngestAt).toLocaleTimeString()}
+                  Last ingest: {new Date(summary.lastIngestAt).toLocaleTimeString("en-PH", { timeZone: "Asia/Manila" })} PHT
                 </span>
               )}
             </div>

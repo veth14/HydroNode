@@ -1,16 +1,33 @@
 // src/app/api/kpi/route.ts
-// GET /api/kpi — lightweight O(1) KPI summary for S1–S4 in a single db.batch() round-trip.
+// GET /api/kpi — lightweight KPI summary for S1–S4 + pump ON/OFF detection.
+// Reads from friend's Neon DB (sensor_data) when FRIEND_DATABASE_URL is configured.
 
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { stations, zones, alerts, settings } from "@/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { STATION_IDS, ZONE_IDS } from "@/config/rig";
+import { hasFriendDbConfigured } from "@/db/friendClient";
+import { queryFriendKpi } from "@/lib/friendSource";
 import type { PumpStatus } from "@/types";
 
-const PUMP_STALE_MS = 180_000; // Treat pump as off if no ESP32 update for 3 minutes
+export const dynamic = "force-dynamic";
+const PUMP_STALE_MS = 180_000;
 
 export async function GET() {
+  if (hasFriendDbConfigured()) {
+    try {
+      const kpi = await queryFriendKpi();
+      return NextResponse.json(kpi, { headers: { "Cache-Control": "no-store" } });
+    } catch (err) {
+      console.error("[/api/kpi] Friend DB error:", err);
+      return NextResponse.json(
+        { error: "Failed to query source database KPI" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+  }
+
   const [stationRows, zoneRows, alertStats, pumpRows] = (await db.batch([
     db
       .select({

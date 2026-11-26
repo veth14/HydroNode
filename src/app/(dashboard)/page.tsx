@@ -49,7 +49,7 @@ const PUMP_STATUS_META: Record<
   off: {
     headerLabel: "PUMP OFF",
     cardLabel: "Off",
-    subtitle: "400–1000 L/H · IP68 · ½″ BSP",
+    subtitle: "Synced from sensor_data.pump_status",
     pillClass: "bg-slate-100 text-slate-600 border-slate-200",
     dotClass: "bg-slate-400",
     cardGrad: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
@@ -67,9 +67,9 @@ const PUMP_STATUS_META: Record<
     iconClass: "text-amber-600",
   },
   running: {
-    headerLabel: "PUMP RUNNING",
-    cardLabel: "Running",
-    subtitle: "400–1000 L/H · IP68 · ½″ BSP",
+    headerLabel: "PUMP ON",
+    cardLabel: "ON",
+    subtitle: "Synced from sensor_data.pump_status",
     pillClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
     dotClass: "bg-emerald-500 animate-pulse",
     cardGrad: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
@@ -108,7 +108,10 @@ export default function NetworkOverviewPage() {
     : 0;
 
   const formattedDate = new Intl.DateTimeFormat("en-US", {
-    day: "numeric", month: "long", year: "numeric",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Manila",
   }).format(new Date());
 
   const zoneIconStyles = [
@@ -147,6 +150,11 @@ export default function NetworkOverviewPage() {
                 <span className={`w-1.5 h-1.5 rounded-full ${pumpMeta.dotClass}`} />
                 {pumpMeta.headerLabel}
               </span>
+              {kpi?.isStale && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                  DB IDLE
+                </span>
+              )}
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full"
                 style={{ background: "#F4FAFD", color: "#2D5A7A", border: "1px solid #DFF5FF" }}>
                 <Calendar className="w-3 h-3" style={{ color: "#819FD7" }} />
@@ -234,7 +242,7 @@ export default function NetworkOverviewPage() {
               ESP32 Live Feed
             </span>
           }
-          subtitle="Direct telemetry from sensor_data · auto-refreshes every 5 s · pump ON/OFF detection"
+          subtitle="Direct telemetry from sensor_data · auto-refreshes every 5 s · Manila PHT (UTC+8)"
         />
         <CardContent>
           <SourcePanel />
@@ -353,7 +361,7 @@ export default function NetworkOverviewPage() {
         </div>
       </Card>
 
-      {/* ─── 4. Active Pipeline Zones Table ─── */}
+      {/* ─── 5. Active Pipeline Zones Table ─── */}
       <Card hasFlutedFooter>
         <CardHeader
           title="Active Pipeline Zones"
@@ -462,7 +470,7 @@ export default function NetworkOverviewPage() {
         </div>
       </Card>
 
-      {/* ─── 5. Hardware Pods ─── */}
+      {/* ─── 6. Hardware Pods ─── */}
       <Card hasFlutedFooter>
         <CardHeader
           title="Hardware Transducer Pods"
@@ -602,7 +610,7 @@ export default function NetworkOverviewPage() {
         </CardContent>
       </Card>
 
-      {/* ─── 6. Live Telemetry Chart + Station Pod ─── */}
+      {/* ─── 7. Live Telemetry Chart + Station Pod ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <TelemetryChart initialStation={selectedStation} />

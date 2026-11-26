@@ -332,19 +332,19 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-600">readings_raw (2h rolling):</span>
+                  <span className="text-slate-600">sensor_data (raw telemetry rows):</span>
                   <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.rawRows.toLocaleString() ?? "0"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-600">readings_minute (permanent):</span>
+                  <span className="text-slate-600">minute buckets covered:</span>
                   <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.minuteRows.toLocaleString() ?? "0"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-600">alerts log:</span>
+                  <span className="text-slate-600">anomaly &amp; leak events:</span>
                   <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.alertRows.toLocaleString() ?? "0"}
                   </span>

@@ -23,7 +23,10 @@ export function TopBar() {
     typeof window !== "undefined" ? isAlertSoundMuted() : false
   );
   const alerts = useHydroStore((s) => s.alerts);
+  const kpi = useHydroStore((s) => s.kpi);
   const activeAlerts = alerts.filter((a) => a.status === "active").length;
+  const streamLive = Boolean(kpi && kpi.stationsOnline > 0 && !kpi.isStale);
+  const streamStale = Boolean(kpi?.lastUpdated && kpi.isStale);
 
   useEffect(() => {
     const handleMuteChange = (e: Event) => {
@@ -117,14 +120,19 @@ export function TopBar() {
         {/* Live Stream Status Indicator */}
         <div
           className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-xl"
-          style={{
-            background: "#F3FFD1",
-            color: "#4a7a00",
-            border: "1px solid #A6CE38",
-          }}
+          style={
+            streamLive
+              ? { background: "#F3FFD1", color: "#4a7a00", border: "1px solid #A6CE38" }
+              : streamStale
+              ? { background: "#fffbeb", color: "#92400e", border: "1px solid #fde68a" }
+              : { background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1" }
+          }
         >
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#A6CE38" }} />
-          <span>Stream Live</span>
+          <span
+            className={`w-2 h-2 rounded-full ${streamLive ? "animate-pulse" : ""}`}
+            style={{ background: streamLive ? "#A6CE38" : streamStale ? "#d97706" : "#94a3b8" }}
+          />
+          <span>{streamLive ? "Stream Live" : streamStale ? "Stream Stale" : "Awaiting Data"}</span>
         </div>
 
         {/* Audible Siren Toggle */}

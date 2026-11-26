@@ -1,11 +1,7 @@
 "use client";
 // src/components/source/SourcePanel.tsx
-// Live telemetry panel reading from the friend's ESP32 database via /api/source.
-// Auto-refreshes every 5 s. Shows:
-//  • Pump status badge (ON / OFF)
-//  • Latest flow + pressure per station (S1–S4)
-//  • Recent pump transition log (PHT)
-//  • Stale data warning when no new rows for >5 min
+// Live telemetry panel reading from the friend's ESP32 database (sensor_data) via /api/source.
+// Styled in Metro Pacific Water Light Mode; all timestamps shown in Manila PHT (UTC+8).
 
 import useSWR from "swr";
 import {
@@ -18,10 +14,18 @@ import {
   CheckCircle2,
   Clock,
   WifiOff,
+  Database,
 } from "lucide-react";
+import {
+  formatPhtDateTime,
+  formatPhtTime,
+  formatRelativeAge,
+} from "@/lib/friendTelemetry";
 
 interface SourceData {
   ok: boolean;
+  empty?: boolean;
+  error?: string;
   latest: {
     id: number;
     createdAt: string;
@@ -32,55 +36,71 @@ interface SourceData {
     status: string;
     localization: string;
     confidence: number;
+  } | null;
+  pumpState?: {
+    pumpStatus: "off" | "starting" | "running";
+    pumpStatusRaw: "ON" | "OFF";
+    pumpUpdatedAt: string | null;
+    lastPumpChangedAt: string | null;
+    isStale: boolean;
   };
-  pumpTransitions: { id: number; created_at: string; pump_status: "ON" | "OFF" }[];
+  pumpTransitions: {
+    id: number;
+    created_at: string;
+    pump_status: "ON" | "OFF";
+    prev_pump_status?: "ON" | "OFF" | null;
+  }[];
   rowCount: number;
+  totalRows?: number;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
-const STATIONS = ["S1", "S2", "S3", "S4"];
-const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+const STATIONS = ["S1", "S2", "S3", "S4"] as const;
 
 function statusMeta(s: string) {
-  if (s === "Normal") return { label: "Normal", color: "text-emerald-400", Icon: CheckCircle2 };
-  if (s === "LeakDetected") return { label: "Leak Detected", color: "text-red-400", Icon: AlertTriangle };
-  if (s === "SensorFailure") return { label: "Sensor Failure", color: "text-amber-400", Icon: AlertTriangle };
-  return { label: s, color: "text-slate-400", Icon: Activity };
-}
-
-function fmt(d: string) {
-  return new Date(d).toLocaleTimeString("en-PH", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Asia/Manila", // PHT = UTC+8
-  });
-}
-
-function relativeAge(d: string): { label: string; stale: boolean } {
-  const ms = Date.now() - new Date(d).getTime();
-  const stale = ms > STALE_THRESHOLD_MS;
-  if (ms < 60_000) return { label: `${Math.round(ms / 1000)}s ago`, stale };
-  if (ms < 3_600_000) return { label: `${Math.round(ms / 60_000)}m ago`, stale };
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.round((ms % 3_600_000) / 60_000);
-  return { label: `${h}h ${m}m ago`, stale };
+  const lower = s.toLowerCase();
+  if (lower === "normal" || lower === "monitoring") {
+    return {
+      label: s,
+      pillClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      Icon: CheckCircle2,
+    };
+  }
+  if (lower.includes("leak")) {
+    return {
+      label: s,
+      pillClass: "bg-red-50 text-red-700 border-red-200",
+      Icon: AlertTriangle,
+    };
+  }
+  if (lower.includes("failure") || lower.includes("error")) {
+    return {
+      label: s,
+      pillClass: "bg-amber-50 text-amber-800 border-amber-200",
+      Icon: AlertTriangle,
+    };
+  }
+  return {
+    label: s,
+    pillClass: "bg-slate-100 text-slate-700 border-slate-200",
+    Icon: Activity,
+  };
 }
 
 export function SourcePanel() {
   const { data, isLoading, error } = useSWR<SourceData>("/api/source", fetcher, {
     refreshInterval: 5000,
     revalidateOnFocus: true,
+    dedupingInterval: 2000,
   });
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/5 p-6 animate-pulse">
-        <div className="h-4 w-40 bg-white/10 rounded mb-4" />
-        <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-4 animate-pulse">
+        <div className="h-7 w-56 bg-slate-100 rounded-full" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-20 bg-white/5 rounded-lg" />
+            <div key={i} className="h-24 bg-slate-50 border border-slate-200/60 rounded-xl" />
           ))}
         </div>
       </div>
@@ -89,73 +109,95 @@ export function SourcePanel() {
 
   if (error || !data?.ok) {
     return (
-      <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6 text-red-400 text-sm">
-        ⚠ Could not reach the source database. Check FRIEND_DATABASE_URL.
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-xs flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <span>
+          {data?.error ?? "Could not reach the source database. Check FRIEND_DATABASE_URL."}
+        </span>
       </div>
     );
   }
 
-  const { latest, pumpTransitions } = data;
+  if (data.empty || !data.latest) {
+    return (
+      <div className="rounded-xl border border-dashed border-sky-200 bg-[#F4FAFD] p-5 text-center space-y-2">
+        <Database className="w-6 h-6 mx-auto text-[#019FD7] opacity-75" />
+        <div className="text-xs font-semibold text-[#0C2340]">
+          Connected to Neon <code>sensor_data</code> — waiting for incoming ESP32 rows
+        </div>
+        <p className="text-[11px] text-[#2D5A7A]">
+          The <code>sensor_data</code> table currently has <strong>0 rows</strong>. As soon as your friend&apos;s ESP32/server pushes telemetry (including pump ON/OFF state), live readings will appear here automatically.
+        </p>
+      </div>
+    );
+  }
+
+  const { latest, pumpTransitions, pumpState } = data;
   const statusInfo = statusMeta(latest.status);
   const StatusIcon = statusInfo.Icon;
   const pumpOn = latest.pumpStatus === "ON";
-  const age = relativeAge(latest.createdAt);
+  const pumpStarting = pumpState?.pumpStatus === "starting";
+  const age = formatRelativeAge(latest.createdAt);
 
   return (
     <div className="space-y-4">
-
-      {/* Stale data banner — shown when >5 min since last row */}
+      {/* Stale data banner */}
       {age.stale && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300">
-          <WifiOff className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+          <WifiOff className="w-4 h-4 shrink-0 text-amber-600" />
           <span>
-            <span className="font-semibold">No new data for {age.label}.</span>
-            {" "}The ESP32 or Flask server may be offline. Last row: #{latest.id} at {fmt(latest.createdAt)} PHT.
+            <strong className="font-semibold">No new rows for {age.label}.</strong>{" "}
+            Showing last recorded telemetry (#{latest.id} at{" "}
+            <span className="font-mono">{formatPhtDateTime(latest.createdAt)} PHT</span>).
           </span>
         </div>
       )}
 
-      {/* Header row: pump badge + system status + age */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Header row: pump badge + system status + timestamp */}
+      <div className="flex items-center gap-2.5 flex-wrap">
         <div
-          className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-semibold border ${
-            pumpOn
-              ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
-              : "bg-slate-500/15 border-slate-500/40 text-slate-400"
+          className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-bold border ${
+            pumpStarting
+              ? "bg-amber-50 border-amber-300 text-amber-800"
+              : pumpOn
+              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+              : "bg-slate-100 border-slate-200 text-slate-600"
           }`}
         >
-          {pumpOn ? <Zap className="w-4 h-4" /> : <ZapOff className="w-4 h-4" />}
-          Pump {latest.pumpStatus}
+          {pumpOn ? <Zap className="w-3.5 h-3.5" /> : <ZapOff className="w-3.5 h-3.5" />}
+          {pumpStarting ? "Pump STARTING" : `Pump ${latest.pumpStatus}`}
         </div>
 
-        <div className={`flex items-center gap-1.5 text-sm ${statusInfo.color}`}>
-          <StatusIcon className="w-4 h-4" />
-          {statusInfo.label}
-          {latest.status !== "Normal" && latest.localization !== "None" && (
-            <span className="text-xs opacity-70 ml-1">@ {latest.localization}</span>
+        <div
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border ${statusInfo.pillClass}`}
+        >
+          <StatusIcon className="w-3.5 h-3.5" />
+          <span>{statusInfo.label}</span>
+          {latest.localization !== "None" && (
+            <span className="opacity-80 font-mono">· {latest.localization}</span>
           )}
         </div>
 
-        {/* Relative age badge */}
-        <div
-          className={`flex items-center gap-1 text-xs ml-auto ${
-            age.stale ? "text-amber-400" : "text-slate-500"
-          }`}
-        >
-          <Clock className="w-3 h-3" />
-          <span>Updated {age.label}</span>
-        </div>
+        {latest.status.toLowerCase() !== "normal" && (
+          <span className="text-xs text-[#2D5A7A] font-medium">
+            Confidence:{" "}
+            <strong className="font-mono text-amber-700">{latest.confidence}%</strong>
+          </span>
+        )}
 
-        <span className="text-xs text-slate-500">
-          #{latest.id} ·{" "}
-          {new Date(latest.createdAt).toLocaleTimeString("en-PH", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            timeZone: "Asia/Manila",
-          })}{" "}
-          PHT
-        </span>
+        <div className="flex items-center gap-3 ml-auto text-xs text-[#2D5A7A]">
+          <span
+            className={`inline-flex items-center gap-1 font-medium ${
+              age.stale ? "text-amber-700" : "text-[#2D5A7A]"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            {age.label}
+          </span>
+          <span className="font-mono text-[11px] text-[#819FD7]">
+            #{latest.id} · {formatPhtTime(latest.createdAt)} PHT
+          </span>
+        </div>
       </div>
 
       {/* Station grid */}
@@ -163,65 +205,82 @@ export function SourcePanel() {
         {STATIONS.map((sid, i) => (
           <div
             key={sid}
-            className={`rounded-lg border p-3 space-y-2 ${
-              age.stale
-                ? "border-amber-500/20 bg-amber-500/5"
-                : "border-white/8 bg-white/5"
-            }`}
+            className="rounded-xl p-3.5 space-y-2 transition-colors"
+            style={{
+              background: age.stale ? "#fffbeb" : "#F4FAFD",
+              border: age.stale ? "1px solid #fde68a" : "1px solid #DFF5FF",
+            }}
           >
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              {sid}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#0C2340] uppercase tracking-wide">
+                {sid}
+              </span>
+              <span className="text-[10px] font-mono text-[#819FD7]">
+                ADC {latest.pressureRaw[i]}
+              </span>
             </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Droplets className="w-3.5 h-3.5 text-sky-400" />
-              <span className="text-sky-300 font-mono">{latest.flow[i].toFixed(2)}</span>
-              <span className="text-xs text-slate-500">L/min</span>
+
+            <div className="flex items-baseline gap-1.5 text-sm">
+              <Droplets className="w-3.5 h-3.5 text-[#019FD7] shrink-0 self-center" />
+              <span className="text-[#0C2340] font-bold font-mono tabular-nums">
+                {latest.flow[i].toFixed(2)}
+              </span>
+              <span className="text-[11px] text-[#2D5A7A]">L/min</span>
             </div>
-            <div className="flex items-center gap-1.5 text-sm">
-              <Gauge className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-violet-300 font-mono">{latest.pressure[i].toFixed(3)}</span>
-              <span className="text-xs text-slate-500">bar</span>
+
+            <div className="flex items-baseline gap-1.5 text-sm">
+              <Gauge className="w-3.5 h-3.5 text-violet-600 shrink-0 self-center" />
+              <span className="text-[#0C2340] font-bold font-mono tabular-nums">
+                {latest.pressure[i].toFixed(3)}
+              </span>
+              <span className="text-[11px] text-[#2D5A7A]">bar</span>
             </div>
-            <div className="text-[10px] text-slate-600 font-mono">ADC {latest.pressureRaw[i]}</div>
           </div>
         ))}
       </div>
 
-      {/* Confidence */}
-      {latest.status !== "Normal" && (
-        <div className="text-xs text-slate-400">
-          Leak confidence:{" "}
-          <span className="font-semibold text-amber-300">{latest.confidence}%</span>
-          {latest.localization !== "None" && (
-            <>
-              {" "}· Zone <span className="font-semibold">{latest.localization}</span>
-            </>
-          )}
+      {/* Pump transition log (full table LAG transitions) */}
+      <div
+        className="rounded-xl p-3.5"
+        style={{ background: "#F4FAFD", border: "1px solid #DFF5FF" }}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#2D5A7A]">
+            Pump ON / OFF History ({data.totalRows ?? data.rowCount} DB rows scanned)
+          </span>
+          <span className="text-[10px] font-mono text-[#819FD7]">Manila PHT (UTC+8)</span>
         </div>
-      )}
 
-      {/* Pump transition log */}
-      {pumpTransitions.length > 0 && (
-        <div className="rounded-lg border border-white/8 bg-white/5 p-3">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-            Pump ON/OFF events (last {data.rowCount} readings)
-          </div>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {[...pumpTransitions].reverse().map((t) => (
-              <div key={t.id} className="flex items-center gap-2 text-xs">
-                <span
-                  className={`font-semibold w-8 ${
-                    t.pump_status === "ON" ? "text-emerald-400" : "text-slate-400"
-                  }`}
-                >
-                  {t.pump_status}
+        {pumpTransitions.length === 0 ? (
+          <div className="text-xs text-[#819FD7]">No pump state transitions recorded yet.</div>
+        ) : (
+          <div className="space-y-1.5 max-h-36 overflow-y-auto">
+            {pumpTransitions.map((t) => (
+              <div key={t.id} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center justify-center w-10 px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                      t.pump_status === "ON"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-slate-100 text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {t.pump_status}
+                  </span>
+                  <span className="text-[#2D5A7A]">
+                    {t.prev_pump_status
+                      ? `Switched ${t.prev_pump_status} → ${t.pump_status}`
+                      : `Initial recorded state (${t.pump_status})`}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] text-[#2D5A7A] tabular-nums">
+                  #{t.id} · {formatPhtDateTime(t.created_at)} PHT
                 </span>
-                <span className="text-slate-500 font-mono">{fmt(t.created_at)} PHT</span>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

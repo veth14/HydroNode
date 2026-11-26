@@ -241,7 +241,7 @@ export default function AlertsPage() {
                       </Badge>
                     </td>
                     <td className="py-3 px-4 text-slate-500 font-mono tabular-nums">
-                      {new Date(a.ts).toLocaleString()}
+                      {new Date(a.ts).toLocaleString("en-PH", { timeZone: "Asia/Manila" })} PHT
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-900">
                       Zone {a.zoneId ?? "?"} ({a.stationId})
@@ -330,7 +330,7 @@ export default function AlertsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Detected at {new Date(selectedAlert.ts).toLocaleString()} on Node {selectedAlert.stationId} (Zone {selectedAlert.zoneId})
+                Detected at {new Date(selectedAlert.ts).toLocaleString("en-PH", { timeZone: "Asia/Manila" })} PHT on Node {selectedAlert.stationId} (Zone {selectedAlert.zoneId ?? "?"})
               </p>
             </div>
 

@@ -1,14 +1,31 @@
 // src/app/api/evaluation/route.ts
 // GET /api/evaluation — real-time DB aggregation for the Rig Evaluation page.
-// Zero hardcoded trial/accuracy numbers: all stats, charts, and logs come strictly from PostgreSQL.
+// Reads from friend's Neon DB (sensor_data) when FRIEND_DATABASE_URL is configured.
 
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { alerts, readingsMinute, readingsRaw, stations, zones } from "@/db/schema";
 import { asc, desc, inArray, sql } from "drizzle-orm";
 import { STATION_IDS, ZONE_IDS } from "@/config/rig";
+import { hasFriendDbConfigured } from "@/db/friendClient";
+import { queryFriendEvaluation } from "@/lib/friendSource";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (hasFriendDbConfigured()) {
+    try {
+      const payload = await queryFriendEvaluation();
+      return NextResponse.json(payload, { headers: { "Cache-Control": "no-store" } });
+    } catch (err) {
+      console.error("[/api/evaluation] Friend DB error:", err);
+      return NextResponse.json(
+        { error: "Failed to load evaluation metrics from source database" },
+        { status: 500, headers: { "Cache-Control": "no-store" } }
+      );
+    }
+  }
+
   try {
     const [stationRows, zoneRows, alertStats, severityStats, zoneAlertStats, stationTelemetryStats, recentAlerts, rawCountRows] =
       (await db.batch([

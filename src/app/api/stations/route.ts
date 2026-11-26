@@ -1,14 +1,18 @@
 // src/app/api/stations/route.ts
-// GET /api/stations — O(1) read from denormalized S1–S4 snapshot columns on `stations`.
+// GET /api/stations — latest per-station flow & pressure snapshot for S1–S4.
+// Reads from friend's Neon DB (sensor_data) when FRIEND_DATABASE_URL is configured.
 
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { stations } from "@/db/schema";
 import { asc, inArray } from "drizzle-orm";
 import { STATION_IDS } from "@/config/rig";
+import { hasFriendDbConfigured } from "@/db/friendClient";
+import { queryFriendStations } from "@/lib/friendSource";
 import type { LiveStation } from "@/types";
 
-// Fallback skeleton when DB is unreachable (live mode — no fake telemetry numbers)
+export const dynamic = "force-dynamic";
+
 let cachedStations: LiveStation[] = STATION_IDS.map((id) => ({
   id,
   name: `Station ${id}`,
@@ -21,6 +25,21 @@ let cachedStations: LiveStation[] = STATION_IDS.map((id) => ({
 }));
 
 export async function GET() {
+  if (hasFriendDbConfigured()) {
+    try {
+      const result = await queryFriendStations();
+      cachedStations = result;
+      return NextResponse.json(result, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    } catch (err) {
+      console.warn("Friend DB lagged, returning cached stations:", err);
+      return NextResponse.json(cachedStations, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+  }
+
   try {
     const stationRows = await db
       .select()

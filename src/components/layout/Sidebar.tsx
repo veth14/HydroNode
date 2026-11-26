@@ -35,7 +35,10 @@ interface NavSection {
 export function Sidebar() {
   const pathname = usePathname();
   const alerts = useHydroStore((s) => s.alerts);
+  const kpi = useHydroStore((s) => s.kpi);
   const activeAlertsCount = alerts.filter((a) => a.status === "active").length;
+  const isLive = Boolean(kpi && kpi.stationsOnline > 0 && !kpi.isStale);
+  const isStale = Boolean(kpi?.lastUpdated && kpi.isStale);
 
   const NAV_SECTIONS: NavSection[] = [
     {
@@ -198,9 +201,25 @@ export function Sidebar() {
               <Cpu className="w-3.5 h-3.5" style={{ color: "#019FD7" }} />
               ESP32-S3 Master
             </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-emerald-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              ONLINE
+            <span
+              className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                isLive
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : isStale
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : "bg-slate-100 border-slate-200 text-slate-600"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isLive
+                    ? "bg-emerald-500 animate-pulse"
+                    : isStale
+                    ? "bg-amber-500"
+                    : "bg-slate-400"
+                }`}
+              />
+              {isLive ? "ONLINE" : isStale ? "STALE" : "WAITING"}
             </span>
           </div>
           <div className="text-[11px] leading-tight" style={{ color: "#2D5A7A" }}>

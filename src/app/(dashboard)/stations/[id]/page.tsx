@@ -74,15 +74,29 @@ export default function StationDetailPage() {
   const formatAxisTime = (isoStr: string) => {
     const d = new Date(isoStr);
     if (range === "30d") {
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return d.toLocaleDateString("en-PH", { month: "short", day: "numeric", timeZone: "Asia/Manila" });
     }
     if (range === "7d") {
-      return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      return d.toLocaleDateString("en-PH", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone: "Asia/Manila",
+      });
     }
     if (range === "24h") {
-      return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return d.toLocaleTimeString("en-PH", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "Asia/Manila",
+      });
     }
-    return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return d.toLocaleTimeString("en-PH", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "Asia/Manila",
+    });
   };
 
   const historicalTrendPoints = (Array.isArray(historyData) && historyData.length > 0 ? historyData : []).map((d: ReadingPoint) => ({
@@ -259,7 +273,7 @@ export default function StationDetailPage() {
                 No telemetry records in selected {range} window for Station {stationId}
               </span>
               <span className="font-mono text-[11px] text-slate-400">
-                Awaiting live ESP32 hardware upload via POST /api/ingest
+                Awaiting live ESP32 telemetry rows in sensor_data
               </span>
             </div>
           ) : chartMode === "flow" ? (

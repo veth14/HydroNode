@@ -66,10 +66,11 @@ export function TelemetryChart({
 
   const chartData = useMemo(() => {
     return rawList.slice(-45).map((d) => ({
-      time: new Date(d.t).toLocaleTimeString([], {
+      time: new Date(d.t).toLocaleTimeString("en-PH", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
+        timeZone: "Asia/Manila",
       }),
       flow: Number(d.flow.toFixed(2)),
       pressure: Number(d.pressure.toFixed(2)),
@@ -168,7 +169,7 @@ export function TelemetryChart({
               No live readings recorded in the last hour for {selectedStation}
             </span>
             <span className="font-mono text-[11px] text-slate-400">
-              Waiting for ESP32-S3 batch upload via POST /api/ingest
+              Waiting for incoming ESP32 rows in sensor_data
             </span>
           </div>
         ) : activeMetric === "all" ? (

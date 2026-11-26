@@ -94,7 +94,11 @@ export interface KpiData {
   estimatedWaterLoss: number; // L/min
   lastUpdated: string | null;
   pumpStatus: PumpStatus;
+  pumpStatusRaw?: "ON" | "OFF";
   pumpUpdatedAt: string | null;
+  lastPumpChangedAt?: string | null;
+  isStale?: boolean;
+  systemStatus?: string | null;
 }
 
 export interface DbUsage {

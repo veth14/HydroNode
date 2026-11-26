@@ -1,10 +1,11 @@
 // src/app/api/alerts/[id]/route.ts
-// PATCH /api/alerts/[id] — acknowledge or resolve an alert and keep its zone status synchronized.
+// PATCH /api/alerts/[id] — acknowledge or resolve an alert.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { alerts, zones } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { hasFriendDbConfigured } from "@/db/friendClient";
 import { z } from "zod";
 
 const PatchSchema = z.object({
@@ -33,13 +34,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid body" }, { status: 422 });
   }
 
+  if (hasFriendDbConfigured()) {
+    return NextResponse.json({ ok: true, readOnlySource: true });
+  }
+
   const [updated] = await db
     .update(alerts)
     .set({ status: body.data.status })
     .where(eq(alerts.id, alertId))
     .returning({ zoneId: alerts.zoneId });
 
-  // When resolving an alert, restore zone status to healthy if no other active alerts remain in that zone
   if (body.data.status === "resolved" && updated?.zoneId != null) {
     const [remaining] = await db
       .select({ count: sql<number>`count(*)::int` })
