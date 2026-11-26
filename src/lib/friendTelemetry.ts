@@ -36,10 +36,10 @@ export function normalizeConfidence01(raw: number | null | undefined): number {
   return n > 1 ? Math.min(1, n / 100) : Math.min(1, n);
 }
 
-/** Extract ZoneId (1..4) from firmware localization strings like "Zone1", "Zone 2", "S3". */
+/** Extract ZoneId (1..4) from firmware localization strings like "Zone1", "Zone 2", "Sensor 3", "S3". */
 export function parseLocalizationZone(loc: string | null | undefined): ZoneId | null {
   if (!loc) return null;
-  const match = loc.match(/(?:zone|z|s)\s*([1-4])/i);
+  const match = loc.match(/(?:zone|z|sensor|pipe|s)\s*([1-4])/i);
   if (!match) return null;
   const num = Number(match[1]);
   return num >= 1 && num <= 4 ? (num as ZoneId) : null;
@@ -55,7 +55,17 @@ export function classifyStatusKind(
   status: string | null | undefined
 ): "normal" | "leak" | "sensor_failure" | "other" {
   const s = String(status ?? "").trim().toLowerCase();
-  if (!s || s === "normal" || s === "monitoring") return "normal";
+  if (
+    !s ||
+    s === "normal" ||
+    s === "monitoring" ||
+    s === "ok" ||
+    s === "healthy" ||
+    s.includes("no leak") ||
+    s.includes("no_leak")
+  ) {
+    return "normal";
+  }
   if (s.includes("leak")) return "leak";
   if (s.includes("failure") || s.includes("error")) return "sensor_failure";
   return "other";

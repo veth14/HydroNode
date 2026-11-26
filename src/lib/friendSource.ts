@@ -1,6 +1,6 @@
 // src/lib/friendSource.ts
 // Server-only queries against the friend's Neon DB (sensor_data table).
-// IMPORTANT: sensor_data.created_at is `timestamp without time zone` stored in UTC (GMT).
+// Supports both `timestamp without time zone` (UTC) and `timestamp with time zone` on Neon (GMT).
 // Every query formats created_at via Postgres `to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')`
 // so Node.js in UTC+8 (Manila) and Vercel in UTC+0 parse the exact same UTC instant.
 
@@ -316,7 +316,7 @@ export async function queryFriendAlerts(filters?: {
         confidence,
         pump_status
       FROM sensor_data
-      WHERE coalesce(trim(lower(status)), 'normal') NOT IN ('normal', 'monitoring')
+      WHERE coalesce(trim(lower(status)), 'normal') NOT IN ('normal', 'monitoring', 'ok', 'healthy', 'no leak', 'no leak detected', 'no_leak')
       ORDER BY id DESC
       LIMIT 100
     `,
@@ -383,8 +383,8 @@ export async function queryFriendEvaluation() {
     sql`
       SELECT
         COUNT(*)::int AS total_rows,
-        COUNT(*) FILTER (WHERE coalesce(trim(lower(status)), 'normal') NOT IN ('normal', 'monitoring'))::int AS anomaly_rows,
-        COUNT(*) FILTER (WHERE lower(coalesce(status, '')) LIKE '%leak%')::int AS leak_rows,
+        COUNT(*) FILTER (WHERE coalesce(trim(lower(status)), 'normal') NOT IN ('normal', 'monitoring', 'ok', 'healthy', 'no leak', 'no leak detected', 'no_leak'))::int AS anomaly_rows,
+        COUNT(*) FILTER (WHERE lower(coalesce(status, '')) LIKE '%leak%' AND lower(coalesce(status, '')) NOT LIKE '%no leak%' AND lower(coalesce(status, '')) NOT LIKE '%no_leak%')::int AS leak_rows,
         AVG(flow1)::real AS flow1_avg, MIN(flow1)::real AS flow1_min, MAX(flow1)::real AS flow1_max,
         AVG(flow2)::real AS flow2_avg, MIN(flow2)::real AS flow2_min, MAX(flow2)::real AS flow2_max,
         AVG(flow3)::real AS flow3_avg, MIN(flow3)::real AS flow3_min, MAX(flow3)::real AS flow3_max,
@@ -522,7 +522,7 @@ export async function queryFriendDbUsage() {
     sql`
       SELECT
         COUNT(*)::int AS total_rows,
-        COUNT(*) FILTER (WHERE coalesce(trim(lower(status)), 'normal') NOT IN ('normal', 'monitoring'))::int AS anomaly_rows,
+        COUNT(*) FILTER (WHERE coalesce(trim(lower(status)), 'normal') NOT IN ('normal', 'monitoring', 'ok', 'healthy', 'no leak', 'no leak detected', 'no_leak'))::int AS anomaly_rows,
         COUNT(DISTINCT date_trunc('minute', created_at))::int AS minute_buckets
       FROM sensor_data
     `,

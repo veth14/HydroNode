@@ -7,6 +7,7 @@ import { test } from "node:test";
 import type { FriendSensorRow, PumpTransitionRow } from "@/db/friendClient";
 import {
   adcToBar,
+  classifyStatusKind,
   derivePumpState,
   evaluateFriendRowAnomaly,
   formatPhtTime,
@@ -56,9 +57,20 @@ test("normalizeConfidence01 supports both 0..100 and 0..1 scales", () => {
 test("parseLocalizationZone parses Zone1..Zone4 variants cleanly", () => {
   assert.equal(parseLocalizationZone("Zone1"), 1);
   assert.equal(parseLocalizationZone("Zone 3"), 3);
+  assert.equal(parseLocalizationZone("Sensor 2"), 2);
   assert.equal(parseLocalizationZone("S4"), 4);
   assert.equal(parseLocalizationZone("None"), null);
   assert.equal(parseLocalizationZone(null), null);
+});
+
+test("classifyStatusKind treats Normal, Monitoring, and No Leak as normal", () => {
+  assert.equal(classifyStatusKind("Normal"), "normal");
+  assert.equal(classifyStatusKind("Monitoring"), "normal");
+  assert.equal(classifyStatusKind("No Leak"), "normal");
+  assert.equal(classifyStatusKind("NO LEAK DETECTED"), "normal");
+  assert.equal(classifyStatusKind("Leak"), "leak");
+  assert.equal(classifyStatusKind("LeakDetected"), "leak");
+  assert.equal(classifyStatusKind("SensorFailure"), "sensor_failure");
 });
 
 test("derivePumpState detects OFF, STARTING (<12s transition), RUNNING, and stale", () => {

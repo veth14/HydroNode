@@ -17,6 +17,7 @@ import {
   Database,
 } from "lucide-react";
 import {
+  classifyStatusKind,
   formatPhtDateTime,
   formatPhtTime,
   formatRelativeAge,
@@ -58,22 +59,22 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const STATIONS = ["S1", "S2", "S3", "S4"] as const;
 
 function statusMeta(s: string) {
-  const lower = s.toLowerCase();
-  if (lower === "normal" || lower === "monitoring") {
+  const kind = classifyStatusKind(s);
+  if (kind === "normal") {
     return {
       label: s,
       pillClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
       Icon: CheckCircle2,
     };
   }
-  if (lower.includes("leak")) {
+  if (kind === "leak") {
     return {
       label: s,
       pillClass: "bg-red-50 text-red-700 border-red-200",
       Icon: AlertTriangle,
     };
   }
-  if (lower.includes("failure") || lower.includes("error")) {
+  if (kind === "sensor_failure") {
     return {
       label: s,
       pillClass: "bg-amber-50 text-amber-800 border-amber-200",

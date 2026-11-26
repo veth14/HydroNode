@@ -64,6 +64,17 @@ const BACKEND_ENDPOINTS = [
   { method: "GET", path: "/api/db-usage", role: "Neon database disk usage, row count, & minute bucket coverage" },
 ] as const;
 
+const SENSOR_DATA_COLUMNS = [
+  { col: "id", type: "integer", role: "Primary sequence key (nextval)" },
+  { col: "created_at", type: "timestamp / timestamptz", role: "UTC ingest timestamp → Manila PHT (UTC+8)" },
+  { col: "status", type: "varchar(50)", role: "Normal / Leak / SensorFailure verdict" },
+  { col: "flow1 – flow4", type: "double precision ×4", role: "Hall-effect flow rates S1–S4 (L/min)" },
+  { col: "pressure1 – pressure4", type: "double precision ×4", role: "12-bit ADC readings S1–S4 → bar" },
+  { col: "localization", type: "varchar(50)", role: "Predicted leak zone (Zone1–Zone4 / None)" },
+  { col: "confidence", type: "double precision", role: "ML model confidence (0–100%)" },
+  { col: "pump_status", type: "varchar(20)", role: "Relay ON / OFF state + LAG() transitions" },
+] as const;
+
 export default function SettingsPage() {
   const { data: dbUsage } = useSWR<DbUsage>("/api/db-usage", fetcher, {
     refreshInterval: 15000,
@@ -292,6 +303,33 @@ export default function SettingsPage() {
                         <span className="font-semibold text-slate-900">{ep.path}</span>
                       </div>
                       <span className="text-slate-500 text-[11px]">{ep.role}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Source Neon Schema Contract (14 columns) */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-slate-50 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
+                  <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-sky-600" />
+                    Neon Source Schema · sensor_data
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">14 columns synced</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {SENSOR_DATA_COLUMNS.map((c) => (
+                    <div
+                      key={c.col}
+                      className="px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1"
+                    >
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="font-semibold text-slate-900">{c.col}</span>
+                        <span className="px-1.5 py-0.5 text-[10px] rounded bg-slate-100 text-slate-600 border border-slate-200">
+                          {c.type}
+                        </span>
+                      </div>
+                      <span className="text-slate-500 text-[11px]">{c.role}</span>
                     </div>
                   ))}
                 </div>
