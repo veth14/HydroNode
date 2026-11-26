@@ -11,7 +11,6 @@ import {
   Bell,
   Radio,
   Calculator,
-  MapPin,
   BarChart3,
   Settings,
   ChevronDown,
@@ -65,7 +64,6 @@ export function Sidebar() {
       title: "Analysis",
       items: [
         { href: "/analysis", label: "Leak Analysis", icon: Calculator },
-        { href: "/site-map", label: "Geographic Map", icon: MapPin },
       ],
     },
     {

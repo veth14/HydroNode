@@ -80,12 +80,3 @@ export const SENSOR_3D_POSITIONS: Record<StationId, [number, number, number]> = 
   S3: SENSOR_3D_NODES.S3.labelPos,
   S4: SENSOR_3D_NODES.S4.labelPos,
 };
-
-// Geographic coordinates
-export const SITE_CENTER: [number, number] = [14.6507, 120.9822];
-export const STATION_LATLNG: Record<StationId, [number, number]> = {
-  S1: [14.6505, 120.9818],
-  S2: [14.6507, 120.9820],
-  S3: [14.6509, 120.9822],
-  S4: [14.6511, 120.9824],
-};

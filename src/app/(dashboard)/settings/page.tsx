@@ -1,326 +1,312 @@
 "use client";
 // src/app/(dashboard)/settings/page.tsx
-// Configuration, Baselines, Severity Thresholds, and Database Usage in Light Mode.
-// Follows all 20 Rules:
-// - Sans-serif typography for labels, font-mono for data/numbers
-// - High text contrast (WCAG AAA)
-// - Clean white surfaces and slate borders
+// Read-only view of everything the backend does:
+// transducer calibration constants, pump ON/OFF detection, ML anomaly mapping,
+// active API endpoints, and live Neon sensor_data storage metrics.
 
-import { useState } from "react";
 import useSWR from "swr";
 import { formatBytes } from "@/lib/utils";
-import type { DbUsage } from "@/types";
-import { STATION_IDS } from "@/config/rig";
+import { STATION_IDS, ZONES } from "@/config/rig";
+import {
+  ADC_MAX,
+  ADC_ZERO,
+  BAR_MAX,
+  MANILA_TZ,
+  PUMP_STARTING_WINDOW_MS,
+  STALE_THRESHOLD_MS,
+  formatPhtDateTime,
+  formatRelativeAge,
+} from "@/lib/friendTelemetry";
+import type { DbUsage, LiveStation } from "@/types";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Save, Trash2, Database, Cpu } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  Cpu,
+  Database,
+  Gauge,
+  Lock,
+  Radio,
+  Server,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
+
+interface SourceOverview {
+  ok: boolean;
+  empty?: boolean;
+  totalRows?: number;
+  latest: {
+    id: number;
+    createdAt: string;
+    pumpStatus: "ON" | "OFF";
+    status: string;
+    localization: string;
+    confidence: number;
+  } | null;
+  pumpState?: {
+    pumpStatus: "off" | "starting" | "running";
+    pumpStatusRaw: "ON" | "OFF";
+    lastPumpChangedAt: string | null;
+    isStale: boolean;
+  };
+}
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-interface SettingsMap {
-  baseline_S1?: { q0: number; p0: number };
-  baseline_S2?: { q0: number; p0: number };
-  baseline_S3?: { q0: number; p0: number };
-  baseline_S4?: { q0: number; p0: number };
-  severity_thresholds?: { low: number; medium: number };
-  repeat_alert_window_min?: { value: number };
-  units?: { flow: string; pressure: string; vibration: string };
-}
+const BACKEND_ENDPOINTS = [
+  { method: "GET", path: "/api/source", role: "Latest sensor_data snapshot, series (60 rows), & pump transitions" },
+  { method: "GET", path: "/api/kpi", role: "Active leaks, zone integrity, stations online, & pump state" },
+  { method: "GET", path: "/api/stations", role: "Per-station (S1–S4) flow (L/min) & converted pressure (bar)" },
+  { method: "GET", path: "/api/readings", role: "Raw (1h) & minute-aggregated (24h/7d/30d) time-series feed" },
+  { method: "GET", path: "/api/alerts", role: "Non-Normal status rows mapped to leak / sensor failure alerts" },
+  { method: "GET", path: "/api/evaluation", role: "Aggregate statistics, severity breakdown, & incident log" },
+  { method: "GET", path: "/api/db-usage", role: "Neon database disk usage, row count, & minute bucket coverage" },
+] as const;
 
 export default function SettingsPage() {
-  const { data: settingsData, mutate: mutateSettings } = useSWR<SettingsMap>(
-    "/api/settings",
-    fetcher,
-    { revalidateOnFocus: false }
-  );
+  const { data: dbUsage } = useSWR<DbUsage>("/api/db-usage", fetcher, {
+    refreshInterval: 15000,
+    revalidateOnFocus: true,
+    dedupingInterval: 5000,
+  });
 
-  const { data: dbUsage, mutate: mutateDbUsage } = useSWR<DbUsage>(
-    "/api/db-usage",
-    fetcher,
-    {
-      refreshInterval: 30000,
-      revalidateOnFocus: false,
-      dedupingInterval: 5000,
-    }
-  );
+  const { data: stations } = useSWR<LiveStation[]>("/api/stations", fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+    dedupingInterval: 2000,
+  });
 
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const { data: source } = useSWR<SourceOverview>("/api/source", fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+    dedupingInterval: 2000,
+  });
 
-  const [editedLowThresh, setEditedLowThresh] = useState<number | null>(null);
-  const [editedMedThresh, setEditedMedThresh] = useState<number | null>(null);
-  const [editedRepeatWindow, setEditedRepeatWindow] = useState<number | null>(null);
-  const [editedBaselines, setEditedBaselines] = useState<
-    Record<string, { q0: number; p0: number }>
-  >({});
-
-  const lowThresh = editedLowThresh ?? settingsData?.severity_thresholds?.low ?? 5;
-  const medThresh = editedMedThresh ?? settingsData?.severity_thresholds?.medium ?? 10;
-  const repeatWindow = editedRepeatWindow ?? settingsData?.repeat_alert_window_min?.value ?? 10;
-
-  const defaultBaselines: Record<string, { q0: number; p0: number }> = {};
-  const baselines: Record<string, { q0: number; p0: number }> = Object.fromEntries(
-    STATION_IDS.map((id) => {
-      const serverVal = settingsData?.[`baseline_${id}` as keyof SettingsMap] as
-        | { q0: number; p0: number }
-        | undefined;
-      return [id, editedBaselines[id] ?? serverVal ?? defaultBaselines[id] ?? { q0: 0, p0: 0 }];
-    })
-  );
-
-  const setLowThresh = (v: number) => setEditedLowThresh(v);
-  const setMedThresh = (v: number) => setEditedMedThresh(v);
-  const setRepeatWindow = (v: number) => setEditedRepeatWindow(v);
-  const setBaselines = (next: Record<string, { q0: number; p0: number }>) =>
-    setEditedBaselines(next);
-
-  const handleSaveAll = async () => {
-    setSaving(true);
-    setSaveMessage(null);
-    try {
-      const updates = [
-        fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            key: "severity_thresholds",
-            value: { low: lowThresh, medium: medThresh },
-          }),
-        }),
-        fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            key: "repeat_alert_window_min",
-            value: { value: repeatWindow },
-          }),
-        }),
-      ];
-
-      Object.entries(baselines).forEach(([id, val]) => {
-        updates.push(
-          fetch("/api/settings", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ key: `baseline_${id}`, value: val }),
-          })
-        );
-      });
-
-      await Promise.all(updates);
-      mutateSettings();
-      setSaveMessage("Configuration successfully synced to database.");
-    } catch (err) {
-      console.error(err);
-      setSaveMessage("Failed to update settings.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCleanupNow = async () => {
-    try {
-      const res = await fetch("/api/cron/cleanup?hours=2", {
-        headers: { "x-cron-secret": "hydronode_cron_secret_2026" },
-      });
-      const data = await res.json();
-      mutateDbUsage();
-      alert(`Retention cleanup complete: pruned ${data.deleted ?? 0} raw readings older than 2h.`);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const age = source?.latest?.createdAt
+    ? formatRelativeAge(source.latest.createdAt)
+    : null;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            System Settings & Calibration
+            System Settings &amp; Backend Pipeline
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Configure hydraulic station baselines, classification thresholds, and storage quotas
+            Read-only overview of backend calibration, ML inference, pump state detection, and Neon PostgreSQL sync
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          loading={saving}
-          onClick={handleSaveAll}
-          icon={<Save className="w-3.5 h-3.5" />}
-        >
-          Save Configuration
-        </Button>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700">
+          <Lock className="w-3.5 h-3.5 text-sky-600" />
+          <span>Backend-Managed · Read-Only View</span>
+        </div>
       </div>
 
-      {saveMessage && (
-        <div className="p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold">
-          {saveMessage}
-        </div>
-      )}
-
-      {/* Grid: Calibration & Storage */}
+      {/* Main 2-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 spans): Baselines & Severity Thresholds */}
+        {/* Left Column (2 spans): Backend Calibration, Station Mapping & Detection Rules */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Station Baselines */}
+          {/* 1. Backend Transducer Calibration & Signal Conversion */}
           <Card>
             <CardHeader
-              title="Station Baselines (Q₀, P₀)"
-              subtitle="Calibrated steady-state parameters measured under zero-leak flow"
-            />
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-                {STATION_IDS.map((id) => (
-                  <div
-                    key={id}
-                    className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2 text-xs"
-                  >
-                    <div className="font-semibold text-slate-900">
-                      Station {id}
-                    </div>
-                    <div>
-                      <label className="text-slate-500 text-xs block mb-1">
-                        Flow Q₀ (L/min)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={baselines[id]?.q0 ?? ""}
-                        onChange={(e) =>
-                          setBaselines({
-                            ...baselines,
-                            [id]: {
-                              ...baselines[id],
-                              q0: parseFloat(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono tabular-nums text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-slate-500 text-xs block mb-1">
-                        Pressure P₀ (bar)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={baselines[id]?.p0 ?? ""}
-                        onChange={(e) =>
-                          setBaselines({
-                            ...baselines,
-                            [id]: {
-                              ...baselines[id],
-                              p0: parseFloat(e.target.value) || 0,
-                            },
-                          })
-                        }
-                        className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono tabular-nums text-slate-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-sky-500"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Severity Thresholds */}
-          <Card>
-            <CardHeader
-              title="Classification Thresholds & Windowing"
-              subtitle="Severity Index SI = (ΔP / P₀) × 100%"
+              title="Backend Calibration & Signal Conversion"
+              subtitle="All sensor scaling and UTC-to-Manila (PHT) normalization runs automatically on the server"
+              action={<Gauge className="w-4 h-4 text-sky-600" />}
             />
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
-                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
-                  <span className="font-semibold text-emerald-700 block">
-                    Low Severity
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+                  <span className="text-slate-500 block">Pressure Zero Offset</span>
+                  <span className="text-base font-bold font-mono tabular-nums text-slate-900">
+                    {ADC_ZERO} ADC
                   </span>
-                  <span className="text-slate-500 text-xs block">
-                    SI &lt; Low Threshold
-                  </span>
-                  <div className="flex items-center gap-1.5 pt-1">
-                    <input
-                      type="number"
-                      value={lowThresh}
-                      onChange={(e) => setLowThresh(parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 border border-slate-200 rounded text-xs font-mono tabular-nums bg-white text-slate-900 shadow-xs"
-                    />
-                    <span className="text-slate-500">%</span>
-                  </div>
-                  <span className="text-xs text-slate-400 block pt-1">
-                    Action: Monitor
-                  </span>
+                  <span className="text-[11px] text-slate-400 block">Clamped ≥ 0.000 bar</span>
                 </div>
 
-                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
-                  <span className="font-semibold text-amber-800 block">
-                    Medium Severity
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+                  <span className="text-slate-500 block">Full-Scale ADC Ceiling</span>
+                  <span className="text-base font-bold font-mono tabular-nums text-slate-900">
+                    {ADC_MAX} → {BAR_MAX.toFixed(1)} bar
                   </span>
-                  <span className="text-slate-500 text-xs block">
-                    Low ≤ SI &lt; Medium
-                  </span>
-                  <div className="flex items-center gap-1.5 pt-1">
-                    <input
-                      type="number"
-                      value={medThresh}
-                      onChange={(e) => setMedThresh(parseFloat(e.target.value) || 0)}
-                      className="w-16 px-2 py-1 border border-slate-200 rounded text-xs font-mono tabular-nums bg-white text-slate-900 shadow-xs"
-                    />
-                    <span className="text-slate-500">%</span>
-                  </div>
-                  <span className="text-xs text-slate-400 block pt-1">
-                    Action: Schedule inspection
-                  </span>
+                  <span className="text-[11px] text-slate-400 block">12-bit direct transducer</span>
                 </div>
 
-                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
-                  <span className="font-semibold text-red-700 block">
-                    High Severity
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+                  <span className="text-slate-500 block">Stale Stream Window</span>
+                  <span className="text-base font-bold font-mono tabular-nums text-slate-900">
+                    {Math.round(STALE_THRESHOLD_MS / 60_000)} min
                   </span>
-                  <span className="text-slate-500 text-xs block">
-                    SI ≥ {medThresh}%
+                  <span className="text-[11px] text-slate-400 block">5s dashboard poll rate</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
+                  <span className="text-slate-500 block">Pump Priming Window</span>
+                  <span className="text-base font-bold font-mono tabular-nums text-slate-900">
+                    {Math.round(PUMP_STARTING_WINDOW_MS / 1000)} s
                   </span>
-                  <div className="pt-2 text-xs font-bold text-red-600 font-mono tabular-nums">
-                    &gt; {medThresh}% SI
-                  </div>
-                  <span className="text-xs text-slate-400 block pt-1">
-                    Action: Immediate response
-                  </span>
+                  <span className="text-[11px] text-slate-400 block">TZ: {MANILA_TZ} (UTC+8)</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-semibold text-slate-900 block">
-                    Repeated Incident Window
-                  </span>
-                  <span className="text-slate-500">
-                    Alerts from the same zone within this window increment repeat count
-                  </span>
+              <div className="p-3 rounded-lg bg-[#F4FAFD] border border-[#DFF5FF] text-xs text-[#2D5A7A] flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <strong className="text-[#0C2340]">ADC Conversion Formula:</strong>{" "}
+                  <code className="font-mono">
+                    P (bar) = max(0, ((ADC − {ADC_ZERO}) / ({ADC_MAX} − {ADC_ZERO})) × {BAR_MAX.toFixed(1)})
+                  </code>
+                </span>
+                <span className="text-[11px] font-mono text-[#0076A0]">
+                  UTC → to_char(..., &apos;Z&apos;) → PHT
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 2. Per-Station DB Mapping & Live Channel Snapshot */}
+          <Card>
+            <CardHeader
+              title="Station Channel Mapping (S1–S4)"
+              subtitle="Live per-node mapping from Neon sensor_data columns (flow1–4, pressure1–4)"
+              action={<Radio className="w-4 h-4 text-sky-600" />}
+            />
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                {STATION_IDS.map((sid, idx) => {
+                  const st = stations?.find((s) => s.id === sid);
+                  const zone = ZONES[idx];
+                  const colNum = idx + 1;
+                  return (
+                    <div
+                      key={sid}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">Station {sid}</span>
+                        <span
+                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                            st?.status === "alert"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : st?.status === "elevated"
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : st?.status === "online"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
+                        >
+                          {(st?.status ?? "offline").toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] font-mono text-slate-500">
+                        flow{colNum} · pressure{colNum}
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-200 space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Flow:</span>
+                          <span className="font-mono tabular-nums font-semibold text-slate-900">
+                            {st?.latestFlow != null ? `${st.latestFlow.toFixed(2)} L/m` : "--"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Pressure:</span>
+                          <span className="font-mono tabular-nums font-semibold text-slate-900">
+                            {st?.latestPressure != null ? `${st.latestPressure.toFixed(3)} bar` : "--"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Boundary:</span>
+                          <span className="font-mono text-sky-700">Zone {zone?.id ?? colNum}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 3. Anomaly Classification, Pump Detection & Severity Rules */}
+          <Card>
+            <CardHeader
+              title="Backend Inference & Alert Logic"
+              subtitle="How raw sensor_data fields are evaluated into KPIs, pump transitions, and triage severity"
+              action={<ShieldCheck className="w-4 h-4 text-sky-600" />}
+            />
+            <CardContent className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
+                  <div className="flex items-center gap-1.5 font-semibold text-emerald-700">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Normal / Monitoring</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    All 4 zones marked nominal; active alerts stay 0; live status displays online telemetry.
+                  </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    value={repeatWindow}
-                    onChange={(e) => setRepeatWindow(parseInt(e.target.value) || 1)}
-                    className="w-16 px-2 py-1 border border-slate-200 rounded text-xs font-mono tabular-nums text-center bg-white text-slate-900 shadow-xs"
-                  />
-                  <span className="text-slate-500">min</span>
+
+                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
+                  <div className="flex items-center gap-1.5 font-semibold text-red-700">
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>Leak Classification</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Severity Index <code className="font-mono">SI = (ΔP / P_up) × 100%</code> (Low &lt;5%, Med 5–10%, High ≥10%) + Zone localization.
+                  </p>
+                </div>
+
+                <div className="p-3.5 border border-slate-200 rounded-lg space-y-1.5 bg-slate-50">
+                  <div className="flex items-center gap-1.5 font-semibold text-amber-800">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Pump State &amp; Faults</span>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    SQL <code className="font-mono">LAG()</code> tracks ON/OFF transitions; sensor failures log as medium/acknowledged without siren.
+                  </p>
+                </div>
+              </div>
+
+              {/* Active Backend Endpoints Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-slate-50 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
+                  <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <Server className="w-3.5 h-3.5 text-sky-600" />
+                    Active Backend API Routes
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">Next.js App Router · dynamic</span>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {BACKEND_ENDPOINTS.map((ep) => (
+                    <div
+                      key={ep.path}
+                      className="px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1"
+                    >
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-sky-50 text-sky-700 border border-sky-200">
+                          {ep.method}
+                        </span>
+                        <span className="font-semibold text-slate-900">{ep.path}</span>
+                      </div>
+                      <span className="text-slate-500 text-[11px]">{ep.role}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column: Database Storage & Hardware Guide */}
+        {/* Right Column: Live Neon Storage Monitor + Backend Source Status */}
         <div className="space-y-6">
           {/* Neon Storage Card */}
           <Card>
             <CardHeader
               title="Database Storage Monitor"
-              subtitle="Neon serverless free quota (1 GB budget)"
+              subtitle="Live Neon sensor_data footprint (read-only mirror)"
               action={<Database className="w-4 h-4 text-sky-600" />}
             />
             <CardContent className="space-y-4">
@@ -351,38 +337,65 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                className="w-full"
-                onClick={handleCleanupNow}
-                icon={<Trash2 className="w-3.5 h-3.5 text-red-600" />}
-              >
-                Execute 2h Retention Cleanup
-              </Button>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                This dashboard connects strictly in <strong className="text-slate-800">read-only mode</strong> to the external Neon database. Retention and pruning are controlled on the source database backend.
+              </div>
             </CardContent>
           </Card>
 
-          {/* Hardware Device Ingest Guide */}
+          {/* Backend Data Pipeline Card */}
           <Card>
             <CardHeader
-              title="ESP32 Ingest Integration"
-              subtitle="Device HTTPS header specification"
+              title="Backend Ingestion Pipeline"
+              subtitle="Live source connection & latest ingest telemetry"
               action={<Cpu className="w-4 h-4 text-sky-600" />}
             />
-            <CardContent className="space-y-2.5 text-xs text-slate-600 leading-relaxed">
-              <p>
-                Configure the ESP32 firmware HTTP client to post batched payload cycles to the ingestion endpoint:
-              </p>
-              <div className="p-3 bg-slate-900 text-slate-100 rounded-lg text-xs font-mono space-y-0.5 border border-slate-800 shadow-xs">
-                <div>POST /api/ingest HTTP/1.1</div>
-                <div>Host: your-hydronode.vercel.app</div>
-                <div className="text-sky-400">Content-Type: application/json</div>
-                <div className="text-emerald-400">x-api-key: [INGEST_API_KEY]</div>
+            <CardContent className="space-y-3 text-xs">
+              <div className="p-3 bg-slate-900 text-slate-100 rounded-lg font-mono text-[11px] space-y-1 border border-slate-800 shadow-xs">
+                <div className="text-emerald-400">ESP32 Sensors + Python ML Inference</div>
+                <div className="text-slate-400">  ↓ writes UTC rows</div>
+                <div className="text-sky-400">Neon PostgreSQL :: sensor_data</div>
+                <div className="text-slate-400">  ↓ read-only SQL (5s poll)</div>
+                <div className="text-white">HydroNode SCADA UI (Manila PHT)</div>
               </div>
-              <p className="text-xs text-slate-400">
-                Key is validated against the server-side environment variable.
-              </p>
+
+              <div className="space-y-2 pt-1">
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Source Connection:</span>
+                  <span
+                    className={`font-semibold ${
+                      source?.ok
+                        ? "text-emerald-700"
+                        : source
+                        ? "text-red-600"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    {source ? (source.ok ? "Connected (sensor_data)" : "Unavailable") : "Checking..."}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Pump State:</span>
+                  <span className="font-mono font-semibold text-slate-900">
+                    {source?.pumpState?.pumpStatus?.toUpperCase() ?? "OFF"} (
+                    {source?.pumpState?.pumpStatusRaw ?? "OFF"})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-100">
+                  <span className="text-slate-600">Latest Row ID:</span>
+                  <span className="font-mono tabular-nums text-slate-900">
+                    {source?.latest ? `#${source.latest.id}` : "Awaiting data (0 rows)"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-600">Last Telemetry (PHT):</span>
+                  <span className="font-mono tabular-nums text-slate-700 text-[11px]">
+                    {source?.latest
+                      ? `${formatPhtDateTime(source.latest.createdAt)} (${age?.label ?? ""})`
+                      : "--"}
+                  </span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -21,7 +21,6 @@
         "@types/three": "^0.187.0",
         "drizzle-orm": "^0.45.4",
         "framer-motion": "^14.11.1",
-        "leaflet": "^1.9.4",
         "lucide-react": "^1.70.0",
         "next": "16.4.6",
         "react": "19.3.0",
@@ -35,7 +34,6 @@
     "devDependencies": {
         "@tailwindcss/postcss": "^4.3.5",
         "@tailwindcss/turbopack": "4.3.3",
-        "@types/leaflet": "*",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",

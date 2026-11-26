@@ -42,7 +42,6 @@ export function TopBar() {
     if (pathname.startsWith("/alerts")) return "Alerts & Triage";
     if (pathname.startsWith("/stations")) return "Station Telemetry";
     if (pathname.startsWith("/analysis")) return "Leak Analysis";
-    if (pathname.startsWith("/site-map")) return "Geographic Map";
     if (pathname.startsWith("/evaluation")) return "Rig Evaluation";
     if (pathname.startsWith("/settings")) return "System Settings";
     return "Dashboard";

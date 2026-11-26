@@ -5,7 +5,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-import { STATION_IDS, ZONES as RIG_ZONES, STATION_LATLNG } from "../config/rig";
+import { STATION_IDS, ZONES as RIG_ZONES } from "../config/rig";
 
 async function main() {
   const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
@@ -21,8 +21,6 @@ async function main() {
         name: `Station ${id}`,
         zoneUpstream: idx > 0 ? idx : null,
         zoneDownstream: idx + 1,
-        lat: STATION_LATLNG[id][0],
-        lng: STATION_LATLNG[id][1],
         status: "offline",
         samplingMode: "normal",
       }))

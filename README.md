@@ -89,7 +89,6 @@ HydroNode features an ultra-premium, industrial SaaS user interface adhering str
 - **Hero Pipeline Rig Canvas**: Interactive SVG blueprint with real-time fluid flow animation, station status indicators, and side inspection drawers.
 - **Active Pipeline Zones Table**: High-contrast tabular telemetry with pastel rounded-square icons per zone and soft pill badges.
 - **Digital Seismogram & FFT Spectrum**: Sub-second oscillogram traces capturing zero-baseline wave oscillations and spectral band energies.
-- **GIS Municipal Corridor**: Leaflet + OpenStreetMap projection tracking real-world distribution lines across Caloocan City, Philippines.
 
 ---
 
@@ -182,7 +181,6 @@ HydroNode/
 │   │   │   ├── stations/[id]/    # Per-station high-frequency telemetry & FFT
 │   │   │   ├── simulation/       # Testbench leak injector & PWM pump controller
 │   │   │   ├── analysis/         # Hydraulic calculator & ML model details
-│   │   │   ├── site-map/         # GIS Leaflet municipal pipeline corridor
 │   │   │   ├── evaluation/       # Benchmark accuracy & empirical trials
 │   │   │   └── settings/         # Baseline calibration & severity thresholds
 │   │   ├── api/                  # Serverless REST endpoints
@@ -190,7 +188,6 @@ HydroNode/
 │   ├── components/
 │   │   ├── charts/               # Recharts Seismograms & FFT Power Spectrums
 │   │   ├── layout/               # Sidebar, TopBar, and Navigation Shell
-│   │   ├── map/                  # Leaflet OpenStreetMap GIS integration
 │   │   ├── rig/                  # SVG Serpentine Rig Schematics & Transducers
 │   │   └── ui/                   # Luxury UI Primitives (Card, Button, Stat, Badge)
 │   ├── config/
