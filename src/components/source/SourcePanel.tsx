@@ -163,7 +163,7 @@ export function SourcePanel() {
                 >
                   {t.pump_status}
                 </span>
-                <span className="text-slate-500 font-mono">{fmt(t.created_at)}</span>
+                <span className="text-slate-500 font-mono">{fmt(t.created_at)} PHT</span>
               </div>
             ))}
           </div>
