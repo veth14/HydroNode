@@ -18,8 +18,8 @@ import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { Droplets, Gauge, Waves } from "lucide-react";
 
 export default function LeakAnalysisPage() {
-  const [q0, setQ0] = useState<number>(15.0);
-  const [q, setQ] = useState<number>(11.2);
+  const [q0, setQ0] = useState<number>(3.2);
+  const [q, setQ] = useState<number>(0.5);
   const [p0, setP0] = useState<number>(5.0);
   const [p, setP] = useState<number>(4.4);
 

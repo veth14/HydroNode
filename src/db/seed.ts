@@ -43,11 +43,11 @@ async function main() {
 
   console.log("Seeding default settings…");
   const defaults = [
-    // Baselines per station (Q0 L/min, P0 bar)
-    { key: "baseline_S1", valueJson: { q0: 15.0, p0: 5.0 } },
-    { key: "baseline_S2", valueJson: { q0: 14.8, p0: 4.9 } },
-    { key: "baseline_S3", valueJson: { q0: 14.6, p0: 4.8 } },
-    { key: "baseline_S4", valueJson: { q0: 14.4, p0: 4.7 } },
+    // Baselines per station (Q0 L/min, P0 bar) — matched to calibrated ~3.2 L/min rig flow
+    { key: "baseline_S1", valueJson: { q0: 3.25, p0: 5.0 } },
+    { key: "baseline_S2", valueJson: { q0: 3.18, p0: 4.9 } },
+    { key: "baseline_S3", valueJson: { q0: 3.20, p0: 4.8 } },
+    { key: "baseline_S4", valueJson: { q0: 3.20, p0: 4.7 } },
     // Severity thresholds (SI %)
     { key: "severity_thresholds", valueJson: { low: 5, medium: 10 } },
     // Repeated-alert window (minutes)

@@ -133,4 +133,20 @@ test("evaluateFriendRowAnomaly distinguishes Leak vs SensorFailure", () => {
   const sfEval = evaluateFriendRowAnomaly(sfRow);
   assert.equal(sfEval.kind, "sensor_failure");
   assert.equal(sfEval.zoneId, null);
+
+  // Calibrated ~3.2 L/min rig drop (Flow3=3.20 -> Flow4=0.50 in Zone3)
+  const calibratedLeakRow = makeRow({
+    status: "Leak",
+    localization: "Zone3",
+    flow1: 3.25,
+    flow2: 3.18,
+    flow3: 3.2,
+    flow4: 0.5,
+  });
+  const calEval = evaluateFriendRowAnomaly(calibratedLeakRow);
+  assert.equal(calEval.kind, "leak");
+  assert.equal(calEval.zoneId, 3);
+  assert.equal(calEval.stationId, "S3");
+  assert.equal(calEval.flowDiff, 2.7);
+  assert.equal(calEval.severity, "high");
 });

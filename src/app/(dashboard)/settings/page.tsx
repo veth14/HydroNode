@@ -11,6 +11,8 @@ import {
   ADC_MAX,
   ADC_ZERO,
   BAR_MAX,
+  FLOW_CALIBRATION_SNAPSHOT,
+  FLOW_NOMINAL_LPM,
   MANILA_TZ,
   PUMP_STARTING_WINDOW_MS,
   STALE_THRESHOLD_MS,
@@ -172,6 +174,18 @@ export default function SettingsPage() {
                 </span>
                 <span className="text-[11px] font-mono text-[#0076A0]">
                   UTC → to_char(..., &apos;Z&apos;) → PHT
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  <strong className="text-slate-900">Calibrated Flow Scale:</strong>{" "}
+                  Nominal ~<code className="font-mono">{FLOW_NOMINAL_LPM.toFixed(1)} L/min</code> (
+                  {STATION_IDS.map((sid) => `${sid}: ${FLOW_CALIBRATION_SNAPSHOT[sid].toFixed(2)}`).join(" · ")}{" "}
+                  L/min)
+                </span>
+                <span className="text-[11px] font-mono text-slate-500">
+                  4× Hall Pulse · L/min
                 </span>
               </div>
             </CardContent>

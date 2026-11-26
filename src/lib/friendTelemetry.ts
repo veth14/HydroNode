@@ -18,6 +18,15 @@ export const ADC_ZERO = 225;
 export const ADC_MAX = 4095;
 export const BAR_MAX = 12.0;
 
+// Calibrated physical rig flow profile (L/min): S1–S3 steady ~3.18–3.25 L/min; downstream breach drops to ~0.50 L/min
+export const FLOW_NOMINAL_LPM = 3.2;
+export const FLOW_CALIBRATION_SNAPSHOT: Record<StationId, number> = {
+  S1: 3.25,
+  S2: 3.18,
+  S3: 3.2,
+  S4: 0.5,
+};
+
 export const STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes without new DB rows
 export const PUMP_STARTING_WINDOW_MS = 12 * 1000; // 12s OFF->ON priming window
 export const MANILA_TZ = "Asia/Manila";
@@ -171,6 +180,16 @@ export function evaluateFriendRowAnomaly(row: FriendSensorRow): {
       ? Math.max(0, flows[stationIdx] - flows[nextIdx])
       : Math.max(0, Math.max(...flows) - Math.min(...flows));
 
+  const flowUp = flows[stationIdx] ?? 0;
+  const flowLossPct = flowUp > 0 ? (flowDiff / flowUp) * 100 : 0;
+  // Scale flow severity proportionally so leaks on a ~3.2 L/min rig (e.g. 3.20 -> 0.50 L/min) escalate properly
+  const flowSeverityScore =
+    flowDiff >= 1.5 || flowLossPct >= 25
+      ? 12
+      : flowDiff >= 0.5 || flowLossPct >= 10
+      ? 7
+      : 4;
+
   const pUp = pressures[stationIdx] ?? 0;
   const pDown = pressures[nextIdx] ?? pUp;
   const pressureDropBar = Math.max(0, pUp - pDown);
@@ -180,7 +199,7 @@ export function evaluateFriendRowAnomaly(row: FriendSensorRow): {
     kind === "sensor_failure"
       ? "medium"
       : kind === "leak"
-      ? classifySeverity(Math.max(si, flowDiff > 2 ? 12 : 6), { low: 5, medium: 10 })
+      ? classifySeverity(Math.max(si, flowSeverityScore), { low: 5, medium: 10 })
       : "low";
 
   const statusLabel = row.status ?? "Anomaly";

@@ -187,7 +187,7 @@ export function TelemetryChart({
                 yAxisId="flow"
                 tick={{ fontSize: 10, fill: "#0284c7" }}
                 stroke="#cbd5e1"
-                domain={[0, 20]}
+                domain={[0, "auto"]}
                 unit=" L/m"
               />
               <YAxis
@@ -195,7 +195,7 @@ export function TelemetryChart({
                 orientation="right"
                 tick={{ fontSize: 10, fill: "#4f46e5" }}
                 stroke="#4f46e540"
-                domain={[0, 7]}
+                domain={[0, "auto"]}
                 unit=" bar"
               />
               <Tooltip
@@ -248,7 +248,7 @@ export function TelemetryChart({
                 interval="preserveStartEnd"
                 minTickGap={45}
               />
-              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[0, 20]} />
+              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[0, "auto"]} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#ffffff",
@@ -295,7 +295,7 @@ export function TelemetryChart({
                 interval="preserveStartEnd"
                 minTickGap={45}
               />
-              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[0, 7]} />
+              <YAxis tick={{ fontSize: 10, fill: "#64748b" }} stroke="#cbd5e1" domain={[0, "auto"]} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#ffffff",
