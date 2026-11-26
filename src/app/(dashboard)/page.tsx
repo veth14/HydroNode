@@ -14,6 +14,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { useHydroStore } from "@/store/hydroStore";
 import { useSettings } from "@/hooks/useSettings";
 import type { StationId, ZoneId } from "@/config/rig";
+import type { PumpStatus } from "@/types";
 import { ZONES, STATION_IDS } from "@/config/rig";
 import {
   AlertTriangle,
@@ -31,8 +32,55 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
+const PUMP_STATUS_META: Record<
+  PumpStatus,
+  {
+    headerLabel: string;
+    cardLabel: string;
+    subtitle: string;
+    pillClass: string;
+    dotClass: string;
+    cardGrad: string;
+    cardBorder: string;
+    iconClass: string;
+  }
+> = {
+  off: {
+    headerLabel: "PUMP OFF",
+    cardLabel: "Off",
+    subtitle: "400–1000 L/H · IP68 · ½″ BSP",
+    pillClass: "bg-slate-100 text-slate-600 border-slate-200",
+    dotClass: "bg-slate-400",
+    cardGrad: "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+    cardBorder: "1px solid #e2e8f0",
+    iconClass: "text-slate-500",
+  },
+  starting: {
+    headerLabel: "PUMP STARTING",
+    cardLabel: "Starting…",
+    subtitle: "Priming pipeline & ramping pressure",
+    pillClass: "bg-amber-50 text-amber-700 border-amber-300",
+    dotClass: "bg-amber-500 animate-ping",
+    cardGrad: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+    cardBorder: "1px solid #fde68a",
+    iconClass: "text-amber-600",
+  },
+  running: {
+    headerLabel: "PUMP RUNNING",
+    cardLabel: "Running",
+    subtitle: "400–1000 L/H · IP68 · ½″ BSP",
+    pillClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dotClass: "bg-emerald-500 animate-pulse",
+    cardGrad: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+    cardBorder: "1px solid #bbf7d0",
+    iconClass: "text-emerald-600",
+  },
+};
+
 export default function NetworkOverviewPage() {
   const kpi = useHydroStore((s) => s.kpi);
+  const pumpStatus: PumpStatus = kpi?.pumpStatus ?? "off";
+  const pumpMeta = PUMP_STATUS_META[pumpStatus];
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
   const { getBaseline } = useSettings();
@@ -92,6 +140,11 @@ export default function NetworkOverviewPage() {
                 style={{ background: "#F3FFD1", color: "#4a7a00", borderColor: "#A6CE38" }}>
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#A6CE38" }} />
                 SCADA LIVE
+              </span>
+              {/* Live pump state badge */}
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${pumpMeta.pillClass}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${pumpMeta.dotClass}`} />
+                {pumpMeta.headerLabel}
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full"
                 style={{ background: "#F4FAFD", color: "#2D5A7A", border: "1px solid #DFF5FF" }}>
@@ -503,19 +556,20 @@ export default function NetworkOverviewPage() {
               style={{ border: "1px solid #DFF5FF", background: "#ffffff" }}>
               <div>
                 <div className="rounded-xl p-4 h-28 relative flex items-center justify-center overflow-hidden"
-                  style={{ background: "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid #bbf7d0" }}>
+                  style={{ background: pumpMeta.cardGrad, border: pumpMeta.cardBorder }}>
                   <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center"
-                    style={{ border: "1px solid #bbf7d0" }}>
-                    <Cpu className="w-6 h-6 text-emerald-600" />
+                    style={{ border: pumpMeta.cardBorder }}>
+                    <Cpu className={`w-6 h-6 ${pumpMeta.iconClass}`} />
                   </div>
-                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Running
+                  <span className={`absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full border ${pumpMeta.pillClass}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${pumpMeta.dotClass}`} />
+                    {pumpMeta.cardLabel}
                   </span>
                 </div>
                 <div className="mt-3.5">
                   <h4 className="text-sm font-bold tracking-tight" style={{ color: "#0C2340" }}>Submersible Pump</h4>
-                  <p className="text-xs mt-0.5" style={{ color: "#2D5A7A" }}>12V/24V Brushless · LR7843 MOSFET</p>
-                  <p className="text-[11px] mt-1" style={{ color: "#819FD7" }}>400–1000 L/H · IP68 · ½″ BSP</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#2D5A7A" }}>12V/24V Brushless · GPIO 23 Relay</p>
+                  <p className="text-[11px] mt-1" style={{ color: "#819FD7" }}>{pumpMeta.subtitle}</p>
                 </div>
               </div>
               <div className="mt-4 pt-3 flex items-center justify-between" style={{ borderTop: "1px solid #DFF5FF" }}>

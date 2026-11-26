@@ -21,7 +21,7 @@ let lastCleanupAtMs = 0;
 // ── Zod schema ────────────────────────────────────────────────────────────────
 const ReadingSchema = z.object({
   stationId: z.enum(["S1", "S2", "S3", "S4"]),
-  t: z.string().datetime(),
+  t: z.string().datetime().optional(),
   flow: z.number(),
   pressure: z.number(),
   vibration: z.number().default(0),
@@ -37,19 +37,21 @@ const AlertFeaturesSchema = z.object({
 
 const AlertSchema = z.object({
   stationId: z.enum(["S1", "S2", "S3", "S4"]),
-  t: z.string().datetime(),
+  t: z.string().datetime().optional(),
   confidence: z.number().min(0).max(1),
   features: AlertFeaturesSchema,
 });
 
 const SamplingModeSchema = z.enum(["normal", "elevated"]);
+const PumpStatusSchema = z.enum(["off", "starting", "running"]);
 
 const IngestBodySchema = z.object({
   deviceId: z.string(),
-  sentAt: z.string().datetime(),
+  sentAt: z.string().datetime().optional(),
   readings: z.array(ReadingSchema).min(1),
   alerts: z.array(AlertSchema).default([]),
   samplingModes: z.record(z.string(), SamplingModeSchema).default({}),
+  pumpStatus: PumpStatusSchema.optional(),
 });
 
 // ── Helper: check x-api-key ───────────────────────────────────────────────────
@@ -90,7 +92,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { readings, alerts: ingestAlerts, samplingModes } = parsed.data;
+  const { readings, alerts: ingestAlerts, samplingModes, pumpStatus, deviceId } = parsed.data;
+  const now = new Date();
+  const nowMsFallback = now.getTime();
 
   // ── 1. Aggregate readings by (stationId, minute) and track chronologically latest per station ──
   const minuteMap = new Map<
@@ -102,8 +106,9 @@ export async function POST(req: NextRequest) {
     { tsMs: number; flow: number; pressure: number; vibration: number }
   >();
 
-  const rawValues = readings.map((r) => {
-    const tsDate = new Date(r.t);
+  const rawValues = readings.map((r, idx) => {
+    // Fallback to server timestamp if ESP32 booted before NTP synced
+    const tsDate = r.t ? new Date(r.t) : new Date(nowMsFallback - (readings.length - 1 - idx) * 100);
     const tsMs = tsDate.getTime();
 
     const prevLatest = latestByStation.get(r.stationId);
@@ -144,7 +149,6 @@ export async function POST(req: NextRequest) {
   });
 
   // ── 2. Single pipelined db.batch(): raw insert + minute upserts + station snapshot updates ──
-  const now = new Date();
   const alertStationSet = new Set(ingestAlerts.map((a) => a.stationId));
 
   const rawInsertStmt = db.insert(readingsRaw).values(rawValues);
@@ -197,11 +201,28 @@ export async function POST(req: NextRequest) {
       .where(eq(stations.id, stationId));
   });
 
+  // Drizzle db.batch() requires homogeneous table types — pump_status upsert runs after batch
   await db.batch([
     rawInsertStmt,
     ...minuteUpsertStmts,
     ...stationUpdateStmts,
   ] as Parameters<typeof db.batch>[0]);
+
+  // Pump status upsert (settings table) must be sequential — different table from batch above
+  if (pumpStatus) {
+    const pumpValue = {
+      status: pumpStatus,
+      updatedAt: now.toISOString(),
+      deviceId,
+    };
+    await db
+      .insert(settings)
+      .values({ key: "pump_status", valueJson: pumpValue })
+      .onConflictDoUpdate({
+        target: settings.key,
+        set: { valueJson: pumpValue },
+      });
+  }
 
   // ── 3. Process alerts only when flagged by edge controller ──
   let alertsInserted = 0;
@@ -242,7 +263,7 @@ export async function POST(req: NextRequest) {
       const evaluated = evaluateAlert(ingestAlert.features, baseline, flows, thresholds);
       if (!evaluated) continue;
 
-      const alertTs = new Date(ingestAlert.t);
+      const alertTs = ingestAlert.t ? new Date(ingestAlert.t) : now;
       const repeatWindowStart = new Date(alertTs.getTime() - repeatWindowMs);
 
       const existing = await db.query.alerts.findFirst({
@@ -309,5 +330,6 @@ export async function POST(req: NextRequest) {
     readingsInserted: readings.length,
     minuteBucketsUpserted: minuteMap.size,
     alertsInserted,
+    pumpStatus: pumpStatus ?? null,
   });
 }

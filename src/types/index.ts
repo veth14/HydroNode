@@ -7,6 +7,7 @@ export type ZoneId = 1 | 2 | 3 | 4;
 export type StationStatus = "online" | "offline" | "alert" | "elevated";
 export type ZoneStatus = "healthy" | "alert" | "warning";
 export type SamplingMode = "normal" | "elevated";
+export type PumpStatus = "off" | "starting" | "running";
 export type Severity = "low" | "medium" | "high";
 export type AlertStatus = "active" | "acknowledged" | "resolved";
 
@@ -44,6 +45,7 @@ export interface IngestPayload {
   readings: StationReading[];
   alerts: IngestAlert[];
   samplingModes: Partial<Record<StationId, SamplingMode>>;
+  pumpStatus?: PumpStatus;
 }
 
 // Live station state (from Zustand store)
@@ -91,6 +93,8 @@ export interface KpiData {
   stationsTotal: number;
   estimatedWaterLoss: number; // L/min
   lastUpdated: string | null;
+  pumpStatus: PumpStatus;
+  pumpUpdatedAt: string | null;
 }
 
 export interface DbUsage {
