@@ -659,7 +659,7 @@ function HologramProjection({
             ref={handleCardMount}
             onClick={isSelected ? onClick : undefined}
             style={{
-              width: status === "alert" ? "16.2em" : "13.2em",
+              width: status === "alert" ? "17.6em" : "13.2em",
               boxSizing: "border-box",
               padding: "0.25em",
               borderRadius: "1em",

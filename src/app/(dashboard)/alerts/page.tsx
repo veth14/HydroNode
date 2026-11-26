@@ -91,7 +91,20 @@ function segmentDisplay(alert: LiveAlert): { primary: string; secondary: string 
       secondary: alert.source?.localizationRaw ?? `Zone ${alert.zoneId}`,
     };
   }
+  // No leak zone — show human-readable reason (no-flow, sensor fault, etc.)
   const rawLoc = alert.source?.localizationRaw ?? "None";
+  if (alert.source?.isNoFlow) {
+    return {
+      primary: `No Flow · Pump ${alert.source.pumpStatus}`,
+      secondary: `localization="${rawLoc}" (not a leak)`,
+    };
+  }
+  if (alert.source?.eventKind === "sensor_failure") {
+    return {
+      primary: `Sensor Fault · ${alert.source.firmwareStatus ?? "SensorFailure"}`,
+      secondary: `localization="${rawLoc}"`,
+    };
+  }
   return {
     primary: rawLoc === "None" || !rawLoc ? "System / Unlocalized" : rawLoc,
     secondary: `localization="${rawLoc}"`,
@@ -401,6 +414,25 @@ export default function AlertsPage() {
           </Button>
         </div>
       </div>
+
+      {/* ─── SensorFailure / No-Flow Explanation Banner ─── */}
+      {alerts && alerts.length > 0 && summary.sensorFaults === alerts.length && summary.leaks === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3.5 flex items-start gap-3 text-xs shadow-2xs">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-bold text-amber-800 block mb-0.5">
+              All {alerts.length} logged events are Firmware SensorFailure — not water leaks.
+            </span>
+            <span className="text-amber-700">
+              These rows were recorded while the pump was <strong>OFF</strong> and flow was near-zero (residual gravity
+              flow / turbine spin-down). No pipe breach or leak is present.
+              The firmware reports <code className="font-mono bg-amber-100 px-1 rounded">SensorFailure</code> when it
+              cannot distinguish dead-flow from normal sensor noise. When the pump turns <strong>ON</strong> and a real
+              Leak row is detected, it will appear here with Zone and SI% populated.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* ─── Rich Alerts Table ─── */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-premium overflow-hidden">
