@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { useHydroStore } from "@/store/hydroStore";
 import { useSettings } from "@/hooks/useSettings";
+import { SourcePanel } from "@/components/source/SourcePanel";
 import type { StationId, ZoneId } from "@/config/rig";
 import type { PumpStatus } from "@/types";
 import { ZONES, STATION_IDS } from "@/config/rig";
@@ -224,7 +225,23 @@ export default function NetworkOverviewPage() {
         />
       </div>
 
-      {/* ─── 3. 3D Pipeline Canvas ─── */}
+      {/* ─── 3. ESP32 Source Feed (friend's DB) ─── */}
+      <Card>
+        <CardHeader
+          title={
+            <span className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-emerald-500" />
+              ESP32 Live Feed
+            </span>
+          }
+          subtitle="Direct telemetry from sensor_data · auto-refreshes every 5 s · pump ON/OFF detection"
+        />
+        <CardContent>
+          <SourcePanel />
+        </CardContent>
+      </Card>
+
+      {/* ─── 4. 3D Pipeline Canvas ─── */}
       <Card hasFlutedFooter>
         <CardHeader
           title={
