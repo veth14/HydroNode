@@ -16,6 +16,7 @@ import {
   WifiOff,
   Database,
 } from "lucide-react";
+import { useNow } from "@/hooks/useNow";
 import {
   classifyStatusKind,
   formatPhtDateTime,
@@ -90,6 +91,7 @@ function statusMeta(s: string) {
 }
 
 export function SourcePanel() {
+  const nowMs = useNow(5000);
   const { data, isLoading, error } = useSWR<SourceData>("/api/source", fetcher, {
     refreshInterval: 5000,
     revalidateOnFocus: true,
@@ -142,16 +144,22 @@ export function SourcePanel() {
   const StatusIcon = statusInfo.Icon;
   const pumpOn = latest.pumpStatus === "ON";
   const pumpStarting = pumpState?.pumpStatus === "starting";
-  const age = formatRelativeAge(latest.createdAt);
+  const age =
+    nowMs > 0
+      ? formatRelativeAge(latest.createdAt, nowMs)
+      : { label: "--", stale: Boolean(pumpState?.isStale) };
+  const isStale = pumpState?.isStale ?? age.stale;
 
   return (
     <div className="space-y-4">
       {/* Stale data banner */}
-      {age.stale && (
+      {isStale && (
         <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
           <WifiOff className="w-4 h-4 shrink-0 text-amber-600" />
           <span>
-            <strong className="font-semibold">No new rows for {age.label}.</strong>{" "}
+            <strong className="font-semibold">
+              No new data {age.label !== "--" ? `for ${age.label}` : "detected"} (&gt;1 min timeout).
+            </strong>{" "}
             Showing last recorded telemetry (#{latest.id} at{" "}
             <span className="font-mono">{formatPhtDateTime(latest.createdAt)} PHT</span>).
           </span>
@@ -193,7 +201,7 @@ export function SourcePanel() {
         <div className="flex items-center gap-3 ml-auto text-xs text-[#2D5A7A]">
           <span
             className={`inline-flex items-center gap-1 font-medium ${
-              age.stale ? "text-amber-700" : "text-[#2D5A7A]"
+              isStale ? "text-amber-700" : "text-[#2D5A7A]"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -212,8 +220,8 @@ export function SourcePanel() {
             key={sid}
             className="rounded-xl p-3.5 space-y-2 transition-colors"
             style={{
-              background: age.stale ? "#fffbeb" : "#F4FAFD",
-              border: age.stale ? "1px solid #fde68a" : "1px solid #DFF5FF",
+              background: isStale ? "#fffbeb" : "#F4FAFD",
+              border: isStale ? "1px solid #fde68a" : "1px solid #DFF5FF",
             }}
           >
             <div className="flex items-center justify-between">

@@ -21,6 +21,9 @@ import {
 import type { StationId } from "@/types";
 import { STATION_IDS } from "@/config/rig";
 import { useSettings } from "@/hooks/useSettings";
+import { useHydroStore } from "@/store/hydroStore";
+import { useNow } from "@/hooks/useNow";
+import { formatPhtTime, formatRelativeAge } from "@/lib/friendTelemetry";
 import { Droplets, Gauge, Activity } from "lucide-react";
 
 interface RawReadingPoint {
@@ -50,6 +53,13 @@ export function TelemetryChart({
 
   const { getBaseline } = useSettings();
   const baseline = getBaseline(selectedStation);
+  const kpi = useHydroStore((s) => s.kpi);
+  const nowMs = useNow(5000);
+  const isStale = Boolean(kpi?.isStale);
+  const staleAgeLabel =
+    kpi?.lastUpdated && nowMs > 0
+      ? formatRelativeAge(kpi.lastUpdated, nowMs).label
+      : null;
 
   const { data, isLoading } = useSWR<RawReadingPoint[]>(
     `/api/readings?stationId=${selectedStation}&raw=true&range=1h`,
@@ -89,16 +99,25 @@ export function TelemetryChart({
             <h3 className="text-sm font-semibold text-slate-900 tracking-tight flex items-center gap-2">
               <span>Station {selectedStation} Telemetry Stream</span>
               <span
-                className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${hasReadings
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-slate-50 text-slate-600 border-slate-200"
-                  }`}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                  isStale
+                    ? "bg-amber-50 text-amber-800 border-amber-200"
+                    : hasReadings
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-slate-50 text-slate-600 border-slate-200"
+                }`}
               >
-                {hasReadings ? "Live ESP32 Stream" : "Awaiting ESP32 Data"}
+                {isStale
+                  ? `Stale · No New Data${staleAgeLabel ? ` (${staleAgeLabel})` : ""}`
+                  : hasReadings
+                    ? "Live ESP32 Stream"
+                    : "Awaiting ESP32 Data"}
               </span>
             </h3>
             <p className="text-xs text-slate-500">
-              Live flow &amp; pressure telemetry from EL817 Hall pulse &amp; ADS1115 ADC
+              {isStale && kpi?.lastUpdated
+                ? `Last check at ${formatPhtTime(kpi.lastUpdated)} PHT — waiting for new ESP32 telemetry`
+                : "Live flow & pressure telemetry from EL817 Hall pulse & ADS1115 ADC"}
             </p>
           </div>
         </div>

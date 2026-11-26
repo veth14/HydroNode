@@ -11,8 +11,10 @@ import {
   derivePumpState,
   evaluateFriendRowAnomaly,
   formatPhtTime,
+  formatRelativeAge,
   normalizeConfidence01,
   parseLocalizationZone,
+  STALE_THRESHOLD_MS,
 } from "../friendTelemetry";
 
 const makeRow = (overrides: Partial<FriendSensorRow> = {}): FriendSensorRow => ({
@@ -195,4 +197,24 @@ test("evaluateFriendRowAnomaly distinguishes Leak vs SensorFailure", () => {
   assert.equal(noFlowEval.zoneId, null);
   assert.equal(noFlowEval.si, 0);
   assert.equal(noFlowEval.flowDiff, 0);
+});
+
+test("automatic 1-minute stale detection flips to stale the next minute when no new data arrives", () => {
+  assert.equal(STALE_THRESHOLD_MS, 60_000);
+  // Last check at 06:20:00 AM PHT (22:20:00 UTC prev day)
+  const lastRowIso = "2026-11-26T22:20:00.000Z";
+  const lastRowMs = new Date(lastRowIso).getTime();
+  const row = makeRow({ created_at: lastRowIso, pump_status: "OFF" });
+
+  // 55s later (still within same minute) -> fresh
+  const withinMinute = derivePumpState(row, null, lastRowMs + 55_000);
+  assert.equal(withinMinute.isStale, false);
+  assert.equal(formatRelativeAge(lastRowIso, lastRowMs + 55_000).stale, false);
+
+  // Next minute (+61s, 06:21:01 AM PHT, no new row) -> automatically stale
+  const nextMinute = derivePumpState(row, null, lastRowMs + 61_000);
+  assert.equal(nextMinute.isStale, true);
+  const age = formatRelativeAge(lastRowIso, lastRowMs + 61_000);
+  assert.equal(age.stale, true);
+  assert.equal(age.label, "1m ago");
 });

@@ -44,7 +44,7 @@ export const FLOW_CALIBRATION_PUMP_ON: Record<StationId, number> = {
   S4: 3.20,
 };
 
-export const STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes without new DB rows
+export const STALE_THRESHOLD_MS = 60 * 1000; // 60 s (1 min) — ESP32 sends every ~5 s; > 1 min without new data = stale / no new data
 export const PUMP_STARTING_WINDOW_MS = 12 * 1000; // 12s OFF->ON priming window
 export const MANILA_TZ = "Asia/Manila";
 
@@ -303,7 +303,7 @@ export function formatPhtDateTime(isoUtc: string): string {
   });
 }
 
-/** Compute human-readable relative age and staleness flag (> 3 min). */
+/** Compute human-readable relative age and staleness flag (> 1 min / STALE_THRESHOLD_MS). */
 export function formatRelativeAge(
   isoUtc: string,
   nowMs = Date.now(),

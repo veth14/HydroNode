@@ -38,7 +38,12 @@ import type { StationId, ZoneId } from "@/config/rig";
 import type { LiveAlert } from "@/types";
 import { STATION_IDS, SENSOR_3D_NODES, ZONES } from "@/config/rig";
 import { useHydroStore } from "@/store/hydroStore";
-import { isNoFlowCondition } from "@/lib/friendTelemetry";
+import { useNow } from "@/hooks/useNow";
+import {
+  formatPhtTime,
+  formatRelativeAge,
+  isNoFlowCondition,
+} from "@/lib/friendTelemetry";
 import { PipeFlowWater } from "./PipeFlowWater";
 import {
   Droplets,
@@ -46,6 +51,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Wifi,
+  WifiOff,
   RotateCcw,
   Compass,
 } from "lucide-react";
@@ -247,6 +253,7 @@ interface HologramProjectionProps {
   pressure: number | null;
   status: NodeStatus;
   isSelected: boolean;
+  isStale?: boolean;
   onClick: () => void;
   /** Present when this station has an active leak alert */
   activeAlert?: import("@/types").LiveAlert;
@@ -556,6 +563,7 @@ function HologramProjection({
   pressure,
   status,
   isSelected,
+  isStale = false,
   onClick,
   activeAlert,
 }: HologramProjectionProps) {
@@ -973,7 +981,22 @@ function HologramProjection({
                       {stationId} · Z{zoneId}
                     </span>
                   </div>
-                  {flow != null && flow <= 0.05 ? (
+                  {isStale ? (
+                    <span
+                      style={{
+                        fontSize: "0.54em",
+                        fontWeight: 700,
+                        color: "#fde68a",
+                        background: "rgba(245,158,11,0.22)",
+                        border: "0.09em solid rgba(251,191,36,0.65)",
+                        borderRadius: "0.3em",
+                        padding: "0.12em 0.35em",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      STALE
+                    </span>
+                  ) : flow != null && flow <= 0.05 ? (
                     <span
                       style={{
                         fontSize: "0.54em",
@@ -1097,6 +1120,7 @@ interface SensorOverlayProps {
   status: NodeStatus;
   isHovered: boolean;
   isSelected: boolean;
+  isStale?: boolean;
   onHoverChange: (hovered: boolean) => void;
   onClick: () => void;
   activeAlert?: import("@/types").LiveAlert;
@@ -1109,6 +1133,7 @@ function SensorNodeOverlay({
   status,
   isHovered,
   isSelected,
+  isStale = false,
   onHoverChange,
   onClick,
   activeAlert,
@@ -1239,6 +1264,7 @@ function SensorNodeOverlay({
           pressure={pressure}
           status={status}
           isSelected={isSelected}
+          isStale={isStale}
           onClick={onClick}
           activeAlert={activeAlert}
         />
@@ -1404,6 +1430,7 @@ export function Pipeline3DCanvas({
   playbackLabel,
 }: Pipeline3DCanvasProps) {
   const mounted = useIsClient();
+  const nowMs = useNow(5000);
   const [hoveredStation, setHoveredStation] = useState<StationId | null>(null);
   const [localPinnedStation, setLocalPinnedStation] = useState<StationId | null>(null);
   const [presetMode, setPresetMode] = useState<CameraPresetMode>("overview");
@@ -1426,14 +1453,30 @@ export function Pipeline3DCanvas({
     stations.find((s) => s.id === "S3")?.latestPressure ?? 0,
     stations.find((s) => s.id === "S4")?.latestPressure ?? 0,
   ];
-  const waterFlow: [number, number, number, number] =
-    isPlaybackMode && overrideFlow ? overrideFlow : liveFlow;
-  const waterPressure: [number, number, number, number] =
-    isPlaybackMode && overridePressure ? overridePressure : livePressure;
   const livePumpOn = kpi?.pumpStatus === "running" || kpi?.pumpStatus === "starting";
+  const isStaleData = !isPlaybackMode && Boolean(kpi?.isStale);
+
+  // When stream is stale (>1 min without new DB rows), stop live flow animation & clear water
+  const waterFlow: [number, number, number, number] =
+    isPlaybackMode && overrideFlow
+      ? overrideFlow
+      : isStaleData
+        ? [0, 0, 0, 0]
+        : liveFlow;
+  const waterPressure: [number, number, number, number] =
+    isPlaybackMode && overridePressure
+      ? overridePressure
+      : isStaleData
+        ? [0, 0, 0, 0]
+        : livePressure;
   const waterPumpOn: boolean =
-    isPlaybackMode && overridePumpOn != null ? overridePumpOn : livePumpOn;
-  const hasWaterFlow = waterFlow.some((f) => f > 0.05) || waterPumpOn;
+    isPlaybackMode && overridePumpOn != null
+      ? overridePumpOn
+      : isStaleData
+        ? false
+        : livePumpOn;
+  const hasWaterFlow =
+    !isStaleData && (waterFlow.some((f) => f > 0.05) || waterPumpOn);
 
   // Never display LEAK DETECTED alerts on the 3D canvas when the pipeline has no flow
   const rawDisplayedAlerts =
@@ -1679,19 +1722,23 @@ export function Pipeline3DCanvas({
             gap: 6,
             background: isPlaybackMode
               ? "#fef3c7"
-              : hasWaterFlow
-                ? "#dff5ff"
-                : hasLiveReadings
-                  ? "#F3FFD1"
-                  : "#F4FAFD",
+              : isStaleData
+                ? "#fef3c7"
+                : hasWaterFlow
+                  ? "#dff5ff"
+                  : hasLiveReadings
+                    ? "#F3FFD1"
+                    : "#F4FAFD",
             border: `1px solid ${
               isPlaybackMode
                 ? "#f59e0b"
-                : hasWaterFlow
-                  ? "#38bdf8"
-                  : hasLiveReadings
-                    ? "#A6CE38"
-                    : "#C8E5F2"
+                : isStaleData
+                  ? "#f59e0b"
+                  : hasWaterFlow
+                    ? "#38bdf8"
+                    : hasLiveReadings
+                      ? "#A6CE38"
+                      : "#C8E5F2"
             }`,
             borderRadius: 20,
             padding: "4px 10px",
@@ -1699,39 +1746,84 @@ export function Pipeline3DCanvas({
             fontWeight: 700,
             color: isPlaybackMode
               ? "#92400e"
-              : hasWaterFlow
-                ? "#0369a1"
-                : hasLiveReadings
-                  ? "#4a7a00"
-                  : "#2D5A7A",
+              : isStaleData
+                ? "#92400e"
+                : hasWaterFlow
+                  ? "#0369a1"
+                  : hasLiveReadings
+                    ? "#4a7a00"
+                    : "#2D5A7A",
           }}
         >
-          <Wifi style={{ width: 10, height: 10 }} />
+          {isStaleData ? (
+            <WifiOff style={{ width: 10, height: 10, color: "#d97706" }} />
+          ) : (
+            <Wifi style={{ width: 10, height: 10 }} />
+          )}
           <span
             style={{
               width: 6,
               height: 6,
               background: isPlaybackMode
                 ? "#d97706"
-                : hasWaterFlow
-                  ? "#0284c7"
-                  : hasLiveReadings
-                    ? "#A6CE38"
-                    : "#019FD7",
+                : isStaleData
+                  ? "#d97706"
+                  : hasWaterFlow
+                    ? "#0284c7"
+                    : hasLiveReadings
+                      ? "#A6CE38"
+                      : "#019FD7",
               borderRadius: "50%",
               display: "inline-block",
-              animation: "pulse 1.5s infinite",
+              animation: isStaleData ? "none" : "pulse 1.5s infinite",
             }}
           />
           {isPlaybackMode
             ? `REPLAY${playbackLabel ? ` · ${playbackLabel}` : ""}`
-            : hasWaterFlow
-              ? "FLOWING · LIVE"
-              : hasLiveReadings
-                ? "LIVE ESP32"
-                : "ESP32 READY"}
+            : isStaleData
+              ? "STALE · NO NEW DATA"
+              : hasWaterFlow
+                ? "FLOWING · LIVE"
+                : hasLiveReadings
+                  ? "LIVE ESP32"
+                  : "ESP32 READY"}
         </div>
       </div>
+
+      {isStaleData && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 25,
+            background: "rgba(254, 243, 199, 0.94)",
+            backdropFilter: "blur(6px)",
+            borderTop: "1px solid #f59e0b",
+            padding: "7px 14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#92400e",
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <WifiOff style={{ width: 13, height: 13, color: "#d97706", flexShrink: 0 }} />
+            <span>
+              ESP32 OFFLINE — No new data for &gt;1 min (live water flow paused)
+            </span>
+          </span>
+          <span style={{ fontFamily: "monospace", fontSize: 10, whiteSpace: "nowrap" }}>
+            {kpi?.lastUpdated
+              ? `Last check: ${formatPhtTime(kpi.lastUpdated)} PHT${nowMs > 0 ? ` (${formatRelativeAge(kpi.lastUpdated, nowMs).label})` : ""}`
+              : "No telemetry rows recorded"}
+          </span>
+        </div>
+      )}
 
       <CanvasErrorBoundary>
         <Canvas
@@ -1877,9 +1969,10 @@ export function Pipeline3DCanvas({
                   stationId={sid}
                   flow={nodeFlow}
                   pressure={nodePressure}
-                  status={hasAlert ? "alert" : "normal"}
+                  status={hasAlert ? "alert" : isStaleData ? "warning" : "normal"}
                   isHovered={hoveredStation === sid}
                   isSelected={activeStation === sid || isZoneHighlighted}
+                  isStale={isStaleData}
                   onHoverChange={(hovered) =>
                     setHoveredStation((prev) =>
                       hovered ? sid : prev === sid ? null : prev
@@ -1898,9 +1991,10 @@ export function Pipeline3DCanvas({
       <div
         style={{
           position: "absolute",
-          bottom: 12,
+          bottom: isStaleData ? 42 : 12,
           left: "50%",
           transform: "translateX(-50%)",
+          zIndex: 20,
           fontSize: 10,
           color: "#2D5A7A",
           display: "flex",

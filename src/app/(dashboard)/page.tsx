@@ -14,7 +14,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { useHydroStore } from "@/store/hydroStore";
 import { useSettings } from "@/hooks/useSettings";
+import { useNow } from "@/hooks/useNow";
 import { SourcePanel } from "@/components/source/SourcePanel";
+import { formatPhtTime, formatRelativeAge } from "@/lib/friendTelemetry";
 import type { StationId, ZoneId } from "@/config/rig";
 import type { PumpStatus } from "@/types";
 import type { PlaybackFrame } from "@/lib/incidentPlayback";
@@ -34,6 +36,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Clock,
+  WifiOff,
 } from "lucide-react";
 
 const PUMP_STATUS_META: Record<
@@ -83,6 +86,7 @@ const PUMP_STATUS_META: Record<
 
 export default function NetworkOverviewPage() {
   const kpi = useHydroStore((s) => s.kpi);
+  const nowMs = useNow(5000);
   const pumpStatus: PumpStatus = kpi?.pumpStatus ?? "off";
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
@@ -106,6 +110,14 @@ export default function NetworkOverviewPage() {
   }, []);
 
   const isReplayActive = timeMachineActive && tmFrame != null;
+  const isStale = !isReplayActive && Boolean(kpi?.isStale);
+  const lastCheckAge =
+    kpi?.lastUpdated && nowMs > 0
+      ? formatRelativeAge(kpi.lastUpdated, nowMs).label
+      : null;
+  const lastCheckPht = kpi?.lastUpdated
+    ? `${formatPhtTime(kpi.lastUpdated)} PHT`
+    : null;
   const effectivePumpStatus: PumpStatus = isReplayActive
     ? tmFrame.pumpOn
       ? "running"
@@ -176,12 +188,17 @@ export default function NetworkOverviewPage() {
 
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 mb-1.5">
-              {/* Live vs Time Machine badge */}
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              {/* Live vs Time Machine vs Stale badge */}
               {isReplayActive ? (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
                   TIME MACHINE · {tmFrame.label}
+                </span>
+              ) : isStale ? (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-300">
+                  <WifiOff className="w-3 h-3 text-amber-600" />
+                  NO NEW DATA · STALE
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border"
@@ -195,9 +212,11 @@ export default function NetworkOverviewPage() {
                 <span className={`w-1.5 h-1.5 rounded-full ${pumpMeta.dotClass}`} />
                 {pumpMeta.headerLabel}
               </span>
-              {kpi?.isStale && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
-                  DB IDLE
+              {isStale && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200 font-mono">
+                  {lastCheckPht
+                    ? `Last check: ${lastCheckPht}${lastCheckAge ? ` (${lastCheckAge})` : ""}`
+                    : "DB IDLE"}
                 </span>
               )}
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full"
@@ -211,7 +230,18 @@ export default function NetworkOverviewPage() {
             </h1>
             <p className="text-sm" style={{ color: "#2D5A7A" }}>
               Metro Pacific Water — IoT pipeline integrity monitor powered by ESP32-S3.
-              {" "}<span style={{ color: "#019FD7", fontWeight: 600 }}>4 zones · 8 sensors live</span>
+              {" "}
+              {isReplayActive ? (
+                <span style={{ color: "#d97706", fontWeight: 600 }}>
+                  Time Machine replay · {tmFrame.label}
+                </span>
+              ) : isStale ? (
+                <span style={{ color: "#d97706", fontWeight: 600 }}>
+                  No new data &gt;1m · paused at last recorded check
+                </span>
+              ) : (
+                <span style={{ color: "#019FD7", fontWeight: 600 }}>4 zones · 8 sensors live</span>
+              )}
             </p>
           </div>
 
@@ -265,10 +295,19 @@ export default function NetworkOverviewPage() {
         />
         <Stat
           label="Active Stations"
-          value={`${isReplayActive ? (tmFrame.pumpOn ? totalZones : 0) : Math.min(STATION_IDS.length, kpi?.stationsOnline ?? STATION_IDS.length)} / ${STATION_IDS.length}`}
-          tone="default"
+          value={`${isReplayActive ? (tmFrame.pumpOn ? totalZones : 0) : Math.min(STATION_IDS.length, kpi?.stationsOnline ?? 0)} / ${STATION_IDS.length}`}
+          tone={isStale ? "warning" : "default"}
           icon={<Radio className="w-4 h-4" />}
-          trend={{ direction: "up", label: isReplayActive ? `Time Machine frame (${tmFrame.label})` : `${totalSensors} sensors online (4×2 Bi-Modal)` }}
+          trend={{
+            direction: isReplayActive || (kpi?.stationsOnline ?? 0) > 0 ? "up" : "flat",
+            label: isReplayActive
+              ? `Time Machine frame (${tmFrame.label})`
+              : isStale
+                ? `No new data${lastCheckAge ? ` · last ${lastCheckAge}` : ""}`
+                : (kpi?.stationsOnline ?? 0) > 0
+                  ? `${totalSensors} sensors online (4×2 Bi-Modal)`
+                  : "Awaiting live ESP32 telemetry",
+          }}
         />
         <Stat
           label="Fluid Loss Rate"
@@ -288,11 +327,15 @@ export default function NetworkOverviewPage() {
         <CardHeader
           title={
             <span className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-emerald-500" />
+              <Activity className={`w-4 h-4 ${isStale ? "text-amber-500" : "text-emerald-500"}`} />
               ESP32 Live Feed
             </span>
           }
-          subtitle="Direct telemetry from sensor_data · auto-refreshes every 5 s · Manila PHT (UTC+8)"
+          subtitle={
+            isStale && lastCheckPht
+              ? `No new data (>1 min timeout) · Last check ${lastCheckPht}${lastCheckAge ? ` (${lastCheckAge})` : ""}`
+              : "Direct telemetry from sensor_data · auto-refreshes every 5 s · Manila PHT (UTC+8)"
+          }
         />
         <CardContent>
           <SourcePanel />
@@ -304,12 +347,20 @@ export default function NetworkOverviewPage() {
         <CardHeader
           title={
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#019FD7" }} />
+              <span
+                className={`w-2 h-2 rounded-full ${isStale ? "" : "animate-pulse"}`}
+                style={{ background: isStale ? "#f59e0b" : "#019FD7" }}
+              />
               <span>Pipeline Rig Canvas</span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full ml-1"
                 style={{ background: "#DFF5FF", color: "#0076A0", border: "1px solid #ABE0F9" }}>
                 ESP32-S3 Edge Controller
               </span>
+              {isStale && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300">
+                  STALE · PAUSED
+                </span>
+              )}
             </div>
           }
           subtitle={`Real-time 3D physical rig · 4 sensor stations · 4 zones monitored (4×2 Bi-Modal — Flow + Pressure)`}
@@ -523,6 +574,11 @@ export default function NetworkOverviewPage() {
                           <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                           Leak Alert
                         </span>
+                      ) : isStale ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          Stale · Offline
+                        </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -683,7 +739,11 @@ export default function NetworkOverviewPage() {
                 <div className="mt-3.5">
                   <h4 className="text-sm font-bold tracking-tight" style={{ color: "#0C2340" }}>Submersible Pump</h4>
                   <p className="text-xs mt-0.5" style={{ color: "#2D5A7A" }}>12V/24V Brushless · GPIO 23 Relay</p>
-                  <p className="text-[11px] mt-1" style={{ color: "#819FD7" }}>{pumpMeta.subtitle}</p>
+                  <p className="text-[11px] mt-1" style={{ color: isStale ? "#d97706" : "#819FD7" }}>
+                    {isStale
+                      ? `Last known${lastCheckAge ? ` (${lastCheckAge})` : ""} · stream paused`
+                      : pumpMeta.subtitle}
+                  </p>
                 </div>
               </div>
               <div className="mt-4 pt-3 flex items-center justify-between" style={{ borderTop: "1px solid #DFF5FF" }}>
@@ -709,8 +769,11 @@ export default function NetworkOverviewPage() {
           <CardHeader
             title={
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4" style={{ color: "#019FD7" }} />
-                <span>Station {selectedStation} {isReplayActive ? "Replay" : "Live"}</span>
+                <Cpu className="w-4 h-4" style={{ color: isStale ? "#d97706" : "#019FD7" }} />
+                <span>
+                  Station {selectedStation}{" "}
+                  {isReplayActive ? "Replay" : isStale ? "Last Recorded" : "Live"}
+                </span>
               </div>
             }
             subtitle="Flow + Pressure sensor readings"
