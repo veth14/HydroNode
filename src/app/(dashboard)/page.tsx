@@ -12,6 +12,7 @@ import { Stat } from "@/components/ui/Stat";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import { useHydroStore } from "@/store/hydroStore";
+import { useSettings } from "@/hooks/useSettings";
 import type { StationId, ZoneId } from "@/config/rig";
 import { ZONES, STATION_IDS } from "@/config/rig";
 import {
@@ -34,6 +35,7 @@ export default function NetworkOverviewPage() {
   const kpi = useHydroStore((s) => s.kpi);
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
+  const { getBaseline } = useSettings();
 
   const [selectedZone, setSelectedZone] = useState<ZoneId | null>(null);
   const [selectedStation, setSelectedStation] = useState<StationId>("S1");
@@ -147,7 +149,7 @@ export default function NetworkOverviewPage() {
           value={`${Math.min(totalZones, kpi?.zonesHealthy ?? totalZones)} / ${totalZones}`}
           tone="success"
           icon={<ShieldCheck className="w-4 h-4" />}
-          trend={{ direction: "up", label: "100% nominal pressure hold" }}
+          trend={{ direction: (kpi?.zonesHealthy ?? 0) === totalZones ? "up" : "flat", label: (kpi?.zonesHealthy ?? 0) === totalZones ? "All zones at nominal pressure" : `${kpi?.zonesHealthy ?? 0}/${totalZones} zones nominal` }}
         />
         <Stat
           label="Active Stations"
@@ -591,7 +593,11 @@ export default function NetworkOverviewPage() {
                   {activeStation?.latestPressure != null ? activeStation.latestPressure.toFixed(2) : "--"}
                   <span className="text-xs font-normal ml-1" style={{ color: "#819FD7" }}>bar</span>
                 </span>
-                <span className="text-[11px] font-mono tabular-nums" style={{ color: "#2D5A7A" }}>P₀ = 5.00 bar</span>
+                <span className="text-[11px] font-mono tabular-nums" style={{ color: "#2D5A7A" }}>
+                  {getBaseline(selectedStation)?.p0 != null
+                    ? `P₀ = ${getBaseline(selectedStation)!.p0.toFixed(2)} bar`
+                    : "P₀ = --"}
+                </span>
               </div>
             </div>
 

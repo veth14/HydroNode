@@ -1,8 +1,6 @@
 // src/app/api/cron/cleanup/route.ts
-// GET /api/cron/cleanup – deletes raw readings older than the retention window.
-// Protected by CRON_SECRET (Vercel Cron uses Authorization: Bearer <secret>).
-// Also accepts x-cron-secret header for manual calls.
-// Default retention: 2 hours (at 30s ingest, 4 stations → ~960 rows max in raw table)
+// GET /api/cron/cleanup — scheduled cron endpoint (protected by CRON_SECRET).
+// POST /api/cron/cleanup — manual retention cleanup trigger from Settings page.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
@@ -18,14 +16,8 @@ function isAuthorized(req: NextRequest): boolean {
   return bearer === secret || direct === secret;
 }
 
-export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Default 2h retention: keeps raw table under ~960 rows (30s × 4 stations × 2h)
-  // Minute aggregates preserve full history long-term.
-  const hours = Number(req.nextUrl.searchParams.get("hours")) || 2;
+async function runCleanup(hoursParam: string | null) {
+  const hours = Number(hoursParam) || 2;
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const result = await db
@@ -34,8 +26,19 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    deleted: result.rowCount ?? "unknown",
+    deleted: result.rowCount ?? 0,
     cutoff: cutoff.toISOString(),
     retentionHours: hours,
   });
+}
+
+export async function GET(req: NextRequest) {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  return runCleanup(req.nextUrl.searchParams.get("hours"));
+}
+
+export async function POST(req: NextRequest) {
+  return runCleanup(req.nextUrl.searchParams.get("hours"));
 }

@@ -58,18 +58,13 @@ export default function SettingsPage() {
   const medThresh = editedMedThresh ?? settingsData?.severity_thresholds?.medium ?? 10;
   const repeatWindow = editedRepeatWindow ?? settingsData?.repeat_alert_window_min?.value ?? 10;
 
-  const defaultBaselines: Record<string, { q0: number; p0: number }> = {
-    S1: { q0: 15.0, p0: 5.0 },
-    S2: { q0: 14.8, p0: 4.9 },
-    S3: { q0: 14.6, p0: 4.8 },
-    S4: { q0: 14.4, p0: 4.7 },
-  };
+  const defaultBaselines: Record<string, { q0: number; p0: number }> = {};
   const baselines: Record<string, { q0: number; p0: number }> = Object.fromEntries(
     STATION_IDS.map((id) => {
       const serverVal = settingsData?.[`baseline_${id}` as keyof SettingsMap] as
         | { q0: number; p0: number }
         | undefined;
-      return [id, editedBaselines[id] ?? serverVal ?? defaultBaselines[id]];
+      return [id, editedBaselines[id] ?? serverVal ?? defaultBaselines[id] ?? { q0: 0, p0: 0 }];
     })
   );
 
@@ -191,7 +186,7 @@ export default function SettingsPage() {
                       <input
                         type="number"
                         step="0.1"
-                        value={baselines[id]?.q0 ?? 15.0}
+                        value={baselines[id]?.q0 ?? ""}
                         onChange={(e) =>
                           setBaselines({
                             ...baselines,
@@ -211,7 +206,7 @@ export default function SettingsPage() {
                       <input
                         type="number"
                         step="0.1"
-                        value={baselines[id]?.p0 ?? 5.0}
+                        value={baselines[id]?.p0 ?? ""}
                         onChange={(e) =>
                           setBaselines({
                             ...baselines,

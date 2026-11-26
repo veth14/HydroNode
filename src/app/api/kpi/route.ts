@@ -35,7 +35,9 @@ export async function GET() {
   ];
 
   const stationsOnline = stationRows.filter(
-    (s) => s.status === "online" || s.status === "elevated" || s.status === "alert"
+    (s) =>
+      s.lastSeen !== null &&
+      (s.status === "online" || s.status === "elevated" || s.status === "alert")
   ).length;
 
   const zonesTotal = zoneRows.length || ZONE_IDS.length;

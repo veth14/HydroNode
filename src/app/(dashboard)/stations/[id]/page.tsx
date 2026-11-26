@@ -21,6 +21,7 @@ import {
 } from "recharts";
 import { STATION_IDS, type StationId } from "@/config/rig";
 import { useHydroStore } from "@/store/hydroStore";
+import { useSettings } from "@/hooks/useSettings";
 import { Stat } from "@/components/ui/Stat";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/Card";
@@ -28,13 +29,6 @@ import type { LiveStation } from "@/types";
 import { Droplets, Gauge, Activity, Cpu, ArrowLeft, Waves } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
-const baselines: Record<StationId, { q0: number; p0: number }> = {
-  S1: { q0: 15.0, p0: 5.0 },
-  S2: { q0: 14.8, p0: 4.9 },
-  S3: { q0: 14.6, p0: 4.8 },
-  S4: { q0: 14.4, p0: 4.7 },
-};
 
 export default function StationDetailPage() {
   const params = useParams();
@@ -74,7 +68,8 @@ export default function StationDetailPage() {
     }
   );
 
-  const currentBaseline = baselines[stationId] ?? { q0: 15.0, p0: 5.0 };
+  const { getBaseline } = useSettings();
+  const currentBaseline = getBaseline(stationId);
 
   const formatAxisTime = (isoStr: string) => {
     const d = new Date(isoStr);
@@ -160,7 +155,7 @@ export default function StationDetailPage() {
           unit="L/min"
           tone="accent"
           icon={<Droplets className="w-4 h-4 text-sky-600" />}
-          subtext={`Baseline Q₀: ${currentBaseline.q0} L/m`}
+          subtext={currentBaseline != null ? `Baseline Q₀: ${currentBaseline.q0} L/m` : "Baseline not calibrated"}
         />
 
         <Stat
@@ -169,7 +164,7 @@ export default function StationDetailPage() {
           unit="bar"
           tone="default"
           icon={<Gauge className="w-4 h-4 text-indigo-600" />}
-          subtext={`Baseline P₀: ${currentBaseline.p0} bar`}
+          subtext={currentBaseline != null ? `Baseline P₀: ${currentBaseline.p0} bar` : "Baseline not calibrated"}
         />
 
         <Stat
@@ -200,8 +195,8 @@ export default function StationDetailPage() {
             </h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate max-w-2xl">
               {chartMode === "flow"
-                ? `Pulse turbine volumetric flow rate compared to baseline Q₀ (${currentBaseline.q0} L/min)`
-                : `5V transducer via ADS1115 16-bit I²C ADC compared to baseline P₀ (${currentBaseline.p0} bar)`}
+                ? `Pulse turbine volumetric flow rate${currentBaseline != null ? ` compared to baseline Q₀ (${currentBaseline.q0} L/min)` : ""}`
+                : `5V transducer via ADS1115 16-bit I²C ADC${currentBaseline != null ? ` compared to baseline P₀ (${currentBaseline.p0} bar)` : ""}`}
             </p>
           </div>
 
@@ -289,12 +284,14 @@ export default function StationDetailPage() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <ReferenceLine
-                  y={currentBaseline.q0}
-                  label={{ value: `Baseline Q₀ (${currentBaseline.q0} L/m)`, fill: "#dc2626", fontSize: 10 }}
-                  stroke="#dc2626"
-                  strokeDasharray="4 4"
-                />
+                {currentBaseline != null && (
+                  <ReferenceLine
+                    y={currentBaseline.q0}
+                    label={{ value: `Baseline Q₀ (${currentBaseline.q0} L/m)`, fill: "#dc2626", fontSize: 10 }}
+                    stroke="#dc2626"
+                    strokeDasharray="4 4"
+                  />
+                )}
                 <Line
                   type="monotone"
                   dataKey="flowAvg"
@@ -328,12 +325,14 @@ export default function StationDetailPage() {
                   }}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <ReferenceLine
-                  y={currentBaseline.p0}
-                  label={{ value: `Baseline P₀ (${currentBaseline.p0} bar)`, fill: "#dc2626", fontSize: 10 }}
-                  stroke="#dc2626"
-                  strokeDasharray="4 4"
-                />
+                {currentBaseline != null && (
+                  <ReferenceLine
+                    y={currentBaseline.p0}
+                    label={{ value: `Baseline P₀ (${currentBaseline.p0} bar)`, fill: "#dc2626", fontSize: 10 }}
+                    stroke="#dc2626"
+                    strokeDasharray="4 4"
+                  />
+                )}
                 <Line
                   type="monotone"
                   dataKey="pressureAvg"

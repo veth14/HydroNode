@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import type { StationId } from "@/types";
 import { STATION_IDS } from "@/config/rig";
+import { useSettings } from "@/hooks/useSettings";
 import { Droplets, Gauge, Activity } from "lucide-react";
 
 interface RawReadingPoint {
@@ -46,6 +47,9 @@ export function TelemetryChart({
     setLocalOverride({ forInitial: initialStation, value });
 
   const [activeMetric, setActiveMetric] = useState<"all" | "flow" | "pressure">("all");
+
+  const { getBaseline } = useSettings();
+  const baseline = getBaseline(selectedStation);
 
   const { data, isLoading } = useSWR<RawReadingPoint[]>(
     `/api/readings?stationId=${selectedStation}&raw=true&range=1h`,
@@ -253,12 +257,14 @@ export function TelemetryChart({
                   color: "#0f172a",
                 }}
               />
-              <ReferenceLine
-                y={15.0}
-                stroke="#0284c7"
-                strokeDasharray="3 3"
-                label={{ value: "Q₀ Baseline (15.0 L/m)", fill: "#0284c7", fontSize: 10 }}
-              />
+              {baseline != null && (
+                <ReferenceLine
+                  y={baseline.q0}
+                  stroke="#0284c7"
+                  strokeDasharray="3 3"
+                  label={{ value: `Q₀ Baseline (${baseline.q0} L/m)`, fill: "#0284c7", fontSize: 10 }}
+                />
+              )}
               <Area
                 type="monotone"
                 dataKey="flow"
@@ -298,12 +304,14 @@ export function TelemetryChart({
                   color: "#0f172a",
                 }}
               />
-              <ReferenceLine
-                y={5.0}
-                stroke="#4f46e5"
-                strokeDasharray="3 3"
-                label={{ value: "P₀ Baseline (5.0 bar)", fill: "#4f46e5", fontSize: 10 }}
-              />
+              {baseline != null && (
+                <ReferenceLine
+                  y={baseline.p0}
+                  stroke="#4f46e5"
+                  strokeDasharray="3 3"
+                  label={{ value: `P₀ Baseline (${baseline.p0} bar)`, fill: "#4f46e5", fontSize: 10 }}
+                />
+              )}
               <Area
                 type="monotone"
                 dataKey="pressure"

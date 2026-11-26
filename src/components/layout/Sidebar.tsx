@@ -206,23 +206,6 @@ export function Sidebar() {
           <div className="text-[11px] leading-tight" style={{ color: "#2D5A7A" }}>
             8 Sensors (4× F·P) · ESP32-S3 Live Bus
           </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px]" style={{ color: "#818F99" }}>
-              <span>Telemetry Throughput</span>
-              <span className="font-mono tabular-nums font-semibold" style={{ color: "#2D5A7A" }}>
-                94%
-              </span>
-            </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "#DFF5FF" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: "94%",
-                  background: "linear-gradient(90deg, #0076A0, #019FD7)",
-                }}
-              />
-            </div>
-          </div>
         </div>
       </div>
 

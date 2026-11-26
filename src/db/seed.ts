@@ -23,7 +23,7 @@ async function main() {
         zoneDownstream: idx + 1,
         lat: STATION_LATLNG[id][0],
         lng: STATION_LATLNG[id][1],
-        status: "online",
+        status: "offline",
         samplingMode: "normal",
       }))
     )

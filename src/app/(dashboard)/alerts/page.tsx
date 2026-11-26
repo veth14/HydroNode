@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import useSWR from "swr";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { useSettings } from "@/hooks/useSettings";
 import type { LiveAlert } from "@/types";
 import {
   BarChart,
@@ -32,6 +33,7 @@ export default function AlertsPage() {
   const [zoneFilter, setZoneFilter] = useState<string>("all");
   const [selectedAlert, setSelectedAlert] = useState<LiveAlert | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const { getBaseline } = useSettings();
 
   const queryParams = new URLSearchParams();
   if (severityFilter !== "all") queryParams.set("severity", severityFilter);
@@ -94,13 +96,20 @@ export default function AlertsPage() {
   }, [alerts]);
 
   const flowComparisonData = selectedAlert
-    ? [
-        { name: "Upstream (Q_in)", flow: 15.0 },
-        {
-          name: "Downstream (Q_out)",
-          flow: Math.max(0, 15.0 - (selectedAlert.features?.flowDifference ?? 4.0)),
-        },
-      ]
+    ? (() => {
+        const baseline = selectedAlert.stationId
+          ? getBaseline(selectedAlert.stationId as Parameters<typeof getBaseline>[0])
+          : null;
+        const q0 = baseline?.q0 ?? null;
+        if (q0 == null) return [];
+        return [
+          { name: "Upstream (Q_in)", flow: q0 },
+          {
+            name: "Downstream (Q_out)",
+            flow: Math.max(0, q0 - (selectedAlert.features?.flowDifference ?? 4.0)),
+          },
+        ];
+      })()
     : [];
 
   return (
