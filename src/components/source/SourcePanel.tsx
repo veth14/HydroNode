@@ -39,7 +39,12 @@ function statusMeta(s: string) {
 }
 
 function fmt(d: string) {
-  return new Date(d).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(d).toLocaleTimeString("en-PH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "Asia/Manila", // PHT = UTC+8
+  });
 }
 
 export function SourcePanel() {
@@ -98,7 +103,7 @@ export function SourcePanel() {
         </div>
 
         <span className="ml-auto text-xs text-slate-500">
-          #{latest.id} · {fmt(latest.createdAt)}
+          #{latest.id} · {new Date(latest.createdAt).toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Manila" })} PHT
         </span>
       </div>
 
