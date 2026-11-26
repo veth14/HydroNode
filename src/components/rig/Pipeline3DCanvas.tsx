@@ -218,6 +218,8 @@ interface HologramProjectionProps {
   status: NodeStatus;
   isSelected: boolean;
   onClick: () => void;
+  /** Present when this station has an active leak alert */
+  activeAlert?: import("@/types").LiveAlert;
 }
 
 /**
@@ -525,6 +527,7 @@ function HologramProjection({
   status,
   isSelected,
   onClick,
+  activeAlert,
 }: HologramProjectionProps) {
   const cardGroupRef = useRef<THREE.Group | null>(null);
   const cardRootRef = useRef<HTMLDivElement | null>(null);
@@ -626,15 +629,17 @@ function HologramProjection({
             ref={handleCardMount}
             onClick={isSelected ? onClick : undefined}
             style={{
-              width: "12.5em",
+              width: status === "alert" ? "14em" : "12.5em",
               boxSizing: "border-box",
               padding: "0.25em",
               borderRadius: "1em",
               border: `0.16em solid ${theme.outerBorder}`,
               background: theme.outerBg,
-              boxShadow: isSelected
-                ? `0 0 1.4em ${theme.glow}, inset 0 0 0.7em ${theme.glow}`
-                : `0 0 1em ${theme.glow}, inset 0 0 0.5em ${theme.glow}`,
+              boxShadow: status === "alert"
+                ? `0 0 2em rgba(239,68,68,0.9), 0 0 4em rgba(220,38,38,0.6), inset 0 0 1em rgba(239,68,68,0.3)`
+                : isSelected
+                  ? `0 0 1.4em ${theme.glow}, inset 0 0 0.7em ${theme.glow}`
+                  : `0 0 1em ${theme.glow}, inset 0 0 0.5em ${theme.glow}`,
               cursor: isSelected ? "pointer" : "default",
               userSelect: "none",
               fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
@@ -642,63 +647,297 @@ function HologramProjection({
               MozOsxFontSmoothing: "grayscale",
               textRendering: "optimizeLegibility",
               lineHeight: 1.25,
+              animation: status === "alert" ? "leak-pulse 1.4s ease-in-out infinite" : undefined,
             }}
           >
-            <div
-              style={{
-                borderRadius: "0.72em",
-                padding: "0.56em 0.76em",
-                border: `0.1em solid ${theme.innerBorder}`,
-                backgroundColor: theme.innerBg,
-                backgroundImage: `repeating-linear-gradient(0deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 4px), repeating-linear-gradient(90deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 9px)`,
-                boxShadow: `inset 0 0 1.1em ${theme.glow}40`,
-                overflow: "hidden",
-              }}
-            >
-              {/* Station header */}
+            {status === "alert" && activeAlert ? (
+              /* ── LEAK DETECTED HUD ─────────────────────────────────────── */
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.4em",
-                  marginBottom: "0.52em",
+                  borderRadius: "0.72em",
+                  padding: "0.6em 0.8em",
+                  border: `0.12em solid #f87171`,
+                  backgroundColor: "rgba(48, 7, 12, 0.94)",
+                  backgroundImage: `repeating-linear-gradient(0deg, rgba(248,113,113,0.07) 0px, rgba(248,113,113,0.07) 1px, transparent 1px, transparent 4px), repeating-linear-gradient(90deg, rgba(248,113,113,0.05) 0px, rgba(248,113,113,0.05) 1px, transparent 1px, transparent 9px)`,
+                  overflow: "hidden",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "0.45em" }}>
+                {/* Row 1: ⚠ LEAK DETECTED + station label + severity badge */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.4em",
+                    marginBottom: "0.5em",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4em" }}>
+                    <AlertTriangle
+                      style={{
+                        width: "1.1em",
+                        height: "1.1em",
+                        color: "#fbbf24",
+                        filter: "drop-shadow(0 0 4px rgba(251,191,36,0.9))",
+                        animation: "leak-pulse 1.4s ease-in-out infinite",
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "0.82em",
+                        fontWeight: 800,
+                        color: "#fbbf24",
+                        letterSpacing: "0.04em",
+                        textShadow: "0 0 8px rgba(251,191,36,0.8), 0 0 16px rgba(251,191,36,0.4)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      LEAK DETECTED
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      border: "0.1em solid #f59e0b",
+                      borderRadius: "0.3em",
+                      padding: "0.1em 0.35em",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "0.52em",
+                        fontWeight: 700,
+                        color: "#fbbf24",
+                        letterSpacing: "0.06em",
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      SEVERITY
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.6em",
+                        fontWeight: 800,
+                        color: activeAlert.severity === "high"
+                          ? "#ef4444"
+                          : activeAlert.severity === "medium"
+                            ? "#f97316"
+                            : "#fbbf24",
+                        letterSpacing: "0.04em",
+                        textShadow: "0 0 6px currentColor",
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {activeAlert.severity.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Station label row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.4em",
+                    marginBottom: "0.5em",
+                    paddingBottom: "0.4em",
+                    borderBottom: "0.06em solid rgba(248,113,113,0.3)",
+                  }}
+                >
                   <span
                     style={{
-                      width: "0.56em",
-                      height: "0.56em",
+                      width: "0.5em",
+                      height: "0.5em",
                       borderRadius: "50%",
-                      background: theme.dot,
-                      boxShadow: `0 0 0.5em ${theme.glow}`,
+                      background: "#ef4444",
+                      boxShadow: "0 0 0.5em #ef4444",
                       display: "inline-block",
-                      animation: status !== "normal" ? "pulse 1.2s infinite" : undefined,
+                      animation: "pulse 0.8s infinite",
+                      flexShrink: 0,
                     }}
                   />
                   <span
                     style={{
-                      fontSize: "0.88em",
+                      fontSize: "0.84em",
                       fontWeight: 700,
-                      color: "#e6f9ff",
+                      color: "#fca5a5",
                       letterSpacing: "0.02em",
-                      textShadow: `0 0 6px ${theme.glow}`,
+                      textShadow: "0 0 6px rgba(252,165,165,0.6)",
                     }}
                   >
                     {stationId} · Z{zoneId}
                   </span>
+                  {activeAlert.si != null && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        fontSize: "0.62em",
+                        fontWeight: 700,
+                        color: "#fca5a5",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      SI {activeAlert.si.toFixed(0)}%
+                    </span>
+                  )}
                 </div>
-                {status === "alert" ? (
-                  <AlertTriangle
+
+                {/* Flow row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.4em",
+                    marginBottom: "0.32em",
+                  }}
+                >
+                  <span
                     style={{
-                      width: "0.95em",
-                      height: "0.95em",
-                      color: "#f87171",
-                      filter: "drop-shadow(0 0 3px rgba(248,113,113,0.7))",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.35em",
+                      fontSize: "0.78em",
+                      fontWeight: 600,
+                      color: "#fca5a5",
                     }}
-                  />
-                ) : (
+                  >
+                    <Droplets style={{ width: "0.9em", height: "0.9em", color: "#f87171" }} />
+                    Flow
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4em" }}>
+                    <span
+                      style={{
+                        fontSize: "0.84em",
+                        fontWeight: 700,
+                        color: "#fca5a5",
+                        fontVariantNumeric: "tabular-nums",
+                        textShadow: "0 0 6px rgba(252,165,165,0.5)",
+                      }}
+                    >
+                      {flow != null ? `${flow.toFixed(1)} L/m` : "--"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.55em",
+                        fontWeight: 800,
+                        color: "#ef4444",
+                        background: "rgba(239,68,68,0.15)",
+                        border: "0.1em solid #ef4444",
+                        borderRadius: "0.25em",
+                        padding: "0.1em 0.3em",
+                        letterSpacing: "0.06em",
+                        textShadow: "0 0 4px #ef4444",
+                      }}
+                    >
+                      ALERT
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pressure row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.4em",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.35em",
+                      fontSize: "0.78em",
+                      fontWeight: 600,
+                      color: "#fca5a5",
+                    }}
+                  >
+                    <Gauge style={{ width: "0.9em", height: "0.9em", color: "#fb923c" }} />
+                    Press
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4em" }}>
+                    <span
+                      style={{
+                        fontSize: "0.84em",
+                        fontWeight: 700,
+                        color: "#fdba74",
+                        fontVariantNumeric: "tabular-nums",
+                        textShadow: "0 0 6px rgba(253,186,116,0.5)",
+                      }}
+                    >
+                      {pressure != null ? `${pressure.toFixed(2)} bar` : "--"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "0.55em",
+                        fontWeight: 800,
+                        color: "#f97316",
+                        background: "rgba(249,115,22,0.15)",
+                        border: "0.1em solid #f97316",
+                        borderRadius: "0.25em",
+                        padding: "0.1em 0.3em",
+                        letterSpacing: "0.06em",
+                        textShadow: "0 0 4px #f97316",
+                      }}
+                    >
+                      {activeAlert.severity === "high" ? "CRITICAL" : "LOW"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ── NORMAL HUD ────────────────────────────────────────────── */
+              <div
+                style={{
+                  borderRadius: "0.72em",
+                  padding: "0.56em 0.76em",
+                  border: `0.1em solid ${theme.innerBorder}`,
+                  backgroundColor: theme.innerBg,
+                  backgroundImage: `repeating-linear-gradient(0deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 4px), repeating-linear-gradient(90deg, ${theme.scanline} 0px, ${theme.scanline} 1px, transparent 1px, transparent 9px)`,
+                  boxShadow: `inset 0 0 1.1em ${theme.glow}40`,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Station header */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.4em",
+                    marginBottom: "0.52em",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.45em" }}>
+                    <span
+                      style={{
+                        width: "0.56em",
+                        height: "0.56em",
+                        borderRadius: "50%",
+                        background: theme.dot,
+                        boxShadow: `0 0 0.5em ${theme.glow}`,
+                        display: "inline-block",
+                        animation: status !== "normal" ? "pulse 1.2s infinite" : undefined,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: "0.88em",
+                        fontWeight: 700,
+                        color: "#e6f9ff",
+                        letterSpacing: "0.02em",
+                        textShadow: `0 0 6px ${theme.glow}`,
+                      }}
+                    >
+                      {stationId} · Z{zoneId}
+                    </span>
+                  </div>
                   <CheckCircle2
                     style={{
                       width: "0.95em",
@@ -707,80 +946,80 @@ function HologramProjection({
                       filter: "drop-shadow(0 0 3px rgba(110,231,183,0.6))",
                     }}
                   />
-                )}
-              </div>
+                </div>
 
-              {/* Flow reading */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.4em",
-                  marginBottom: "0.34em",
-                }}
-              >
-                <span
+                {/* Flow reading */}
+                <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.35em",
-                    fontSize: "0.75em",
-                    fontWeight: 600,
-                    color: "#bae6fd",
+                    justifyContent: "space-between",
+                    gap: "0.4em",
+                    marginBottom: "0.34em",
                   }}
                 >
-                  <Droplets style={{ width: "0.9em", height: "0.9em", color: "#67e8f9" }} />
-                  Flow
-                </span>
-                <span
-                  style={{
-                    fontSize: "0.82em",
-                    fontWeight: 700,
-                    color: "#7dd3fc",
-                    fontVariantNumeric: "tabular-nums",
-                    textShadow: "0 0 6px rgba(125,211,252,0.4)",
-                  }}
-                >
-                  {flow != null ? `${flow.toFixed(1)} L/m` : "--"}
-                </span>
-              </div>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.35em",
+                      fontSize: "0.75em",
+                      fontWeight: 600,
+                      color: "#bae6fd",
+                    }}
+                  >
+                    <Droplets style={{ width: "0.9em", height: "0.9em", color: "#67e8f9" }} />
+                    Flow
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.82em",
+                      fontWeight: 700,
+                      color: "#7dd3fc",
+                      fontVariantNumeric: "tabular-nums",
+                      textShadow: "0 0 6px rgba(125,211,252,0.4)",
+                    }}
+                  >
+                    {flow != null ? `${flow.toFixed(1)} L/m` : "--"}
+                  </span>
+                </div>
 
-              {/* Pressure reading */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "0.4em",
-                }}
-              >
-                <span
+                {/* Pressure reading */}
+                <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.35em",
-                    fontSize: "0.75em",
-                    fontWeight: 600,
-                    color: "#bae6fd",
+                    justifyContent: "space-between",
+                    gap: "0.4em",
                   }}
                 >
-                  <Gauge style={{ width: "0.9em", height: "0.9em", color: "#d8b4fe" }} />
-                  Press
-                </span>
-                <span
-                  style={{
-                    fontSize: "0.82em",
-                    fontWeight: 700,
-                    color: "#d8b4fe",
-                    fontVariantNumeric: "tabular-nums",
-                    textShadow: "0 0 6px rgba(216,180,254,0.4)",
-                  }}
-                >
-                  {pressure != null ? `${pressure.toFixed(2)} bar` : "--"}
-                </span>
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.35em",
+                      fontSize: "0.75em",
+                      fontWeight: 600,
+                      color: "#bae6fd",
+                    }}
+                  >
+                    <Gauge style={{ width: "0.9em", height: "0.9em", color: "#d8b4fe" }} />
+                    Press
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.82em",
+                      fontWeight: 700,
+                      color: "#d8b4fe",
+                      fontVariantNumeric: "tabular-nums",
+                      textShadow: "0 0 6px rgba(216,180,254,0.4)",
+                    }}
+                  >
+                    {pressure != null ? `${pressure.toFixed(2)} bar` : "--"}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </Html>
       </group>
@@ -808,6 +1047,7 @@ interface SensorOverlayProps {
   isSelected: boolean;
   onHoverChange: (hovered: boolean) => void;
   onClick: () => void;
+  activeAlert?: import("@/types").LiveAlert;
 }
 
 function SensorNodeOverlay({
@@ -819,12 +1059,14 @@ function SensorNodeOverlay({
   isSelected,
   onHoverChange,
   onClick,
+  activeAlert,
 }: SensorOverlayProps) {
   const node = SENSOR_3D_NODES[stationId];
   const [lx, , lz] = node.labelPos;
   const [fx, fy, fz] = node.flowPos;
   const [px, py, pz] = node.pressurePos;
-  const showHologram = isHovered || isSelected;
+  // Always show hologram on alert stations (even without hover/select)
+  const showHologram = isHovered || isSelected || status === "alert";
 
   const { flowTracePts, pressureTracePts } = useMemo(() => {
     const approachZ = fz + Math.sign(lz - fz) * 0.14;
@@ -946,6 +1188,7 @@ function SensorNodeOverlay({
           status={status}
           isSelected={isSelected}
           onClick={onClick}
+          activeAlert={activeAlert}
         />
       )}
     </group>
@@ -1484,6 +1727,7 @@ export function Pipeline3DCanvas({
                     )
                   }
                   onClick={() => selectOrToggleStation(sid)}
+                  activeAlert={stationAlert ?? zoneAlert}
                 />
               );
             })}

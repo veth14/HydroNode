@@ -236,7 +236,25 @@ html, body {
   [style*="leak-spray"], [style*="leak-ripple"],
   [style*="leak-drip"], [style*="leak-puddle"],
   [style*="leak-band-pulse"], [style*="leak-mist"],
-  [style*="leak-enter"], [style*="leak-card-in"] {
+  [style*="leak-enter"], [style*="leak-card-in"],
+  [style*="leak-pulse"] {
     animation: none !important;
+  }
+}
+
+/* ── Leak HUD neon glow pulse (3D canvas hologram alert card) ─── */
+@keyframes leak-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 1.2em rgba(239, 68, 68, 0.75),
+      0 0 2.4em rgba(220, 38, 38, 0.45),
+      inset 0 0 0.8em rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 2.6em rgba(239, 68, 68, 1),
+      0 0 5em rgba(220, 38, 38, 0.75),
+      0 0 8em rgba(185, 28, 28, 0.35),
+      inset 0 0 1.4em rgba(239, 68, 68, 0.4);
   }
 }
