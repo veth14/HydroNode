@@ -105,6 +105,31 @@ test("derivePumpState detects OFF, STARTING (<12s transition), RUNNING, and stal
   assert.equal(offState.pumpStatusRaw, "OFF");
 });
 
+test("evaluateFriendRowAnomaly: pump-OFF gravity flow (actual DB rows 1941-1966, status=Normal) is not a leak", () => {
+  // Actual observed sensor_data rows: pump=OFF, status=Normal, flow ~1.8–2.0 L/min.
+  // S4 is naturally ~0.15–0.20 lower than S1–S3 due to pipe length — this must NOT be flagged as a leak.
+  const gravityFlowRow = makeRow({
+    status: "Normal",
+    pump_status: "OFF",
+    flow1: 1.97,
+    flow2: 2.03,
+    flow3: 1.95,
+    flow4: 1.80,
+    pressure1: 516,
+    pressure2: 484,
+    pressure3: 483,
+    pressure4: 472,
+    localization: "None",
+    confidence: 57,
+  });
+  const eval_ = evaluateFriendRowAnomaly(gravityFlowRow);
+  assert.equal(eval_.kind, "normal", "pump-OFF gravity Normal row must classify as normal");
+  assert.equal(eval_.zoneId, null);
+  assert.equal(eval_.si, 0);
+  assert.equal(eval_.flowDiff, 0);
+  assert.equal(eval_.isNoFlow, false, "1.8+ L/min is real water flow, not no-flow");
+});
+
 test("evaluateFriendRowAnomaly distinguishes Leak vs SensorFailure", () => {
   const leakRow = makeRow({
     status: "Leak",
@@ -134,7 +159,7 @@ test("evaluateFriendRowAnomaly distinguishes Leak vs SensorFailure", () => {
   assert.equal(sfEval.kind, "sensor_failure");
   assert.equal(sfEval.zoneId, null);
 
-  // Calibrated ~3.2 L/min rig drop (Flow3=3.20 -> Flow4=0.50 in Zone3)
+  // Pump-ON calibration run: S4 drops to 0.50 L/min (breach at Zone3→4). Not steady-state normal.
   const calibratedLeakRow = makeRow({
     status: "Leak",
     localization: "Zone3",

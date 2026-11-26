@@ -62,7 +62,7 @@ test("all 4 filleted pipe legs remain strictly inside Blue_PVC_Pipes_Mesh geomet
   }
 });
 
-test("computeLegHydraulicTargets distinguishes dry, nominal 3.2 L/min, and choked 0.50 L/min Zone 3 leak", () => {
+test("computeLegHydraulicTargets distinguishes dry, pump-ON nominal, choked Zone 3 leak, and pump-OFF gravity flow", () => {
   const dry = computeLegHydraulicTargets({
     flowLpm: 0,
     pressureBar: 0,
@@ -93,4 +93,26 @@ test("computeLegHydraulicTargets distinguishes dry, nominal 3.2 L/min, and choke
   assert.ok(chokedS4.targetFill < nominal.targetFill - 0.3);
   assert.ok(chokedS4.pressNorm < 0.35);
   assert.ok(chokedS4.worldSpeed < nominal.worldSpeed * 0.25);
+
+  // Pump-OFF gravity/residual flow: actual DB rows show ~1.80–2.0 L/min with pump OFF (not a fault).
+  // With FLOW_NOMINAL_LPM=2.0, flowNorm=1.0 → pipe should appear properly filled, water still moving.
+  const pumpOffGravity = computeLegHydraulicTargets({
+    flowLpm: 2.0,
+    pressureBar: 0.90,  // typical gravity head: adcToBar(515) ≈ 0.90 bar
+    pumpOn: false,
+    maxUpstreamPressure: 0.90,
+    pressureBaseline: 0.90,
+  });
+  assert.equal(pumpOffGravity.waterDetected, true, "gravity flow is real water, not dry");
+  // flowNorm = 2.0 / 2.0 = 1.0 → targetFill ≥ 0.78 (pipe looks properly filled in 3D)
+  assert.ok(
+    pumpOffGravity.targetFill >= 0.78,
+    `pump-off gravity targetFill=${pumpOffGravity.targetFill.toFixed(3)} should be ≥ 0.78`
+  );
+  assert.ok(pumpOffGravity.worldSpeed > 0, "gravity flow should animate");
+  // Gravity flow (~2.6 world-units/s) should be slower than pump-ON nominal (~4.1)
+  assert.ok(
+    pumpOffGravity.worldSpeed < nominal.worldSpeed,
+    `gravity worldSpeed=${pumpOffGravity.worldSpeed.toFixed(2)} should be < pump-ON worldSpeed=${nominal.worldSpeed.toFixed(2)}`
+  );
 });

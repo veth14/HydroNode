@@ -18,13 +18,30 @@ export const ADC_ZERO = 225;
 export const ADC_MAX = 4095;
 export const BAR_MAX = 12.0;
 
-// Calibrated physical rig flow profile (L/min): S1–S3 steady ~3.18–3.25 L/min; downstream breach drops to ~0.50 L/min
-export const FLOW_NOMINAL_LPM = 3.2;
+// Pump-OFF residual gravity flow: actual sensor_data Normal rows (pump=OFF) show:
+//   S1 ~1.95 L/min  S2 ~2.00 L/min  S3 ~1.90 L/min  S4 ~1.80 L/min
+// Pump-ON rated flow (from calibration run with pump running):
+//   S1 3.25  S2 3.18  S3 3.20  S4 3.20 L/min
+// FLOW_NOMINAL_LPM is the pump-OFF observed baseline — used to normalise 3D water animation fill and speed.
+export const FLOW_NOMINAL_LPM = 2.0;
+
+/** Pump-OFF gravity/residual flow — calibrated from observed sensor_data Normal rows. */
 export const FLOW_CALIBRATION_SNAPSHOT: Record<StationId, number> = {
+  S1: 2.0,
+  S2: 2.0,
+  S3: 1.9,
+  S4: 1.8,
+};
+
+/**
+ * Pump-ON rated per-station capacity (reference when pump is running).
+ * S4 is the last leg; use 3.20 (not 0.50 — that 0.50 was a leak-test snapshot, not steady state).
+ */
+export const FLOW_CALIBRATION_PUMP_ON: Record<StationId, number> = {
   S1: 3.25,
   S2: 3.18,
-  S3: 3.2,
-  S4: 0.5,
+  S3: 3.20,
+  S4: 3.20,
 };
 
 export const STALE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes without new DB rows
