@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { readingsRaw, readingsMinute } from "@/db/schema";
-import { eq, and, gte } from "drizzle-orm";
+import { desc, eq, and, gte } from "drizzle-orm";
 
 const RANGE_MS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -13,6 +13,9 @@ const RANGE_MS: Record<string, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
+
+// Supports up to 5s granularity across 1h (720 pts) without full-table scans
+const RAW_LIMIT = 720;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -27,16 +30,18 @@ export async function GET(req: NextRequest) {
   const ms = RANGE_MS[range] ?? RANGE_MS["1h"];
   const since = new Date(Date.now() - ms);
 
+  const headers = { "Cache-Control": "no-store" };
+
   try {
     if (raw) {
       const rows = await db
         .select()
         .from(readingsRaw)
-        .where(
-          and(eq(readingsRaw.stationId, stationId), gte(readingsRaw.ts, since))
-        )
-        .orderBy(readingsRaw.ts)
-        .limit(2000);
+        .where(and(eq(readingsRaw.stationId, stationId), gte(readingsRaw.ts, since)))
+        .orderBy(desc(readingsRaw.ts))
+        .limit(RAW_LIMIT);
+
+      rows.reverse();
 
       return NextResponse.json(
         rows.map((r) => ({
@@ -44,19 +49,15 @@ export async function GET(req: NextRequest) {
           flow: r.flow,
           pressure: r.pressure,
           vibration: r.vibration,
-        }))
+        })),
+        { headers }
       );
     }
 
     const rows = await db
       .select()
       .from(readingsMinute)
-      .where(
-        and(
-          eq(readingsMinute.stationId, stationId),
-          gte(readingsMinute.minuteTs, since)
-        )
-      )
+      .where(and(eq(readingsMinute.stationId, stationId), gte(readingsMinute.minuteTs, since)))
       .orderBy(readingsMinute.minuteTs)
       .limit(5000);
 
@@ -72,10 +73,11 @@ export async function GET(req: NextRequest) {
         vibAvg: r.vibAvg,
         vibMax: r.vibMax,
         sampleCount: r.sampleCount,
-      }))
+      })),
+      { headers }
     );
   } catch (err) {
     console.warn("Readings query error:", err);
-    return NextResponse.json([]);
+    return NextResponse.json([], { headers });
   }
 }

@@ -50,7 +50,11 @@ export function TelemetryChart({
   const { data, isLoading } = useSWR<RawReadingPoint[]>(
     `/api/readings?stationId=${selectedStation}&raw=true&range=1h`,
     fetcher,
-    { refreshInterval: 3000 }
+    {
+      refreshInterval: 15000,
+      revalidateOnFocus: false,
+      dedupingInterval: 2000,
+    }
   );
 
   const rawList = useMemo(() => (Array.isArray(data) ? data : []), [data]);

@@ -38,10 +38,15 @@ export default function AlertsPage() {
   if (statusFilter !== "all") queryParams.set("status", statusFilter);
   if (zoneFilter !== "all") queryParams.set("zoneId", zoneFilter);
 
+  const qs = queryParams.toString();
   const { data: alerts, mutate, isLoading } = useSWR<LiveAlert[]>(
-    `/api/alerts?${queryParams.toString()}`,
+    qs ? `/api/alerts?${qs}` : "/api/alerts",
     fetcher,
-    { refreshInterval: 4000 }
+    {
+      refreshInterval: 8000,
+      revalidateOnFocus: false,
+      dedupingInterval: 2000,
+    }
   );
 
   const handleUpdateStatus = async (alertId: number, newStatus: "acknowledged" | "resolved") => {

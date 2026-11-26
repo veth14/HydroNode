@@ -30,13 +30,18 @@ interface SettingsMap {
 export default function SettingsPage() {
   const { data: settingsData, mutate: mutateSettings } = useSWR<SettingsMap>(
     "/api/settings",
-    fetcher
+    fetcher,
+    { revalidateOnFocus: false }
   );
 
   const { data: dbUsage, mutate: mutateDbUsage } = useSWR<DbUsage>(
     "/api/db-usage",
     fetcher,
-    { refreshInterval: 10000 }
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: false,
+      dedupingInterval: 5000,
+    }
   );
 
   const [saving, setSaving] = useState(false);
@@ -120,12 +125,12 @@ export default function SettingsPage() {
 
   const handleCleanupNow = async () => {
     try {
-      const res = await fetch("/api/cron/cleanup?hours=24", {
+      const res = await fetch("/api/cron/cleanup?hours=2", {
         headers: { "x-cron-secret": "hydronode_cron_secret_2026" },
       });
       const data = await res.json();
       mutateDbUsage();
-      alert(`Retention cleanup complete: pruned ${data.deleted ?? 0} raw readings older than 24h.`);
+      alert(`Retention cleanup complete: pruned ${data.deleted ?? 0} raw readings older than 2h.`);
     } catch (err) {
       console.error(err);
     }
@@ -332,7 +337,7 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-600">readings_raw (48h):</span>
+                  <span className="text-slate-600">readings_raw (2h rolling):</span>
                   <span className="font-mono tabular-nums text-slate-900">
                     {dbUsage?.rawRows.toLocaleString() ?? "0"}
                   </span>
@@ -358,7 +363,7 @@ export default function SettingsPage() {
                 onClick={handleCleanupNow}
                 icon={<Trash2 className="w-3.5 h-3.5 text-red-600" />}
               >
-                Execute 24h Retention Cleanup
+                Execute 2h Retention Cleanup
               </Button>
             </CardContent>
           </Card>

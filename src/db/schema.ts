@@ -18,7 +18,7 @@ import {
 // stations
 // ---------------------------------------------------------------------------
 export const stations = pgTable("stations", {
-  id: varchar("id", { length: 10 }).primaryKey(), // S1–S6
+  id: varchar("id", { length: 10 }).primaryKey(), // S1–S4
   name: varchar("name", { length: 100 }).notNull(),
   zoneUpstream: integer("zone_upstream"),
   zoneDownstream: integer("zone_downstream"),
@@ -29,6 +29,10 @@ export const stations = pgTable("stations", {
     .notNull()
     .default("normal"),
   lastSeen: timestamp("last_seen", { withTimezone: true }),
+  // Denormalized latest reading snapshot so GET /api/stations never scans readings_raw
+  latestFlow: real("latest_flow"),
+  latestPressure: real("latest_pressure"),
+  latestVibration: real("latest_vibration"),
 });
 
 // ---------------------------------------------------------------------------
@@ -57,7 +61,10 @@ export const readingsRaw = pgTable(
     pressure: real("pressure").notNull(),
     vibration: real("vibration").notNull(),
   },
-  (t) => [index("idx_raw_station_ts").on(t.stationId, t.ts)]
+  (t) => [
+    index("idx_raw_station_ts").on(t.stationId, t.ts),
+    index("idx_raw_ts").on(t.ts),
+  ]
 );
 
 // ---------------------------------------------------------------------------
@@ -89,22 +96,29 @@ export const readingsMinute = pgTable(
 // ---------------------------------------------------------------------------
 // alerts  — permanent
 // ---------------------------------------------------------------------------
-export const alerts = pgTable("alerts", {
-  id: serial("id").primaryKey(),
-  stationId: varchar("station_id", { length: 10 })
-    .notNull()
-    .references(() => stations.id),
-  zoneId: integer("zone_id").references(() => zones.id),
-  ts: timestamp("ts", { withTimezone: true }).notNull(),
-  featuresJson: jsonb("features_json"),
-  confidence: real("confidence").notNull(),
-  severity: varchar("severity", { length: 20 }).notNull(), // low / medium / high
-  si: real("si"), // severity index %
-  leakRate: real("leak_rate"), // L/min
-  recommendedAction: text("recommended_action"),
-  status: varchar("status", { length: 20 }).notNull().default("active"),
-  repeatCount: integer("repeat_count").notNull().default(1),
-});
+export const alerts = pgTable(
+  "alerts",
+  {
+    id: serial("id").primaryKey(),
+    stationId: varchar("station_id", { length: 10 })
+      .notNull()
+      .references(() => stations.id),
+    zoneId: integer("zone_id").references(() => zones.id),
+    ts: timestamp("ts", { withTimezone: true }).notNull(),
+    featuresJson: jsonb("features_json"),
+    confidence: real("confidence").notNull(),
+    severity: varchar("severity", { length: 20 }).notNull(), // low / medium / high
+    si: real("si"), // severity index %
+    leakRate: real("leak_rate"), // L/min
+    recommendedAction: text("recommended_action"),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    repeatCount: integer("repeat_count").notNull().default(1),
+  },
+  (t) => [
+    index("idx_alerts_status_ts").on(t.status, t.ts),
+    index("idx_alerts_station_status_ts").on(t.stationId, t.status, t.ts),
+  ]
+);
 
 // ---------------------------------------------------------------------------
 // settings  — key-value store (editable from Settings page)

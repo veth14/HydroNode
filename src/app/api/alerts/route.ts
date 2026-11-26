@@ -1,6 +1,6 @@
 // src/app/api/alerts/route.ts
-// GET /api/alerts — returns all alerts (filterable by status/severity/zone).
-// DELETE /api/alerts — resolves all active alerts and normalizes station/zone statuses.
+// GET /api/alerts – returns alerts (filterable by status/severity/zone), capped at 100 rows.
+// DELETE /api/alerts – resolves all active alerts and normalizes station/zone statuses.
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
@@ -23,13 +23,14 @@ export async function GET(req: NextRequest) {
     .from(alerts)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(alerts.ts))
-    .limit(200);
+    .limit(100);
 
   return NextResponse.json(
     rows.map((a) => ({
       ...a,
       ts: a.ts.toISOString(),
-    }))
+    })),
+    { headers: { "Cache-Control": "no-store" } }
   );
 }
 
@@ -48,15 +49,11 @@ export async function DELETE(req: NextRequest) {
         .where(eq(alerts.status, "active"));
     }
 
-    // Reset all stations to 'online' and 'normal' sampling
-    await db
-      .update(stations)
-      .set({ status: "online", samplingMode: "normal" });
-
-    // Reset all zones to 'healthy'
-    await db
-      .update(zones)
-      .set({ status: "healthy" });
+    // Reset stations + zones in parallel
+    await Promise.all([
+      db.update(stations).set({ status: "online", samplingMode: "normal" }),
+      db.update(zones).set({ status: "healthy" }),
+    ]);
 
     return NextResponse.json({
       ok: true,
@@ -72,5 +69,3 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
-
-

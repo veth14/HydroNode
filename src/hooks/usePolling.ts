@@ -1,6 +1,9 @@
 "use client";
 // src/hooks/usePolling.ts
-// Polls the API every 3s and updates Zustand store.
+// Polls the API and updates Zustand store.
+// Intervals tuned for 30s ESP32 ingest cycle:
+//   stations + kpi → 15s (no need to poll faster than half the ingest interval)
+//   alerts         → 8s  (alert state can change without a full ingest cycle)
 // Live-only mode: no simulation injection, alarm driven purely by DB alerts.
 
 import useSWR from "swr";
@@ -32,18 +35,21 @@ export function usePolling() {
   }, []);
 
   const { data: stations } = useSWR<LiveStation[]>("/api/stations", fetcher, {
-    refreshInterval: 3000,
+    refreshInterval: 15000,
     revalidateOnFocus: false,
+    dedupingInterval: 2000,
   });
 
   const { data: alerts } = useSWR<LiveAlert[]>("/api/alerts", fetcher, {
-    refreshInterval: 3000,
+    refreshInterval: 8000,
     revalidateOnFocus: false,
+    dedupingInterval: 2000,
   });
 
   const { data: kpi } = useSWR<KpiData>("/api/kpi", fetcher, {
-    refreshInterval: 3000,
+    refreshInterval: 15000,
     revalidateOnFocus: false,
+    dedupingInterval: 2000,
   });
 
   useEffect(() => {

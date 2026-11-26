@@ -45,7 +45,9 @@ export default function StationDetailPage() {
   const [chartMode, setChartMode] = useState<"flow" | "pressure">("flow");
 
   const { data: stationsData } = useSWR<LiveStation[]>("/api/stations", fetcher, {
-    refreshInterval: 3000,
+    refreshInterval: 15000,
+    revalidateOnFocus: false,
+    dedupingInterval: 2000,
   });
 
   const storeStations = useHydroStore((s) => s.stations);
@@ -65,7 +67,11 @@ export default function StationDetailPage() {
   const { data: historyData, isLoading } = useSWR<ReadingPoint[]>(
     `/api/readings?stationId=${stationId}&range=${range}${is1h ? "&raw=true" : ""}`,
     fetcher,
-    { refreshInterval: is1h ? 3000 : 10000 }
+    {
+      refreshInterval: is1h ? 15000 : 30000,
+      revalidateOnFocus: false,
+      dedupingInterval: 2000,
+    }
   );
 
   const currentBaseline = baselines[stationId] ?? { q0: 15.0, p0: 5.0 };

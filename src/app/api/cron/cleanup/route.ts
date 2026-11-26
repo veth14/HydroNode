@@ -1,7 +1,8 @@
 // src/app/api/cron/cleanup/route.ts
-// GET /api/cron/cleanup — deletes raw readings older than 48 h.
+// GET /api/cron/cleanup – deletes raw readings older than the retention window.
 // Protected by CRON_SECRET (Vercel Cron uses Authorization: Bearer <secret>).
 // Also accepts x-cron-secret header for manual calls.
+// Default retention: 2 hours (at 30s ingest, 4 stations → ~960 rows max in raw table)
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/client";
@@ -22,8 +23,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Retention: default 24 hours (caps raw storage under 30 MB on Neon)
-  const hours = Number(req.nextUrl.searchParams.get("hours")) || 24;
+  // Default 2h retention: keeps raw table under ~960 rows (30s × 4 stations × 2h)
+  // Minute aggregates preserve full history long-term.
+  const hours = Number(req.nextUrl.searchParams.get("hours")) || 2;
   const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const result = await db
@@ -37,4 +39,3 @@ export async function GET(req: NextRequest) {
     retentionHours: hours,
   });
 }
-

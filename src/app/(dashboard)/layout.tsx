@@ -11,7 +11,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Polls backend /api endpoints every 3 seconds and updates Zustand store
+  // Polls backend /api endpoints (15s stations/kpi, 8s alerts) and updates Zustand store
   usePolling();
 
   return (

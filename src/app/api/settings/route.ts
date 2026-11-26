@@ -13,7 +13,7 @@ export async function GET() {
   for (const row of rows) {
     result[row.key] = row.valueJson;
   }
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
 }
 
 const PutSchema = z.object({
