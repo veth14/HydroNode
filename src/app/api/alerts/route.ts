@@ -16,10 +16,11 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const severity = searchParams.get("severity");
   const zoneId = searchParams.get("zoneId");
+  const eventKind = searchParams.get("eventKind");
 
   if (hasFriendDbConfigured()) {
     try {
-      const friendAlerts = await queryFriendAlerts({ status, severity, zoneId });
+      const friendAlerts = await queryFriendAlerts({ status, severity, zoneId, eventKind });
       return NextResponse.json(friendAlerts, {
         headers: { "Cache-Control": "no-store" },
       });

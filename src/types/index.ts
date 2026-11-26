@@ -69,6 +69,20 @@ export interface LiveZone {
   stationB: StationId;
 }
 
+// Full raw sensor_data snapshot attached by /api/alerts when reading from friend's DB
+export interface FriendAlertSourceDetail {
+  rowId: number;
+  firmwareStatus: string;
+  eventKind: "normal" | "leak" | "sensor_failure" | "other";
+  localizationRaw: string;
+  pumpStatus: "ON" | "OFF";
+  flows: [number, number, number, number];
+  pressuresBar: [number, number, number, number];
+  pressuresAdc: [number, number, number, number];
+  confidenceRaw: number;
+  isNoFlow: boolean;
+}
+
 // Active alert for display
 export interface LiveAlert {
   id: number;
@@ -83,6 +97,8 @@ export interface LiveAlert {
   recommendedAction: string | null;
   status: AlertStatus;
   repeatCount: number;
+  /** Present when sourced directly from friend's Neon sensor_data table */
+  source?: FriendAlertSourceDetail;
 }
 
 export interface KpiData {

@@ -290,11 +290,12 @@ export async function queryFriendReadings(
   });
 }
 
-/** Build GET /api/alerts payload from non-Normal rows in sensor_data. */
+/** Build GET /api/alerts payload from non-Normal rows in sensor_data, including full 14-col source telemetry. */
 export async function queryFriendAlerts(filters?: {
   status?: string | null;
   severity?: string | null;
   zoneId?: string | null;
+  eventKind?: string | null;
 }): Promise<LiveAlert[]> {
   const sql = getFriendSql();
 
@@ -336,6 +337,15 @@ export async function queryFriendAlerts(filters?: {
 
   const mapped: LiveAlert[] = anomalyRows.map((row) => {
     const evalRow = evaluateFriendRowAnomaly(row);
+    const flows = rowFlows(row);
+    const pressuresBar = rowPressuresBar(row).map((p) => Number(p.toFixed(2))) as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    const pressuresAdc = rowPressuresRaw(row);
+    const pumpRaw = normalizePumpRaw(row.pump_status);
     const isLatestOngoing = latestRow?.id === row.id && latestIsFresh;
 
     // Only real active Leaks trigger the audible alarm siren ("active");
@@ -347,14 +357,21 @@ export async function queryFriendAlerts(filters?: {
         ? "acknowledged"
         : "resolved";
 
+    const flowSpan = Number(
+      (Math.max(...flows) - Math.min(...flows)).toFixed(2)
+    );
+    const pressSpan = Number(
+      (Math.max(...pressuresBar) - Math.min(...pressuresBar)).toFixed(3)
+    );
+
     return {
       id: row.id,
       stationId: evalRow.stationId,
       zoneId: evalRow.zoneId,
       ts: row.created_at,
       features: {
-        pressureDropRate: evalRow.pressureDropBar,
-        flowDifference: evalRow.flowDiff,
+        pressureDropRate: evalRow.kind === "leak" ? evalRow.pressureDropBar : pressSpan,
+        flowDifference: evalRow.kind === "leak" ? evalRow.flowDiff : flowSpan,
         vibrationRms: 0,
       },
       confidence: normalizeConfidence01(row.confidence),
@@ -364,6 +381,18 @@ export async function queryFriendAlerts(filters?: {
       recommendedAction: evalRow.recommendedActionText,
       status: alertStatus,
       repeatCount: 1,
+      source: {
+        rowId: row.id,
+        firmwareStatus: row.status ?? "Unknown",
+        eventKind: evalRow.kind,
+        localizationRaw: row.localization ?? "None",
+        pumpStatus: pumpRaw,
+        flows: flows.map((f) => Number(f.toFixed(2))) as [number, number, number, number],
+        pressuresBar,
+        pressuresAdc,
+        confidenceRaw: Number(row.confidence ?? 0),
+        isNoFlow: evalRow.isNoFlow,
+      },
     };
   });
 
@@ -371,6 +400,9 @@ export async function queryFriendAlerts(filters?: {
     if (filters?.status && a.status !== filters.status) return false;
     if (filters?.severity && a.severity !== filters.severity) return false;
     if (filters?.zoneId && a.zoneId !== parseInt(filters.zoneId, 10)) return false;
+    if (filters?.eventKind && filters.eventKind !== "all" && a.source?.eventKind !== filters.eventKind) {
+      return false;
+    }
     return true;
   });
 }
