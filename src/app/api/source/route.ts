@@ -24,7 +24,11 @@ export const revalidate = 0;
 export async function GET(req: NextRequest) {
   if (!hasFriendDbConfigured()) {
     return NextResponse.json(
-      { ok: false, error: "FRIEND_DATABASE_URL is not configured" },
+      {
+        ok: false,
+        error:
+          "FRIEND_DATABASE_URL is not configured in this deployment. Add the Neon connection string in Vercel Environment Variables and redeploy.",
+      },
       { status: 500 }
     );
   }
@@ -96,8 +100,12 @@ export async function GET(req: NextRequest) {
     );
   } catch (err) {
     console.error("[/api/source] DB error:", err);
+    const hint =
+      err instanceof Error && err.message.includes("must begin with")
+        ? "FRIEND_DATABASE_URL has an invalid format (must start with postgresql://)."
+        : "Could not reach friend source database";
     return NextResponse.json(
-      { ok: false, error: "Could not reach friend source database" },
+      { ok: false, error: hint },
       { status: 500 }
     );
   }

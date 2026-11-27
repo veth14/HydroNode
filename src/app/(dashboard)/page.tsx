@@ -229,7 +229,7 @@ export default function NetworkOverviewPage() {
               Welcome Back, Operator!
             </h1>
             <p className="text-sm" style={{ color: "#2D5A7A" }}>
-              Metro Pacific Water — IoT pipeline integrity monitor powered by ESP32-S3.
+              <span>Metro Pacific Water — IoT pipeline integrity monitor powered by ESP32-S3.</span>
               {" "}
               {isReplayActive ? (
                 <span style={{ color: "#d97706", fontWeight: 600 }}>

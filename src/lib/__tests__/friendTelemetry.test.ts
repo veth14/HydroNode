@@ -5,6 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { FriendSensorRow, PumpTransitionRow } from "@/db/friendClient";
+import { normalizeFriendDbUrl } from "@/db/friendClient";
 import {
   adcToBar,
   classifyStatusKind,
@@ -217,4 +218,13 @@ test("automatic 1-minute stale detection flips to stale the next minute when no 
   const age = formatRelativeAge(lastRowIso, lastRowMs + 61_000);
   assert.equal(age.stale, true);
   assert.equal(age.label, "1m ago");
+});
+
+test("normalizeFriendDbUrl strips surrounding quotes and whitespace cleanly", () => {
+  assert.equal(
+    normalizeFriendDbUrl('  "postgresql://user:pass@host/db?sslmode=require" \n'),
+    "postgresql://user:pass@host/db?sslmode=require"
+  );
+  assert.equal(normalizeFriendDbUrl("  'postgres://a:b@c/d'  "), "postgres://a:b@c/d");
+  assert.equal(normalizeFriendDbUrl(undefined), "");
 });

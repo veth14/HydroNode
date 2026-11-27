@@ -11,14 +11,25 @@ declare global {
   var __friendSql: FriendSqlClient | undefined;
 }
 
+/** Strip accidental quotes or whitespace copied from .env files into hosting dashboards. */
+export function normalizeFriendDbUrl(raw: string | undefined): string {
+  return (raw ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+}
+
 export function hasFriendDbConfigured(): boolean {
-  return Boolean(process.env.FRIEND_DATABASE_URL);
+  const url = normalizeFriendDbUrl(process.env.FRIEND_DATABASE_URL);
+  return url.length > 0 && !url.includes("db.example.com");
 }
 
 export function getFriendSql(): FriendSqlClient {
-  const url = process.env.FRIEND_DATABASE_URL;
-  if (!url) {
-    throw new Error("FRIEND_DATABASE_URL environment variable is not set");
+  const url = normalizeFriendDbUrl(process.env.FRIEND_DATABASE_URL);
+  if (!url || url.includes("db.example.com")) {
+    throw new Error(
+      "FRIEND_DATABASE_URL environment variable is not set or still placeholder"
+    );
+  }
+  if (!/^postgres(?:ql)?:\/\//i.test(url)) {
+    throw new Error("FRIEND_DATABASE_URL must begin with postgresql:// or postgres://");
   }
   if (process.env.NODE_ENV === "production") {
     return neon(url);

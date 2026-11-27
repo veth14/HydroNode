@@ -91,8 +91,12 @@ class CanvasErrorBoundary extends Component<
 }
 
 // ─── GLB Model (clones scene once; blue PVC pipes made translucent sight-glass) ─
-function PipelineModel() {
+function PipelineModel({ onLoaded }: { onLoaded?: () => void }) {
   const { scene } = useGLTF("/pipeline.glb");
+
+  useEffect(() => {
+    onLoaded?.();
+  }, [onLoaded]);
 
   const { clonedScene, scale, offset, clonedMaterials } = useMemo(() => {
     const clone = scene.clone(true);
@@ -254,6 +258,7 @@ interface HologramProjectionProps {
   status: NodeStatus;
   isSelected: boolean;
   isStale?: boolean;
+  portalRef?: React.RefObject<HTMLDivElement | null>;
   onClick: () => void;
   /** Present when this station has an active leak alert */
   activeAlert?: import("@/types").LiveAlert;
@@ -564,6 +569,7 @@ function HologramProjection({
   status,
   isSelected,
   isStale = false,
+  portalRef,
   onClick,
   activeAlert,
 }: HologramProjectionProps) {
@@ -660,8 +666,9 @@ function HologramProjection({
         <Html
           center
           position={[0, 0, 0]}
+          portal={portalRef as React.RefObject<HTMLElement> | undefined}
           pointerEvents={isSelected ? "auto" : "none"}
-          zIndexRange={[100, 0]}
+          zIndexRange={[14, 1]}
         >
           <div
             ref={handleCardMount}
@@ -1121,6 +1128,7 @@ interface SensorOverlayProps {
   isHovered: boolean;
   isSelected: boolean;
   isStale?: boolean;
+  portalRef?: React.RefObject<HTMLDivElement | null>;
   onHoverChange: (hovered: boolean) => void;
   onClick: () => void;
   activeAlert?: import("@/types").LiveAlert;
@@ -1134,6 +1142,7 @@ function SensorNodeOverlay({
   isHovered,
   isSelected,
   isStale = false,
+  portalRef,
   onHoverChange,
   onClick,
   activeAlert,
@@ -1265,6 +1274,7 @@ function SensorNodeOverlay({
           status={status}
           isSelected={isSelected}
           isStale={isStale}
+          portalRef={portalRef}
           onClick={onClick}
           activeAlert={activeAlert}
         />
@@ -1435,8 +1445,11 @@ export function Pipeline3DCanvas({
   const [localPinnedStation, setLocalPinnedStation] = useState<StationId | null>(null);
   const [presetMode, setPresetMode] = useState<CameraPresetMode>("overview");
   const [presetNonce, setPresetNonce] = useState(0);
+  const [modelLoaded, setModelLoaded] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const holoPortalRef = useRef<HTMLDivElement | null>(null);
   const glideActiveRef = useRef(false);
+  const handleModelLoaded = useCallback(() => setModelLoaded(true), []);
   const stations = useHydroStore((s) => s.stations);
   const alerts = useHydroStore((s) => s.alerts);
   const kpi = useHydroStore((s) => s.kpi);
@@ -1778,15 +1791,17 @@ export function Pipeline3DCanvas({
               animation: isStaleData ? "none" : "pulse 1.5s infinite",
             }}
           />
-          {isPlaybackMode
-            ? `REPLAY${playbackLabel ? ` · ${playbackLabel}` : ""}`
-            : isStaleData
-              ? "STALE · NO NEW DATA"
-              : hasWaterFlow
-                ? "FLOWING · LIVE"
-                : hasLiveReadings
-                  ? "LIVE ESP32"
-                  : "ESP32 READY"}
+          <span>
+            {isPlaybackMode
+              ? `REPLAY${playbackLabel ? ` · ${playbackLabel}` : ""}`
+              : isStaleData
+                ? "STALE · NO NEW DATA"
+                : hasWaterFlow
+                  ? "FLOWING · LIVE"
+                  : hasLiveReadings
+                    ? "LIVE ESP32"
+                    : "ESP32 READY"}
+          </span>
         </div>
       </div>
 
@@ -1822,6 +1837,47 @@ export function Pipeline3DCanvas({
               ? `Last check: ${formatPhtTime(kpi.lastUpdated)} PHT${nowMs > 0 ? ` (${formatRelativeAge(kpi.lastUpdated, nowMs).label})` : ""}`
               : "No telemetry rows recorded"}
           </span>
+        </div>
+      )}
+
+      {/* Dedicated stable portal container for Drei <Html> holograms (prevents React 19 removeChild race) */}
+      <div
+        ref={holoPortalRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 15,
+          pointerEvents: "none",
+          overflow: "hidden",
+        }}
+      />
+
+      {!modelLoaded && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <div
+            style={{
+              background: "rgba(255,255,255,0.92)",
+              border: "1px solid #C8E5F2",
+              borderRadius: 12,
+              padding: "8px 14px",
+              fontSize: 12,
+              color: "#0076A0",
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Loading /pipeline.glb…
+          </div>
         </div>
       )}
 
@@ -1908,27 +1964,8 @@ export function Pipeline3DCanvas({
           <RigBaseboard />
 
           {/* GLB Model & Live Sensor Overlays */}
-          <Suspense
-            fallback={
-              <Html center>
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.92)",
-                    border: "1px solid #C8E5F2",
-                    borderRadius: 12,
-                    padding: "8px 14px",
-                    fontSize: 12,
-                    color: "#0076A0",
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Loading /pipeline.glb…
-                </div>
-              </Html>
-            }
-          >
-            <PipelineModel />
+          <Suspense fallback={null}>
+            <PipelineModel onLoaded={handleModelLoaded} />
 
             {/* ── Internal Water Volume & Flow Animation (based on L/min + bar pressure) ── */}
             <PipeFlowWater
@@ -1973,6 +2010,7 @@ export function Pipeline3DCanvas({
                   isHovered={hoveredStation === sid}
                   isSelected={activeStation === sid || isZoneHighlighted}
                   isStale={isStaleData}
+                  portalRef={holoPortalRef}
                   onHoverChange={(hovered) =>
                     setHoveredStation((prev) =>
                       hovered ? sid : prev === sid ? null : prev
